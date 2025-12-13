@@ -1,6 +1,7 @@
 import * as XLSX from 'xlsx';
-import type { Recipe, Ingredient, Menu, Unit } from '../types'; // Removed RecipeIngredient if unused
 import { v4 as uuidv4 } from 'uuid';
+import { EXCEL_IMPORT } from '../constants';
+import type { Recipe, Ingredient, Menu, Unit } from '../types';
 
 // Helper to normalize headers
 const normalize = (str: string) => str?.toLowerCase().trim().replace(/[^a-z0-9]/g, '') || '';
@@ -44,8 +45,8 @@ export const parseRecipesFromExcel = async (file: File): Promise<{ recipes: Reci
                 for (const sheetName of workbook.SheetNames) {
                     const sheet = workbook.Sheets[sheetName];
                     const range = XLSX.utils.decode_range(sheet['!ref'] || 'A1:Z100');
-                    // Check first 20 rows for headers
-                    for (let r = range.s.r; r <= Math.min(range.e.r, 20); r++) {
+                    // Check first rows for headers
+                    for (let r = range.s.r; r <= Math.min(range.e.r, EXCEL_IMPORT.MAX_HEADER_SEARCH_ROWS); r++) {
                         const row: any[] = [];
                         for (let c = range.s.c; c <= range.e.c; c++) {
                             const cell = sheet[XLSX.utils.encode_cell({ r, c })];
@@ -122,7 +123,7 @@ export const parseRecipesFromExcel = async (file: File): Promise<{ recipes: Reci
 
                         // Look for header row
                         let headerRowIndex = -1;
-                        for (let r = range.s.r; r <= Math.min(range.e.r, 20); r++) {
+                        for (let r = range.s.r; r <= Math.min(range.e.r, EXCEL_IMPORT.MAX_HEADER_SEARCH_ROWS); r++) {
                             const row: any[] = [];
                             for (let c = range.s.c; c <= range.e.c; c++) {
                                 const cell = sheet[XLSX.utils.encode_cell({ r, c })];
@@ -218,10 +219,11 @@ export const parseRecipesFromExcel = async (file: File): Promise<{ recipes: Reci
                 });
 
             } catch (err) {
-                reject(err);
+                const errorMessage = err instanceof Error ? err.message : 'Unknown error parsing recipes';
+                reject(new Error(`Failed to parse recipes: ${errorMessage}`));
             }
         };
-        reader.onerror = (error) => reject(error);
+        reader.onerror = () => reject(new Error('Failed to read recipes file'));
         reader.readAsArrayBuffer(file);
     });
 };
@@ -246,7 +248,7 @@ export const parseMenusFromExcel = async (file: File, existingRecipes: Recipe[])
                 for (const sheetName of workbook.SheetNames) {
                     const sheet = workbook.Sheets[sheetName];
                     const range = XLSX.utils.decode_range(sheet['!ref'] || 'A1:Z100');
-                    for (let r = range.s.r; r <= Math.min(range.e.r, 20); r++) {
+                    for (let r = range.s.r; r <= Math.min(range.e.r, EXCEL_IMPORT.MAX_HEADER_SEARCH_ROWS); r++) {
                         const row: any[] = [];
                         for (let c = range.s.c; c <= range.e.c; c++) {
                             const cell = sheet[XLSX.utils.encode_cell({ r, c })];
@@ -306,10 +308,11 @@ export const parseMenusFromExcel = async (file: File, existingRecipes: Recipe[])
                 });
 
             } catch (err) {
-                reject(err);
+                const errorMessage = err instanceof Error ? err.message : 'Unknown error parsing menus';
+                reject(new Error(`Failed to parse menus: ${errorMessage}`));
             }
         };
-        reader.onerror = (error) => reject(error);
+        reader.onerror = () => reject(new Error('Failed to read menus file'));
         reader.readAsArrayBuffer(file);
     });
 };
@@ -329,13 +332,10 @@ export const parseIngredientsFromExcel = async (file: File): Promise<{ ingredien
                 let targetSheetName = '';
                 let headerRowIndex = 0;
 
-                // Removed unused headerKeywords
-
-                // Prioritize specific sheet name if user mentioned it
+                // Prioritize specific sheet name
                 const likelySheets = ['LIST. PRODUCTOS', 'LISTA PRODUCTOS', 'INGREDIENTES', 'BASE DE DATOS'];
                 for (const name of likelySheets) {
                     if (workbook.SheetNames.find(s => s.toUpperCase().includes(name))) {
-                        // Check if it's actually valid?
                         targetSheetName = workbook.SheetNames.find(s => s.toUpperCase().includes(name))!;
                         break;
                     }
@@ -353,7 +353,7 @@ export const parseIngredientsFromExcel = async (file: File): Promise<{ ingredien
                     for (const sheetName of workbook.SheetNames) {
                         const sheet = workbook.Sheets[sheetName];
                         const range = XLSX.utils.decode_range(sheet['!ref'] || 'A1:Z100');
-                        for (let r = range.s.r; r <= Math.min(range.e.r, 20); r++) {
+                        for (let r = range.s.r; r <= Math.min(range.e.r, EXCEL_IMPORT.MAX_HEADER_SEARCH_ROWS); r++) {
                             const row: any[] = [];
                             for (let c = range.s.c; c <= range.e.c; c++) {
                                 const cell = sheet[XLSX.utils.encode_cell({ r, c })];
@@ -405,10 +405,11 @@ export const parseIngredientsFromExcel = async (file: File): Promise<{ ingredien
                 });
 
             } catch (err) {
-                reject(err);
+                const errorMessage = err instanceof Error ? err.message : 'Unknown error parsing ingredients';
+                reject(new Error(`Failed to parse ingredients: ${errorMessage}`));
             }
         };
-        reader.onerror = (error) => reject(error);
+        reader.onerror = () => reject(new Error('Failed to read ingredients file'));
         reader.readAsArrayBuffer(file);
     });
 };

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useStore } from '../store/useStore';
 import { parseRecipesFromExcel, parseMenusFromExcel, parseIngredientsFromExcel } from '../utils/excelImport';
 import { getSampleData } from '../utils/sampleData';
+import { logger } from '../utils/logger';
 import { Upload, AlertCircle, CheckCircle, FileSpreadsheet, Database } from 'lucide-react';
 
 export const ExcelImporter: React.FC = () => {
@@ -66,7 +67,7 @@ export const ExcelImporter: React.FC = () => {
                 });
 
                 if (errors.length > 0) {
-                    console.warn(errors);
+                    logger.warn('Menu import warnings:', errors);
                 }
             }
         } catch (err: any) {
