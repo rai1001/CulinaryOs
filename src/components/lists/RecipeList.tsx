@@ -1,0 +1,98 @@
+import React from 'react';
+import type { Recipe, Ingredient } from '../../types';
+import { useStore } from '../../store/useStore';
+import { Printer } from 'lucide-react';
+import { printLabel, formatLabelData } from '../printing/PrintService';
+
+interface RecipeListProps {
+    recipes: Recipe[];
+}
+
+export const RecipeList: React.FC<RecipeListProps> = ({ recipes }) => {
+    const { ingredients } = useStore();
+
+    const getIngredient = (id: string): Ingredient | undefined => ingredients.find(i => i.id === id);
+
+    const calculateStats = (recipe: Recipe) => {
+        let totalCost = 0;
+        let totalKcal = 0;
+
+        recipe.ingredients.forEach(ri => {
+            const ing = getIngredient(ri.ingredientId);
+            if (!ing) return;
+
+            // Cost Calculation
+            totalCost += ri.quantity * ing.costPerUnit;
+
+            // Kcal Calculation
+            if (ing.nutritionalInfo) {
+                let multiplier = 0;
+                // Standardize to 100g units
+                if (ing.unit === 'kg' || ing.unit === 'L') {
+                    multiplier = ri.quantity * 10; // 1kg = 10 * 100g
+                } else if (ing.unit === 'g' || ing.unit === 'ml') {
+                    multiplier = ri.quantity / 100;
+                }
+                // 'un' and 'manojo' are ignored for now as we don't know weight
+
+                totalKcal += multiplier * ing.nutritionalInfo.calories;
+            }
+        });
+
+        return { totalCost, totalKcal };
+    };
+
+    return (
+        <div className="bg-surface border border-white/5 rounded-xl overflow-hidden shadow-sm">
+            <table className="w-full text-left text-sm text-slate-300">
+                <thead className="bg-black/20 text-slate-500 uppercase font-medium">
+                    <tr>
+                        <th className="p-4">Nombre</th>
+                        <th className="p-4">Partida</th>
+                        <th className="p-4">Ingredientes</th>
+                        <th className="p-4 text-right">Kcal (Total)</th>
+                        <th className="p-4 text-right">Coste</th>
+                        <th className="p-4 text-center">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                    {recipes.map(recipe => {
+                        const stats = calculateStats(recipe);
+                        return (
+                            <tr key={recipe.id} className="hover:bg-white/[0.02]">
+                                <td className="p-4 font-medium text-white">{recipe.name}</td>
+                                <td className="p-4">
+                                    <span className={`px-2 py-1 rounded text-xs ${recipe.station === 'hot' ? 'bg-red-500/20 text-red-300' :
+                                        recipe.station === 'cold' ? 'bg-blue-500/20 text-blue-300' :
+                                            'bg-pink-500/20 text-pink-300'
+                                        }`}>
+                                        {recipe.station.toUpperCase()}
+                                    </span>
+                                </td>
+                                <td className="p-4 opacity-70">{recipe.ingredients.length} items</td>
+                                <td className="p-4 text-right font-mono text-orange-400">
+                                    {stats.totalKcal > 0 ? Math.round(stats.totalKcal).toLocaleString() : '-'}
+                                </td>
+                                <td className="p-4 text-right font-mono text-emerald-400">
+                                    ${stats.totalCost.toFixed(2)}
+                                </td>
+                                <td className="p-4 text-center">
+                                    <button
+                                        onClick={() => printLabel(formatLabelData(recipe, 'PREP'))}
+                                        className="p-2 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-colors"
+                                        title="Imprimir Etiqueta"
+                                    >
+                                        <Printer size={18} />
+                                    </button>
+                                </td>
+                            </tr>
+                        );
+                    })}
+                    {recipes.length === 0 && (
+                        <tr><td colSpan={6} className="p-8 text-center opacity-50">No hay recetas.</td></tr>
+                    )}
+                </tbody>
+            </table>
+        </div>
+    );
+};

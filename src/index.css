@@ -1,0 +1,82 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-background text-slate-100 font-sans antialiased;
+  }
+}
+
+@layer utilities {
+  .glass {
+    @apply bg-surface/70 backdrop-blur-md border border-white/10;
+  }
+
+  .glass-card {
+    @apply bg-surface/50 backdrop-blur-lg border border-white/5 rounded-xl;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+
+
+::-webkit-scrollbar-thumb {
+  @apply bg-slate-700/50 rounded-full hover:bg-slate-600/50;
+}
+
+@media print {
+  @page {
+    margin: 0;
+    size: auto;
+    /* Let printer driver decide, or set specific dimensions if needed */
+  }
+
+  body {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    background: white !important;
+    color: black !important;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Hide the main app root */
+  #root {
+    display: none !important;
+  }
+
+  /* Only show the print portal which is outside #root */
+  .print-portal,
+  .print-portal * {
+    display: block !important;
+    visibility: visible !important;
+  }
+
+  .print-portal {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Reset layout for print portal content */
+  .flex,
+  .h-screen,
+  .h-full,
+  .overflow-hidden,
+  .overflow-auto {
+    height: auto !important;
+    overflow: visible !important;
+  }
+}
