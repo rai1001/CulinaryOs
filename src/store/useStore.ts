@@ -1,6 +1,19 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
+import { v4 as uuidv4 } from 'uuid';
+import { isValid, parseISO, format } from 'date-fns';
+import { consumeStockFIFO, initializeBatches, calculateTotalStock } from '../services/inventoryService';
+import { logger } from '../utils/logger';
 import type { Ingredient, Recipe, Menu, Event, Employee, DailySchedule, Supplier, PurchaseOrder, WasteRecord, PCC, HACCPLog, HACCPTask, HACCPTaskCompletion, IngredientBatch } from '../types';
+
+// Helper to validate and normalize date strings
+const validateDateString = (dateStr: string): string => {
+    const date = parseISO(dateStr);
+    if (!isValid(date)) {
+        throw new Error(`Invalid date: ${dateStr}`);
+    }
+    return format(date, 'yyyy-MM-dd');
+};
 
 interface AppState {
     // Data
@@ -144,52 +157,17 @@ export const useStore = create<AppState>()(
 
                 if (ingredientIndex === -1) return state;
 
-                const ingredient = { ...ingredients[ingredientIndex] };
-                let remainingQtyToConsume = record.quantity;
+                let ingredient = { ...ingredients[ingredientIndex] };
 
                 // Initialize batches if they don't exist (Migration)
-                if (!ingredient.batches) {
-                    ingredient.batches = [{
-                        id: crypto.randomUUID(),
-                        ingredientId: ingredient.id,
-                        quantity: ingredient.stock || 0,
-                        expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // Dummy +30 days
-                        receivedDate: new Date().toISOString(),
-                        costPerUnit: ingredient.costPerUnit
-                    }];
-                }
+                ingredient = initializeBatches(ingredient);
 
-                // Sort batches by expiry ASC (FIFO)
-                const batches = [...ingredient.batches].sort((a, b) =>
-                    new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime()
-                );
+                // Consume stock using FIFO service
+                const newBatches = consumeStockFIFO(ingredient.batches || [], record.quantity);
 
-                const newBatches: IngredientBatch[] = [];
-
-                // Consume logic
-                for (const batch of batches) {
-                    if (remainingQtyToConsume <= 0) {
-                        newBatches.push(batch);
-                        continue;
-                    }
-
-                    if (batch.quantity > remainingQtyToConsume) {
-                        // Partial consumption of this batch
-                        newBatches.push({
-                            ...batch,
-                            quantity: batch.quantity - remainingQtyToConsume
-                        });
-                        remainingQtyToConsume = 0;
-                    } else {
-                        // Fully consume this batch
-                        remainingQtyToConsume -= batch.quantity;
-                        // specific batch is removed (not pushed to newBatches)
-                    }
-                }
-
+                // Update ingredient with new batches and recalculated stock
                 ingredient.batches = newBatches;
-                // Update total stock to match batches
-                ingredient.stock = newBatches.reduce((sum, b) => sum + b.quantity, 0);
+                ingredient.stock = calculateTotalStock(newBatches);
 
                 const newIngredients = [...ingredients];
                 newIngredients[ingredientIndex] = ingredient;
@@ -205,11 +183,11 @@ export const useStore = create<AppState>()(
                     if (ing.id === ingredientId) {
                         const newBatch: IngredientBatch = {
                             ...batchData,
-                            id: crypto.randomUUID(),
+                            id: uuidv4(),
                             ingredientId
                         };
                         const currentBatches = ing.batches || (ing.stock ? [{
-                            id: crypto.randomUUID(),
+                            id: uuidv4(),
                             ingredientId: ing.id,
                             quantity: ing.stock,
                             expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
@@ -230,45 +208,24 @@ export const useStore = create<AppState>()(
             }),
 
             consumeStock: (ingredientId, quantity) => set((state) => {
-                // Reuse logic similar to addWasteRecord but generic
-                // For now, let's keep it simple and just do it here
                 const ingredientIndex = state.ingredients.findIndex(i => i.id === ingredientId);
                 if (ingredientIndex === -1) return state;
 
-                const ingredient = { ...state.ingredients[ingredientIndex] };
-                let remaining = quantity;
+                let ingredient = { ...state.ingredients[ingredientIndex] };
 
-                if (!ingredient.batches) {
-                    // Migration fallback for old stock if any
-                    if ((ingredient.stock || 0) >= quantity) {
-                        ingredient.stock = (ingredient.stock || 0) - quantity;
-                        return { ingredients: state.ingredients.map(i => i.id === ingredientId ? ingredient : i) };
-                    }
+                // Initialize batches if they don't exist (Migration)
+                ingredient = initializeBatches(ingredient);
+
+                // Check if we have enough stock
+                if ((ingredient.stock || 0) < quantity) {
+                    logger.warn(`Insufficient stock for ingredient ${ingredientId}: requested ${quantity}, available ${ingredient.stock || 0}`);
                     return state;
                 }
 
-                // Standard FIFO
-                const batches = [...ingredient.batches].sort((a, b) =>
-                    new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime()
-                );
-                const newBatches: IngredientBatch[] = [];
-
-                for (const batch of batches) {
-                    if (remaining <= 0) {
-                        newBatches.push(batch);
-                        continue;
-                    }
-
-                    if (batch.quantity > remaining) {
-                        newBatches.push({ ...batch, quantity: batch.quantity - remaining });
-                        remaining = 0;
-                    } else {
-                        remaining -= batch.quantity;
-                    }
-                }
-
+                // Consume stock using FIFO service
+                const newBatches = consumeStockFIFO(ingredient.batches || [], quantity);
                 ingredient.batches = newBatches;
-                ingredient.stock = newBatches.reduce((sum, b) => sum + b.quantity, 0);
+                ingredient.stock = calculateTotalStock(newBatches);
 
                 const newIngredients = [...state.ingredients];
                 newIngredients[ingredientIndex] = ingredient;
@@ -283,28 +240,34 @@ export const useStore = create<AppState>()(
             })),
 
             updateShift: (dateStr, employeeId, type) => set((state) => {
-                const date = new Date(dateStr);
-                const monthKey = date.toISOString().slice(0, 7); // YYYY-MM
-                const currentMonthSchedule = state.schedule[monthKey];
+                try {
+                    const validatedDate = validateDateString(dateStr);
+                    const date = parseISO(validatedDate);
+                    const monthKey = format(date, 'yyyy-MM');
+                    const currentMonthSchedule = state.schedule[monthKey];
 
-                if (!currentMonthSchedule) return state; // Can't update if month doesn't exist
+                    if (!currentMonthSchedule) return state; // Can't update if month doesn't exist
 
-                const newShifts = currentMonthSchedule.shifts.filter(s => !(s.date === dateStr && s.employeeId === employeeId));
-                newShifts.push({
-                    date: dateStr,
-                    employeeId,
-                    type
-                });
+                    const newShifts = currentMonthSchedule.shifts.filter(s => !(s.date === validatedDate && s.employeeId === employeeId));
+                    newShifts.push({
+                        date: validatedDate,
+                        employeeId,
+                        type
+                    });
 
-                return {
-                    schedule: {
-                        ...state.schedule,
-                        [monthKey]: {
-                            ...currentMonthSchedule,
-                            shifts: newShifts
+                    return {
+                        schedule: {
+                            ...state.schedule,
+                            [monthKey]: {
+                                ...currentMonthSchedule,
+                                shifts: newShifts
+                            }
                         }
-                    }
-                };
+                    };
+                } catch (error) {
+                    logger.error('Error updating shift:', error);
+                    return state;
+                }
             }),
 
             updateEmployee: (employee) => set((state) => ({
@@ -312,21 +275,27 @@ export const useStore = create<AppState>()(
             })),
 
             removeShift: (dateStr, employeeId) => set((state) => {
-                const date = new Date(dateStr);
-                const monthKey = date.toISOString().slice(0, 7);
-                const currentMonthSchedule = state.schedule[monthKey];
+                try {
+                    const validatedDate = validateDateString(dateStr);
+                    const date = parseISO(validatedDate);
+                    const monthKey = format(date, 'yyyy-MM');
+                    const currentMonthSchedule = state.schedule[monthKey];
 
-                if (!currentMonthSchedule) return state;
+                    if (!currentMonthSchedule) return state;
 
-                return {
-                    schedule: {
-                        ...state.schedule,
-                        [monthKey]: {
-                            ...currentMonthSchedule,
-                            shifts: currentMonthSchedule.shifts.filter(s => !(s.date === dateStr && s.employeeId === employeeId))
+                    return {
+                        schedule: {
+                            ...state.schedule,
+                            [monthKey]: {
+                                ...currentMonthSchedule,
+                                shifts: currentMonthSchedule.shifts.filter(s => !(s.date === validatedDate && s.employeeId === employeeId))
+                            }
                         }
-                    }
-                };
+                    };
+                } catch (error) {
+                    logger.error('Error removing shift:', error);
+                    return state;
+                }
             }),
 
             addPCC: (pcc) => set((state) => ({ pccs: [...state.pccs, pcc] })),

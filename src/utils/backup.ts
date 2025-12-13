@@ -4,6 +4,7 @@
  */
 
 import { useStore } from '../store/useStore';
+import { logger } from './logger';
 
 // Version for migration compatibility
 const BACKUP_VERSION = '1.0';
@@ -81,14 +82,39 @@ const validateBackup = (data: unknown): data is BackupData => {
     if (typeof backup.data !== 'object') return false;
 
     // Check required arrays exist
-    const required = ['ingredients', 'recipes', 'menus', 'events'];
+    const required = ['ingredients', 'recipes', 'menus', 'events', 'staff'];
     for (const key of required) {
         if (!Array.isArray((backup.data as Record<string, unknown>)[key])) {
             return false;
         }
     }
 
+    // Validate optional arrays
+    const optional = ['suppliers', 'purchaseOrders', 'wasteRecords', 'pccs', 'haccpLogs', 'haccpTasks', 'haccpTaskCompletions'];
+    for (const key of optional) {
+        const value = (backup.data as Record<string, unknown>)[key];
+        if (value !== undefined && !Array.isArray(value)) {
+            return false;
+        }
+    }
+
+    // Validate schedule is an object
+    if (backup.data.schedule && typeof backup.data.schedule !== 'object') {
+        return false;
+    }
+
     return true;
+};
+
+/**
+ * Safely cast arrays with validation
+ */
+const safeArrayCast = <T>(data: unknown[], fieldName: string): T[] => {
+    if (!Array.isArray(data)) {
+        logger.error(`Invalid ${fieldName} data: expected array`);
+        return [];
+    }
+    return data as T[];
 };
 
 /**
@@ -124,37 +150,46 @@ export const importData = async (
                 if (mode === 'replace') {
                     // Replace all data
                     if (backup.data.ingredients) {
-                        state.setIngredients(backup.data.ingredients as never[]);
-                        stats.ingredients = backup.data.ingredients.length;
+                        const ingredients = safeArrayCast(backup.data.ingredients as unknown[], 'ingredients');
+                        state.setIngredients(ingredients as never[]);
+                        stats.ingredients = ingredients.length;
                     }
                     if (backup.data.recipes) {
-                        state.setRecipes(backup.data.recipes as never[]);
-                        stats.recipes = backup.data.recipes.length;
+                        const recipes = safeArrayCast(backup.data.recipes as unknown[], 'recipes');
+                        state.setRecipes(recipes as never[]);
+                        stats.recipes = recipes.length;
                     }
                     if (backup.data.menus) {
-                        state.setMenus(backup.data.menus as never[]);
-                        stats.menus = backup.data.menus.length;
+                        const menus = safeArrayCast(backup.data.menus as unknown[], 'menus');
+                        state.setMenus(menus as never[]);
+                        stats.menus = menus.length;
                     }
                     if (backup.data.events) {
-                        state.setEvents(backup.data.events as never[]);
-                        stats.events = backup.data.events.length;
+                        const events = safeArrayCast(backup.data.events as unknown[], 'events');
+                        state.setEvents(events as never[]);
+                        stats.events = events.length;
                     }
                     if (backup.data.staff) {
-                        state.setStaff(backup.data.staff as never[]);
-                        stats.staff = backup.data.staff.length;
+                        const staff = safeArrayCast(backup.data.staff as unknown[], 'staff');
+                        state.setStaff(staff as never[]);
+                        stats.staff = staff.length;
                     }
                     if (backup.data.suppliers) {
-                        state.setSuppliers(backup.data.suppliers as never[]);
-                        stats.suppliers = backup.data.suppliers.length;
+                        const suppliers = safeArrayCast(backup.data.suppliers as unknown[], 'suppliers');
+                        state.setSuppliers(suppliers as never[]);
+                        stats.suppliers = suppliers.length;
                     }
                     if (backup.data.purchaseOrders) {
-                        state.setPurchaseOrders(backup.data.purchaseOrders as never[]);
-                        stats.purchaseOrders = backup.data.purchaseOrders.length;
+                        const orders = safeArrayCast(backup.data.purchaseOrders as unknown[], 'purchaseOrders');
+                        state.setPurchaseOrders(orders as never[]);
+                        stats.purchaseOrders = orders.length;
                     }
                     // Schedule is handled differently - it's a Record
-                    if (backup.data.schedule) {
+                    if (backup.data.schedule && typeof backup.data.schedule === 'object') {
                         for (const [key, value] of Object.entries(backup.data.schedule)) {
-                            state.updateSchedule(key, value as never);
+                            if (value && typeof value === 'object') {
+                                state.updateSchedule(key, value as never);
+                            }
                         }
                         stats.schedule = Object.keys(backup.data.schedule).length;
                     }
