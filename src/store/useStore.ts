@@ -43,6 +43,7 @@ interface AppState {
     addMenu: (menu: Menu) => void;
     setEvents: (items: Event[]) => void;
     addEvent: (event: Event) => void;
+    updateEvent: (event: Event) => void;
     setStaff: (items: Employee[]) => void;
     setSuppliers: (items: Supplier[]) => void;
     addSupplier: (supplier: Supplier) => void;
@@ -139,6 +140,9 @@ export const useStore = create<AppState>()(
             addMenu: (menu) => set((state) => ({ menus: [...state.menus, menu] })),
             setEvents: (events) => set({ events }),
             addEvent: (event) => set((state) => ({ events: [...state.events, event] })),
+            updateEvent: (updatedEvent) => set((state) => ({
+                events: state.events.map(e => e.id === updatedEvent.id ? updatedEvent : e)
+            })),
             setStaff: (staff) => set({ staff }),
             setSuppliers: (suppliers) => set({ suppliers }),
             addSupplier: (supplier) => set((state) => ({ suppliers: [...state.suppliers, supplier] })),
