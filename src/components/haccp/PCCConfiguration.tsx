@@ -88,7 +88,7 @@ export const PCCConfiguration: React.FC = () => {
                                 type="text"
                                 value={formData.name || ''}
                                 onChange={e => setFormData({ ...formData, name: e.target.value })}
-                                className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800"
+                                className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 text-gray-900 dark:text-white"
                                 placeholder="Ej: Nevera 1 - Carnes"
                                 required
                             />
@@ -100,7 +100,7 @@ export const PCCConfiguration: React.FC = () => {
                             <select
                                 value={formData.type}
                                 onChange={e => setFormData({ ...formData, type: e.target.value as PCCType })}
-                                className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800"
+                                className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 text-gray-900 dark:text-white"
                             >
                                 <option value="FRIDGE">Nevera / Cámara Frigorífica</option>
                                 <option value="FREEZER">Congelador</option>
@@ -118,7 +118,7 @@ export const PCCConfiguration: React.FC = () => {
                                 step="0.1"
                                 value={formData.minTemp}
                                 onChange={e => setFormData({ ...formData, minTemp: parseFloat(e.target.value) })}
-                                className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800"
+                                className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 text-gray-900 dark:text-white"
                             />
                         </div>
                         <div>
@@ -130,7 +130,7 @@ export const PCCConfiguration: React.FC = () => {
                                 step="0.1"
                                 value={formData.maxTemp}
                                 onChange={e => setFormData({ ...formData, maxTemp: parseFloat(e.target.value) })}
-                                className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800"
+                                className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 text-gray-900 dark:text-white"
                             />
                         </div>
                         <div className="md:col-span-2">
@@ -141,7 +141,7 @@ export const PCCConfiguration: React.FC = () => {
                                 type="text"
                                 value={formData.description || ''}
                                 onChange={e => setFormData({ ...formData, description: e.target.value })}
-                                className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800"
+                                className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 text-gray-900 dark:text-white"
                                 placeholder="Ubicación, detalles..."
                             />
                         </div>
