@@ -83,6 +83,7 @@ export interface Recipe {
     name: string;
     station: 'hot' | 'cold' | 'dessert';
     ingredients: RecipeIngredient[];
+    isBase?: boolean; // True if this is a base recipe (e.g., from "Bases" sheet)
     totalCost?: number; // Calculated
     nutritionalInfo?: NutritionalInfo; // Calculated
 }
@@ -194,4 +195,21 @@ export interface HACCPTaskCompletion {
     completedAt: string; // ISO Date
     completedBy: string; // User ID
     notes?: string;
+}
+
+// Menu Engineering (Boston Matrix) Types
+
+export type DishClassification = 'star' | 'dog' | 'cash-cow' | 'puzzle';
+
+export interface MenuItemAnalytics {
+    recipeId: string;
+    recipeName: string;
+    totalRevenue: number; // Total revenue from this dish
+    totalOrders: number; // Number of times ordered (sum of PAX across events)
+    avgProfitPerServing: number; // Average profit per serving
+    totalProfit: number; // Total profit across all orders
+    popularityScore: number; // Percentage of total orders (0-1)
+    profitabilityScore: number; // Profit margin percentage (0-1)
+    classification: DishClassification;
+    lastOrdered?: string; // ISO Date
 }

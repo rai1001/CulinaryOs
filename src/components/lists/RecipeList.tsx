@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import type { Recipe, Ingredient } from '../../types';
 import { useStore } from '../../store/useStore';
 import { Printer } from 'lucide-react';
@@ -42,6 +42,14 @@ export const RecipeList: React.FC<RecipeListProps> = ({ recipes }) => {
         return { totalCost, totalKcal };
     };
 
+    // Cache recipe stats to avoid recalculating on every render
+    const recipeStats = useMemo(() => {
+        return recipes.map(recipe => ({
+            recipe,
+            stats: calculateStats(recipe)
+        }));
+    }, [recipes, ingredients]); // Recalculate only when recipes or ingredients change
+
     return (
         <div className="bg-surface border border-white/5 rounded-xl overflow-hidden shadow-sm">
             <table className="w-full text-left text-sm text-slate-300">
@@ -56,11 +64,19 @@ export const RecipeList: React.FC<RecipeListProps> = ({ recipes }) => {
                     </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
-                    {recipes.map(recipe => {
-                        const stats = calculateStats(recipe);
+                    {recipeStats.map(({ recipe, stats }) => {
                         return (
                             <tr key={recipe.id} className="hover:bg-white/[0.02]">
-                                <td className="p-4 font-medium text-white">{recipe.name}</td>
+                                <td className="p-4 font-medium text-white">
+                                    <div className="flex items-center gap-2">
+                                        {recipe.name}
+                                        {recipe.isBase && (
+                                            <span className="px-2 py-0.5 rounded text-xs bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                                                BASE
+                                            </span>
+                                        )}
+                                    </div>
+                                </td>
                                 <td className="p-4">
                                     <span className={`px-2 py-1 rounded text-xs ${recipe.station === 'hot' ? 'bg-red-500/20 text-red-300' :
                                         recipe.station === 'cold' ? 'bg-blue-500/20 text-blue-300' :

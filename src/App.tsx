@@ -1,25 +1,44 @@
-import React from 'react';
+import React, { lazy, Suspense, useState } from 'react';
 import { useStore } from './store/useStore';
 import { Dashboard } from './components/Dashboard';
-import { ScheduleView } from './components/ScheduleView';
-import { ProductionView } from './components/ProductionView';
-import { DataView } from './components/DataView';
-import { EventsView } from './components/EventsView';
-import { RecipesView } from './components/RecipesView';
-import { IngredientsView } from './components/IngredientsView';
-import { SupplierView } from './components/SupplierView';
-import { InventoryView } from './components/InventoryView';
-import { PurchasingView } from './components/PurchasingView';
-import { WasteView } from './components/WasteView';
-import { HACCPView } from './components/HACCPView';
-import { LayoutDashboard, Calendar, ShoppingCart, Database, CalendarDays, ChefHat, Package, Truck, ClipboardList, ShoppingBag, Trash2, ShieldCheck } from 'lucide-react';
+import { LayoutDashboard, Calendar, ShoppingCart, Database, CalendarDays, ChefHat, Package, Truck, ClipboardList, ShoppingBag, Trash2, ShieldCheck, TrendingUp } from 'lucide-react';
 
 import { PrintManager } from './components/printing/PrintManager';
 import { ShiftEndReminder } from './components/haccp/ShiftEndReminder';
 import { InstallPrompt } from './components/ui';
+import { CommandPalette } from './components/CommandPalette';
+import { useCommandPalette } from './hooks/useCommandPalette';
+
+// Lazy load views for better initial load performance
+const ScheduleView = lazy(() => import('./components/ScheduleView').then(m => ({ default: m.ScheduleView })));
+const ProductionView = lazy(() => import('./components/ProductionView').then(m => ({ default: m.ProductionView })));
+const DataView = lazy(() => import('./components/DataView').then(m => ({ default: m.DataView })));
+const EventsView = lazy(() => import('./components/EventsView').then(m => ({ default: m.EventsView })));
+const RecipesView = lazy(() => import('./components/RecipesView').then(m => ({ default: m.RecipesView })));
+const IngredientsView = lazy(() => import('./components/IngredientsView').then(m => ({ default: m.IngredientsView })));
+const SupplierView = lazy(() => import('./components/SupplierView').then(m => ({ default: m.SupplierView })));
+const InventoryView = lazy(() => import('./components/InventoryView').then(m => ({ default: m.InventoryView })));
+const PurchasingView = lazy(() => import('./components/PurchasingView').then(m => ({ default: m.PurchasingView })));
+const WasteView = lazy(() => import('./components/WasteView').then(m => ({ default: m.WasteView })));
+const HACCPView = lazy(() => import('./components/HACCPView').then(m => ({ default: m.HACCPView })));
+const MenuAnalyticsView = lazy(() => import('./components/MenuAnalyticsView').then(m => ({ default: m.MenuAnalyticsView })));
+
+// Loading fallback component
+const LoadingFallback = () => (
+  <div className="flex items-center justify-center h-full">
+    <div className="text-center">
+      <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+      <p className="text-slate-400">Cargando...</p>
+    </div>
+  </div>
+);
 
 function App() {
   const { currentView, setCurrentView } = useStore();
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+
+  // Command Palette keyboard shortcut (Cmd+K / Ctrl+K)
+  useCommandPalette(() => setIsCommandPaletteOpen(prev => !prev));
 
   const renderContent = () => {
     switch (currentView) {
@@ -35,6 +54,7 @@ function App() {
       case 'purchasing': return <PurchasingView />;
       case 'waste': return <WasteView />;
       case 'haccp': return <HACCPView />;
+      case 'analytics': return <MenuAnalyticsView />;
       default: return <Dashboard />;
     }
   };
@@ -44,6 +64,7 @@ function App() {
       <PrintManager />
       <ShiftEndReminder />
       <InstallPrompt />
+      <CommandPalette isOpen={isCommandPaletteOpen} onClose={() => setIsCommandPaletteOpen(false)} />
       {/* Sidebar */}
       <aside className="w-64 bg-surface border-r border-white/5 flex flex-col overflow-y-auto">
         <div className="p-6">
@@ -89,6 +110,12 @@ function App() {
             label="HACCP Digital"
             active={currentView === 'haccp'}
             onClick={() => setCurrentView('haccp')}
+          />
+          <NavItem
+            icon={<TrendingUp />}
+            label="Ingeniería Menú"
+            active={currentView === 'analytics'}
+            onClick={() => setCurrentView('analytics')}
           />
 
           <div className="pt-4 pb-2">
@@ -152,7 +179,9 @@ function App() {
       {/* Main Content */}
       <main className="flex-1 overflow-auto relative">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-accent/5 pointer-events-none" />
-        {renderContent()}
+        <Suspense fallback={<LoadingFallback />}>
+          {renderContent()}
+        </Suspense>
       </main>
     </div>
   );

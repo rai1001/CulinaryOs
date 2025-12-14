@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { useStore } from '../store/useStore';
-import { ChefHat, Search, Plus, X } from 'lucide-react';
+import { ChefHat, Search, Plus, X, Layers } from 'lucide-react';
 import { RecipeList } from './lists/RecipeList';
 import { RecipeForm } from './RecipeForm';
 
@@ -9,8 +9,23 @@ export const RecipesView: React.FC = () => {
     const { recipes } = useStore();
     const [searchTerm, setSearchTerm] = useState('');
     const [showAddModal, setShowAddModal] = useState(false);
+    const [activeTab, setActiveTab] = useState<'all' | 'regular' | 'base'>('all');
 
-    const filteredRecipes = recipes.filter(r => r.name.toLowerCase().includes(searchTerm.toLowerCase()));
+    // Separate base recipes from regular recipes
+    const baseRecipes = recipes.filter(r => r.isBase);
+    const regularRecipes = recipes.filter(r => !r.isBase);
+
+    // Filter based on active tab and search
+    let displayRecipes = recipes;
+    if (activeTab === 'base') {
+        displayRecipes = baseRecipes;
+    } else if (activeTab === 'regular') {
+        displayRecipes = regularRecipes;
+    }
+
+    const filteredRecipes = displayRecipes.filter(r =>
+        r.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
 
     return (
         <div className="p-8 max-w-6xl mx-auto space-y-6 text-slate-200">
@@ -40,6 +55,39 @@ export const RecipesView: React.FC = () => {
                     </button>
                 </div>
             </header>
+
+            {/* Tabs */}
+            <div className="flex gap-2 border-b border-white/10">
+                <button
+                    onClick={() => setActiveTab('all')}
+                    className={`px-4 py-2 font-medium text-sm transition-colors border-b-2 ${activeTab === 'all'
+                            ? 'border-primary text-white'
+                            : 'border-transparent text-slate-400 hover:text-white'
+                        }`}
+                >
+                    Todas ({recipes.length})
+                </button>
+                <button
+                    onClick={() => setActiveTab('regular')}
+                    className={`px-4 py-2 font-medium text-sm transition-colors border-b-2 flex items-center gap-2 ${activeTab === 'regular'
+                            ? 'border-primary text-white'
+                            : 'border-transparent text-slate-400 hover:text-white'
+                        }`}
+                >
+                    <ChefHat className="w-4 h-4" />
+                    Recetas ({regularRecipes.length})
+                </button>
+                <button
+                    onClick={() => setActiveTab('base')}
+                    className={`px-4 py-2 font-medium text-sm transition-colors border-b-2 flex items-center gap-2 ${activeTab === 'base'
+                            ? 'border-primary text-white'
+                            : 'border-transparent text-slate-400 hover:text-white'
+                        }`}
+                >
+                    <Layers className="w-4 h-4" />
+                    Bases ({baseRecipes.length})
+                </button>
+            </div>
 
             <RecipeList recipes={filteredRecipes} />
 

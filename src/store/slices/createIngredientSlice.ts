@@ -1,15 +1,6 @@
-import { StateCreator } from 'zustand';
-import { Ingredient, IngredientBatch } from '../../types';
-import { AppState } from '../useStore';
-
-export interface IngredientSlice {
-    ingredients: Ingredient[];
-    setIngredients: (items: Ingredient[]) => void;
-    addIngredient: (ingredient: Ingredient) => void;
-    updateIngredient: (ingredient: Ingredient) => void;
-    addBatch: (ingredientId: string, batch: Omit<IngredientBatch, 'id' | 'ingredientId'>) => void;
-    consumeStock: (ingredientId: string, quantity: number) => void;
-}
+import type { StateCreator } from 'zustand';
+import type { IngredientBatch } from '../../types';
+import type { AppState, IngredientSlice } from '../types';
 
 export const createIngredientSlice: StateCreator<
     AppState,

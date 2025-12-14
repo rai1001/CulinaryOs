@@ -7,6 +7,7 @@ export const RecipeForm: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
     const [formData, setFormData] = useState({
         name: '',
         station: 'hot',
+        isBase: false,
         ingredients: [] as { ingredientId: string; quantity: number }[]
     });
 
@@ -23,6 +24,7 @@ export const RecipeForm: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
             id: crypto.randomUUID(),
             name: formData.name,
             station: formData.station as 'hot' | 'cold' | 'dessert',
+            isBase: formData.isBase,
             ingredients: recipeIngredients
         });
 
@@ -73,6 +75,20 @@ export const RecipeForm: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
                         <option value="dessert">Postres</option>
                     </select>
                 </div>
+            </div>
+
+            {/* Checkbox for isBase */}
+            <div className="flex items-center gap-2">
+                <input
+                    type="checkbox"
+                    id="isBase"
+                    checked={formData.isBase}
+                    onChange={e => setFormData({ ...formData, isBase: e.target.checked })}
+                    className="w-4 h-4 rounded border-white/10 bg-black/20 text-primary focus:ring-primary focus:ring-offset-0"
+                />
+                <label htmlFor="isBase" className="text-sm text-slate-400 cursor-pointer">
+                    Esta es una receta base (usada como ingrediente en otras recetas)
+                </label>
             </div>
 
             <div className="space-y-2">

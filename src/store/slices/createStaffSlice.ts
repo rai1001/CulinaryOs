@@ -1,16 +1,6 @@
-import { StateCreator } from 'zustand';
-import { Employee, DailySchedule } from '../../types';
-import { AppState } from '../useStore';
+import type { StateCreator } from 'zustand';
 
-export interface StaffSlice {
-    staff: Employee[];
-    schedule: Record<string, DailySchedule>;
-    setStaff: (items: Employee[]) => void;
-    updateEmployee: (employee: Employee) => void;
-    updateSchedule: (month: string, schedule: DailySchedule) => void;
-    updateShift: (dateStr: string, employeeId: string, type: 'MORNING' | 'AFTERNOON') => void;
-    removeShift: (dateStr: string, employeeId: string) => void;
-}
+import type { AppState, StaffSlice } from '../types';
 
 export const createStaffSlice: StateCreator<
     AppState,

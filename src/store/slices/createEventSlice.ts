@@ -1,13 +1,6 @@
-import { StateCreator } from 'zustand';
-import { Event } from '../../types';
-import { AppState } from '../useStore';
+import type { StateCreator } from 'zustand';
 
-export interface EventSlice {
-    events: Event[];
-    setEvents: (items: Event[]) => void;
-    addEvent: (event: Event) => void;
-    updateEvent: (event: Event) => void;
-}
+import type { AppState, EventSlice } from '../types';
 
 export const createEventSlice: StateCreator<
     AppState,
