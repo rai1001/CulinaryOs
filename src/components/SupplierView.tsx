@@ -91,7 +91,7 @@ export const SupplierView: React.FC = () => {
         }
     };
 
-    const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const daysOfWeek = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 
     const supplierIngredients = viewingIngredientsSupplier
         ? ingredients.filter(i => i.supplierId === viewingIngredientsSupplier.id)
@@ -146,7 +146,7 @@ export const SupplierView: React.FC = () => {
                             )}
                             <div className="flex items-center gap-2">
                                 <Truck size={16} />
-                                <span>Entrega: {supplier.leadTime} días • Min: ${supplier.minimumOrderValue || 0}</span>
+                                <span>Entrega: {supplier.leadTime} días • Min: {supplier.minimumOrderValue || 0}€</span>
                             </div>
 
                             <div className="pt-2 border-t border-gray-100">
@@ -244,7 +244,7 @@ export const SupplierView: React.FC = () => {
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Pedido Mínimo ($)</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Pedido Mínimo (€)</label>
                                 <input
                                     type="number"
                                     min="0"
@@ -323,7 +323,7 @@ export const SupplierView: React.FC = () => {
                                             <div>
                                                 <h4 className="font-semibold text-gray-800">{ingredient.name}</h4>
                                                 <p className="text-sm text-gray-500">
-                                                    Actual: ${ingredient.costPerUnit} / {ingredient.unit}
+                                                    Actual: {ingredient.costPerUnit}€ / {ingredient.unit}
                                                 </p>
                                             </div>
                                             <div className="flex items-center gap-2 text-gray-500">
@@ -353,7 +353,7 @@ export const SupplierView: React.FC = () => {
                                                                             {new Date(entry.date).toLocaleDateString()}
                                                                         </td>
                                                                         <td className="px-3 py-2 font-medium text-gray-800">
-                                                                            ${entry.price}
+                                                                            {entry.price}€
                                                                         </td>
                                                                         <td className="px-3 py-2 text-gray-500">
                                                                             {entry.changeReason || '-'}

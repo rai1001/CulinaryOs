@@ -31,7 +31,7 @@ export const IngredientList: React.FC<IngredientListProps> = ({ ingredients }) =
                                 {ing.stock || 0}
                             </td>
                             <td className="p-4 text-right opacity-50">{ing.minStock || 0}</td>
-                            <td className="p-4 text-right font-mono text-emerald-400">${ing.costPerUnit}</td>
+                            <td className="p-4 text-right font-mono text-emerald-400">{ing.costPerUnit}€</td>
                             <td className="p-4 text-right opacity-70">{(ing.yield * 100).toFixed(0)}%</td>
                             <td className="p-4 text-center">
                                 <button

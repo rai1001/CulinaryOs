@@ -139,7 +139,7 @@ export const PurchasingView: React.FC = () => {
                                             <div>
                                                 <h4 className="font-bold text-white">{supplier?.name || 'Desconocido'}</h4>
                                                 <p className="text-sm text-slate-400">
-                                                    {order.items.length} ítems • Total: <span className="text-emerald-400 font-mono">${order.totalCost.toFixed(2)}</span>
+                                                    {order.items.length} ítems • Total: <span className="text-emerald-400 font-mono">{order.totalCost.toFixed(2)}€</span>
                                                     {order.orderDeadline && (
                                                         <span className="ml-2 text-orange-400 font-medium">
                                                             • Pedir antes de: {order.orderDeadline}

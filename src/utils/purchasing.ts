@@ -91,7 +91,7 @@ export const generateDraftOrders = (
         // Check Min Order
         const minOrder = supplier?.minimumOrderValue || 0;
         if (totalCost < minOrder) {
-            warnings.push(`Pedido a ${supplier?.name || 'Proveedor'} es de $${totalCost.toFixed(2)} (Mínimo: $${minOrder})`);
+            warnings.push(`Pedido a ${supplier?.name || 'Proveedor'} es de ${totalCost.toFixed(2)}€ (Mínimo: ${minOrder}€)`);
         }
 
         draftOrders.push({

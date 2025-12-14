@@ -50,25 +50,25 @@ function App() {
           <h1 className="text-2xl font-bold tracking-tight text-white">
             Chef<span className="text-primary">OS</span>
           </h1>
-          <p className="text-xs text-slate-500 mt-1">Premium Kitchen Mgmt</p>
+          <p className="text-xs text-slate-500 mt-1">Gestión de Cocina Premium</p>
         </div>
 
         <nav className="flex-1 px-4 space-y-2 py-4">
           <NavItem
             icon={<LayoutDashboard />}
-            label="Dashboard"
+            label="Inicio"
             active={currentView === 'dashboard'}
             onClick={() => setCurrentView('dashboard')}
           />
           <NavItem
             icon={<Calendar />}
-            label="Schedule"
+            label="Horario"
             active={currentView === 'schedule'}
             onClick={() => setCurrentView('schedule')}
           />
           <NavItem
             icon={<CalendarDays />}
-            label="Events"
+            label="Eventos"
             active={currentView === 'events'}
             onClick={() => setCurrentView('events')}
           />

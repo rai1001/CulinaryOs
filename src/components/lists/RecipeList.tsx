@@ -66,7 +66,7 @@ export const RecipeList: React.FC<RecipeListProps> = ({ recipes }) => {
                                         recipe.station === 'cold' ? 'bg-blue-500/20 text-blue-300' :
                                             'bg-pink-500/20 text-pink-300'
                                         }`}>
-                                        {recipe.station.toUpperCase()}
+                                        {recipe.station === 'hot' ? 'CALIENTE' : recipe.station === 'cold' ? 'FRÍA' : 'POSTRES'}
                                     </span>
                                 </td>
                                 <td className="p-4 opacity-70">{recipe.ingredients.length} items</td>
@@ -74,7 +74,7 @@ export const RecipeList: React.FC<RecipeListProps> = ({ recipes }) => {
                                     {stats.totalKcal > 0 ? Math.round(stats.totalKcal).toLocaleString() : '-'}
                                 </td>
                                 <td className="p-4 text-right font-mono text-emerald-400">
-                                    ${stats.totalCost.toFixed(2)}
+                                    {stats.totalCost.toFixed(2)}€
                                 </td>
                                 <td className="p-4 text-center">
                                     <button

@@ -54,7 +54,7 @@ export const WasteDashboard: React.FC<WasteDashboardProps> = ({ wasteRecords }) 
                         </div>
                         <span className="text-slate-400">Merma Total</span>
                     </div>
-                    <p className="text-3xl font-bold text-white">${totalWasteValue.toFixed(2)}</p>
+                    <p className="text-3xl font-bold text-white">{totalWasteValue.toFixed(2)}€</p>
                     <p className="text-sm text-slate-500 mt-2">{wasteRecords.length} registros totales</p>
                 </div>
 
@@ -65,7 +65,7 @@ export const WasteDashboard: React.FC<WasteDashboardProps> = ({ wasteRecords }) 
                         </div>
                         <span className="text-slate-400">Esta Semana</span>
                     </div>
-                    <p className="text-3xl font-bold text-white">${weekWaste.toFixed(2)}</p>
+                    <p className="text-3xl font-bold text-white">{weekWaste.toFixed(2)}€</p>
                     <p className="text-sm text-slate-500 mt-2">Últimos 7 días</p>
                 </div>
 
@@ -76,7 +76,7 @@ export const WasteDashboard: React.FC<WasteDashboardProps> = ({ wasteRecords }) 
                         </div>
                         <span className="text-slate-400">Hoy</span>
                     </div>
-                    <p className="text-3xl font-bold text-white">${todayWaste.toFixed(2)}</p>
+                    <p className="text-3xl font-bold text-white">{todayWaste.toFixed(2)}€</p>
                     <p className="text-sm text-slate-500 mt-2">{new Date().toLocaleDateString('es-ES')}</p>
                 </div>
             </div>
@@ -93,7 +93,7 @@ export const WasteDashboard: React.FC<WasteDashboardProps> = ({ wasteRecords }) 
                                 <div key={reasonKey} className="space-y-2">
                                     <div className="flex justify-between text-sm">
                                         <span className="text-slate-300">{reasonLabels[reasonKey] || reasonKey}</span>
-                                        <span className="text-white font-mono">${value.toFixed(2)} ({percentage.toFixed(1)}%)</span>
+                                        <span className="text-white font-mono">{value.toFixed(2)}€ ({percentage.toFixed(1)}%)</span>
                                     </div>
                                     <div className="h-2 bg-black/30 rounded-full overflow-hidden">
                                         <div

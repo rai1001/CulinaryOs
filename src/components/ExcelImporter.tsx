@@ -24,13 +24,13 @@ export const ExcelImporter: React.FC = () => {
 
                 if (newIngredients.length === 0) {
                     if (errors.length > 0) throw new Error(errors[0]);
-                    throw new Error('No valid ingredients found.');
+                    throw new Error('No se encontraron ingredientes válidos.');
                 }
 
                 setIngredients(newIngredients);
                 setStatus({
                     type: 'success',
-                    message: `Successfully imported ${newIngredients.length} ingredients.`
+                    message: `Se importaron ${newIngredients.length} ingredientes correctamente.`
                 });
             } else if (importType === 'recipes') {
                 const { recipes: newRecipes, ingredients: newIngredients, errors } = await parseRecipesFromExcel(file);
@@ -40,38 +40,38 @@ export const ExcelImporter: React.FC = () => {
                     if (errors.length > 0) {
                         throw new Error(errors[0]);
                     }
-                    throw new Error('No valid recipes found. Check column headers.');
+                    throw new Error('No se encontraron recetas válidas. Revisa los encabezados de las columnas.');
                 }
 
                 setIngredients(newIngredients);
                 setRecipes(newRecipes);
                 setStatus({
                     type: 'success',
-                    message: `Successfully imported ${newRecipes.length} recipes and ${newIngredients.length} ingredients.`
+                    message: `Se importaron ${newRecipes.length} recetas y ${newIngredients.length} ingredientes correctamente.`
                 });
             } else {
                 // Menus
                 if (recipes.length === 0) {
-                    throw new Error('Please import recipes first to link them to menus.');
+                    throw new Error('Por favor importa recetas primero para vincularlas a los menús.');
                 }
                 const { menus: newMenus, errors } = await parseMenusFromExcel(file, recipes);
 
                 if (newMenus.length === 0) {
-                    throw new Error('No valid menus found.');
+                    throw new Error('No se encontraron menús válidos.');
                 }
 
                 setMenus(newMenus);
                 setStatus({
                     type: 'success',
-                    message: `Successfully imported ${newMenus.length} menus. ${errors.length > 0 ? `(${errors.length} warnings)` : ''}`
+                    message: `Se importaron ${newMenus.length} menús correctamente. ${errors.length > 0 ? `(${errors.length} advertencias)` : ''}`
                 });
 
                 if (errors.length > 0) {
-                    logger.warn('Menu import warnings:', errors);
+                    logger.warn('Advertencias de importación de menú:', errors);
                 }
             }
         } catch (err: any) {
-            setStatus({ type: 'error', message: err.message || 'Failed to import file.' });
+            setStatus({ type: 'error', message: err.message || 'Error al importar el archivo.' });
         } finally {
             setLoading(false);
             // Reset file input
@@ -87,7 +87,7 @@ export const ExcelImporter: React.FC = () => {
         setEvents(sampleEvents);
         setStatus({
             type: 'success',
-            message: 'Loaded sample data (Ingredients, Recipes, Menus, Events).'
+            message: 'Datos de ejemplo cargados (Ingredientes, Recetas, Menús, Eventos).'
         });
     };
 
@@ -95,7 +95,7 @@ export const ExcelImporter: React.FC = () => {
         <div className="p-6 glass-card w-full max-w-lg mx-auto">
             <div className="flex items-center gap-3 mb-4">
                 <FileSpreadsheet className="w-6 h-6 text-primary" />
-                <h2 className="text-xl font-bold text-white">Data Import</h2>
+                <h2 className="text-xl font-bold text-white">Importación de Datos</h2>
             </div>
 
             <div className="flex gap-4 mb-6">
@@ -106,7 +106,7 @@ export const ExcelImporter: React.FC = () => {
                         : 'bg-surface hover:bg-slate-700 text-slate-300'
                         }`}
                 >
-                    Ingredients
+                    Ingredientes
                 </button>
                 <button
                     onClick={() => setImportType('recipes')}
@@ -115,7 +115,7 @@ export const ExcelImporter: React.FC = () => {
                         : 'bg-surface hover:bg-slate-700 text-slate-300'
                         }`}
                 >
-                    Recipes
+                    Recetas
                 </button>
                 <button
                     onClick={() => setImportType('menus')}
@@ -124,7 +124,7 @@ export const ExcelImporter: React.FC = () => {
                         : 'bg-surface hover:bg-slate-700 text-slate-300'
                         }`}
                 >
-                    Menus
+                    Menús
                 </button>
             </div>
 
@@ -139,9 +139,11 @@ export const ExcelImporter: React.FC = () => {
                 <div className="flex flex-col items-center gap-2 pointer-events-none">
                     <Upload className={`w-8 h-8 ${loading ? 'animate-bounce text-primary' : 'text-slate-400'}`} />
                     <p className="text-slate-300 font-medium">
-                        {loading ? 'Parsing...' : `Click to upload ${importType} (.xlsx)`}
+                        {loading ? 'Procesando...' : `Haz clic para subir ${importType === 'ingredients' ? 'Ingredientes' :
+                                importType === 'recipes' ? 'Recetas' : 'Menús'
+                            } (.xlsx)`}
                     </p>
-                    <p className="text-xs text-slate-500">Supported formats: .xlsx</p>
+                    <p className="text-xs text-slate-500">Formatos soportados: .xlsx</p>
                 </div>
             </div>
 
@@ -159,7 +161,7 @@ export const ExcelImporter: React.FC = () => {
                     className="text-slate-400 hover:text-white text-sm flex items-center gap-2 transition-colors"
                 >
                     <Database className="w-4 h-4" />
-                    Load Sample Data
+                    Cargar Datos de Ejemplo
                 </button>
             </div>
         </div>

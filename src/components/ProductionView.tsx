@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useStore } from '../store/useStore';
 import type { EventType } from '../types';
 import { calculateShoppingList } from '../utils/production';
-import { ShoppingCart, Calendar, Users, DollarSign, Plus, Printer, Download, Tag } from 'lucide-react';
+import { ShoppingCart, Calendar, Users, Euro, Plus, Printer, Download, Tag } from 'lucide-react';
 import { printLabel, formatLabelData } from './printing/PrintService';
 import * as XLSX from 'xlsx';
 import { format } from 'date-fns';
@@ -166,7 +166,7 @@ export const ProductionView: React.FC = () => {
                                 </div>
                                 <p className="text-sm text-slate-400">Coste Estimado</p>
                                 <p className="text-3xl font-bold text-emerald-400 flex items-center justify-end gap-1">
-                                    <DollarSign className="w-6 h-6" /> {totalCost.toFixed(2)}
+                                    <Euro className="w-6 h-6" /> {totalCost.toFixed(2)}
                                 </p>
                             </div>
                         </header>
@@ -210,7 +210,7 @@ export const ProductionView: React.FC = () => {
                                                     {item.totalQuantity.toFixed(2)} <span className="text-slate-500 text-xs">{item.unit}</span>
                                                 </td>
                                                 <td className="p-4 text-right font-mono text-emerald-300">
-                                                    ${item.totalCost.toFixed(2)}
+                                                    {item.totalCost.toFixed(2)}€
                                                 </td>
                                             </tr>
                                         ))}
