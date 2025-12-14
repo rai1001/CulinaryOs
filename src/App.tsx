@@ -22,6 +22,7 @@ const PurchasingView = lazy(() => import('./components/PurchasingView').then(m =
 const WasteView = lazy(() => import('./components/WasteView').then(m => ({ default: m.WasteView })));
 const HACCPView = lazy(() => import('./components/HACCPView').then(m => ({ default: m.HACCPView })));
 const MenuAnalyticsView = lazy(() => import('./components/MenuAnalyticsView').then(m => ({ default: m.MenuAnalyticsView })));
+const KitchenDisplayView = lazy(() => import('./components/KitchenDisplayView').then(m => ({ default: m.KitchenDisplayView })));
 
 // Loading fallback component
 const LoadingFallback = () => (
@@ -55,6 +56,7 @@ function App() {
       case 'waste': return <WasteView />;
       case 'haccp': return <HACCPView />;
       case 'analytics': return <MenuAnalyticsView />;
+      case 'kds': return <KitchenDisplayView />;
       default: return <Dashboard />;
     }
   };
@@ -156,6 +158,12 @@ function App() {
             label="Producción"
             active={currentView === 'production'}
             onClick={() => setCurrentView('production')}
+          />
+          <NavItem
+            icon={<ChefHat />}
+            label="Modo KDS (Tablet)"
+            active={currentView === 'kds'}
+            onClick={() => setCurrentView('kds')}
           />
           <NavItem
             icon={<Database />}

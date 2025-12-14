@@ -1,4 +1,4 @@
-import { createWorker, type Worker } from 'tesseract.js';
+import { createWorker, type Worker, PSM } from 'tesseract.js';
 import { SCANNER } from '../constants/scanner';
 
 let ocrWorker: Worker | null = null;
@@ -12,7 +12,7 @@ async function initializeOCR(): Promise<Worker> {
     const worker = await createWorker(SCANNER.OCR.LANGUAGE);
     await worker.setParameters({
         tessedit_char_whitelist: '0123456789/-. ',
-        tessedit_pageseg_mode: '6', // Assume a single uniform block of text
+        tessedit_pageseg_mode: PSM.SINGLE_BLOCK,
     });
 
     ocrWorker = worker;

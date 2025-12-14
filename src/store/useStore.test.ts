@@ -73,8 +73,7 @@ describe('useStore', () => {
                 name: 'Boda Test',
                 date: '2025-06-15',
                 pax: 100,
-                type: 'Boda',
-                status: 'confirmed'
+                type: 'Boda'
             };
 
             useStore.getState().addEvent(event);
@@ -90,8 +89,7 @@ describe('useStore', () => {
                 name: 'Boda Test',
                 date: '2025-06-15',
                 pax: 100,
-                type: 'Boda',
-                status: 'confirmed'
+                type: 'Boda'
             };
             useStore.getState().addEvent(event);
 

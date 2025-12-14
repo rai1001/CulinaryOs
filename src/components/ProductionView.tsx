@@ -6,12 +6,13 @@ import { ShoppingCart, Calendar, Users, Euro, Plus, Printer, Download, Tag } fro
 import { printLabel, formatLabelData } from './printing/PrintService';
 import * as XLSX from 'xlsx';
 import { format } from 'date-fns';
+import { ProductionKanbanBoard } from './production/ProductionKanbanBoard';
 
 export const ProductionView: React.FC = () => {
     const { menus, events, setEvents } = useStore();
     const [newEvent, setNewEvent] = useState({ name: '', date: format(new Date(), 'yyyy-MM-dd'), pax: 10, menuId: '' });
     const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
-    const [activeTab, setActiveTab] = useState<'shopping' | 'mise-en-place'>('shopping');
+    const [activeTab, setActiveTab] = useState<'shopping' | 'mise-en-place' | 'kanban'>('shopping');
 
     const handleCreateEvent = (e: React.FormEvent) => {
         e.preventDefault();
@@ -187,6 +188,13 @@ export const ProductionView: React.FC = () => {
                             >
                                 Mise en Place (Por Partida)
                             </button>
+                            <button
+                                onClick={() => setActiveTab('kanban')}
+                                className={`pb-2 text-sm font-medium transition-colors border-b-2 ${activeTab === 'kanban' ? 'border-primary text-primary' : 'border-transparent text-slate-400 hover:text-slate-200'
+                                    }`}
+                            >
+                                Tablero Kanban
+                            </button>
                         </div>
 
                         {activeTab === 'shopping' ? (
@@ -223,6 +231,10 @@ export const ProductionView: React.FC = () => {
                                         )}
                                     </tbody>
                                 </table>
+                            </div>
+                        ) : activeTab === 'kanban' ? (
+                            <div className="h-[600px]">
+                                <ProductionKanbanBoard />
                             </div>
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
