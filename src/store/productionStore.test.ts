@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useStore } from './useStore';
-import { ProductionTask } from '../types';
+import type { ProductionTask } from '../types';
 
 describe('Event Slice Production Logic', () => {
     beforeEach(() => {

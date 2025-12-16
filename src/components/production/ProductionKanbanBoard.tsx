@@ -87,7 +87,7 @@ export const ProductionKanbanBoard: React.FC = () => {
         if (!selectedEvent || !selectedEvent.menu || !selectedProductionEventId) return;
 
         // Generate tasks from menu recipes
-        const newTasks: ProductionTask[] = (selectedEvent.menu.recipes || []).map((recipe, index) => ({
+        const newTasks: ProductionTask[] = (selectedEvent.menu.recipes || []).map((recipe) => ({
             id: crypto.randomUUID(),
             title: recipe.name,
             quantity: selectedEvent.pax, // Simple assumption: quantity refers to servings or similar
