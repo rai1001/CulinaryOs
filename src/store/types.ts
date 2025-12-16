@@ -1,7 +1,8 @@
 import type {
     Ingredient, IngredientBatch, Event, Employee, DailySchedule,
     Recipe, Menu, Supplier, PurchaseOrder, WasteRecord,
-    PCC, HACCPLog, HACCPTask, HACCPTaskCompletion, MenuItemAnalytics
+    PCC, HACCPLog, HACCPTask, HACCPTaskCompletion, MenuItemAnalytics,
+    ProductionTask
 } from '../types';
 
 export interface IngredientSlice {
@@ -15,9 +16,14 @@ export interface IngredientSlice {
 
 export interface EventSlice {
     events: Event[];
+    selectedProductionEventId: string | null;
+    productionTasks: Record<string, ProductionTask[]>;
     setEvents: (items: Event[]) => void;
     addEvent: (event: Event) => void;
     updateEvent: (event: Event) => void;
+    setSelectedProductionEventId: (id: string | null) => void;
+    setProductionTasks: (eventId: string, tasks: ProductionTask[]) => void;
+    updateProductionTaskStatus: (eventId: string, taskId: string, status: 'todo' | 'in-progress' | 'done') => void;
 }
 
 export interface StaffSlice {

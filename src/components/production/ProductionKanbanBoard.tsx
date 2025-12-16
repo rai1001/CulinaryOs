@@ -1,31 +1,35 @@
-import React, { useState } from 'react';
-import { ChefHat, AlertCircle, CheckCircle } from 'lucide-react'; // CheckCircle isn't exported from lucide-react by default sometimes, wait. The implementation used a custom icon component previously.
-
-// Simplified Kanban for the MVP using just layout, not full sortable for now to reduce complexity
-
-// Simplified Kanban for the MVP using just layout, not full sortable for now to reduce complexity
-// We'll track state locally for this demo as the store doesn't have "task status" field yet for production items specifically
-// In a full app, this would update the store.
-
-interface Task {
-    id: string;
-    title: string;
-    quantity: number;
-    unit: string;
-    description: string;
-    status: 'todo' | 'in-progress' | 'done';
-}
+import React from 'react';
+import { ChefHat, AlertCircle, CheckCircle, Plus } from 'lucide-react';
+import { useStore } from '../../store/useStore';
+import type { ProductionTask } from '../../types';
 
 interface ColumnProps {
     id: string;
     title: string;
-    tasks: Task[];
+    tasks: ProductionTask[];
     color: string;
+    onDrop: (taskId: string, status: 'todo' | 'in-progress' | 'done') => void;
 }
 
-const KanbanColumn: React.FC<ColumnProps> = ({ id, title, tasks, color }) => {
+const KanbanColumn: React.FC<ColumnProps> = ({ id, title, tasks, color, onDrop }) => {
+    const handleDragOver = (e: React.DragEvent) => {
+        e.preventDefault();
+    };
+
+    const handleDrop = (e: React.DragEvent) => {
+        e.preventDefault();
+        const taskId = e.dataTransfer.getData('taskId');
+        if (taskId) {
+            onDrop(taskId, id as 'todo' | 'in-progress' | 'done');
+        }
+    };
+
     return (
-        <div className="flex flex-col h-full min-w-[300px] w-full bg-slate-800/50 rounded-xl border border-white/5 overflow-hidden">
+        <div
+            className="flex flex-col h-full min-w-[300px] w-full bg-slate-800/50 rounded-xl border border-white/5 overflow-hidden"
+            onDragOver={handleDragOver}
+            onDrop={handleDrop}
+        >
             <div className={`p-4 border-b border-white/5 flex items-center justify-between ${id === 'todo' ? 'bg-slate-800' :
                 id === 'in-progress' ? 'bg-blue-900/20' : 'bg-green-900/20'
                 }`}>
@@ -45,7 +49,7 @@ const KanbanColumn: React.FC<ColumnProps> = ({ id, title, tasks, color }) => {
                     <div
                         key={task.id}
                         className="bg-surface p-4 rounded-lg border border-white/5 shadow-sm hover:border-primary/50 cursor-grab active:cursor-grabbing transition-colors"
-                        draggable // Native drag for simplicity in MVP if dnd-kit is complex to setup in one go
+                        draggable
                         onDragStart={(e) => e.dataTransfer.setData('taskId', task.id)}
                     >
                         <h4 className="font-medium text-slate-200">{task.title}</h4>
@@ -67,79 +71,85 @@ const KanbanColumn: React.FC<ColumnProps> = ({ id, title, tasks, color }) => {
     );
 };
 
-
-
 export const ProductionKanbanBoard: React.FC = () => {
-    // Generate some mock tasks based on store data or just static for the UI demo
-    // The user wants the UI component first.
-    const [tasks, setTasks] = useState<Task[]>([
-        { id: '1', title: 'Salsa de Tomate', quantity: 5, unit: 'L', description: 'Base para pizzas', status: 'todo' },
-        { id: '2', title: 'Cortar Cebolla', quantity: 10, unit: 'kg', description: 'Juliana fina', status: 'in-progress' },
-        { id: '3', title: 'Marinar Pollo', quantity: 20, unit: 'kg', description: 'Limón y hierbas', status: 'todo' },
-        { id: '4', title: 'Caldo de Ave', quantity: 15, unit: 'L', description: 'Reducción lenta', status: 'done' },
-        { id: '5', title: 'Pelar Patatas', quantity: 25, unit: 'kg', description: 'Para guarnición', status: 'todo' },
-    ]);
+    const {
+        selectedProductionEventId,
+        productionTasks,
+        setProductionTasks,
+        updateProductionTaskStatus,
+        events
+    } = useStore();
 
-    const handleDrop = (e: React.DragEvent, status: 'todo' | 'in-progress' | 'done') => {
-        e.preventDefault();
-        const taskId = e.dataTransfer.getData('taskId');
-        if (taskId) {
-            setTasks(prev => prev.map(t =>
-                t.id === taskId ? { ...t, status } : t
-            ));
+    const selectedEvent = events.find(e => e.id === selectedProductionEventId);
+    const tasks = selectedProductionEventId ? (productionTasks[selectedProductionEventId] || []) : [];
+
+    const handleGenerateTasks = () => {
+        if (!selectedEvent || !selectedEvent.menu || !selectedProductionEventId) return;
+
+        // Generate tasks from menu recipes
+        const newTasks: ProductionTask[] = (selectedEvent.menu.recipes || []).map((recipe, index) => ({
+            id: crypto.randomUUID(),
+            title: recipe.name,
+            quantity: selectedEvent.pax, // Simple assumption: quantity refers to servings or similar
+            unit: 'raciones',
+            description: recipe.station ? `Partida: ${recipe.station}` : 'General',
+            status: 'todo',
+            recipeId: recipe.id,
+            station: recipe.station
+        }));
+
+        setProductionTasks(selectedProductionEventId, newTasks);
+    };
+
+    const handleUpdateStatus = (taskId: string, status: 'todo' | 'in-progress' | 'done') => {
+        if (selectedProductionEventId) {
+            updateProductionTaskStatus(selectedProductionEventId, taskId, status);
         }
     };
 
-    const handleDragOver = (e: React.DragEvent) => {
-        e.preventDefault();
-    };
+    if (!selectedProductionEventId) {
+        return <div className="text-center text-slate-500 mt-10">Selecciona un evento para ver el tablero.</div>;
+    }
 
     return (
         <div className="h-full flex flex-col">
-            <div className="flex-none mb-6">
-                <h2 className="text-xl font-bold text-white">Tablero Kanban</h2>
-                <p className="text-slate-400 text-sm">Gestiona el flujo de trabajo de la cocina</p>
+            <div className="flex-none mb-6 flex items-center justify-between">
+                <div>
+                    <h2 className="text-xl font-bold text-white">Tablero Kanban</h2>
+                    <p className="text-slate-400 text-sm">Gestiona el flujo de trabajo de la cocina</p>
+                </div>
+                {tasks.length === 0 && (
+                    <button
+                        onClick={handleGenerateTasks}
+                        className="bg-primary hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                    >
+                        <Plus size={16} /> Generar Tareas del Menú
+                    </button>
+                )}
             </div>
 
             <div className="flex-1 flex gap-6 overflow-x-auto pb-4">
-                <div
-                    className="flex-1 min-w-[300px]"
-                    onDrop={(e) => handleDrop(e, 'todo')}
-                    onDragOver={handleDragOver}
-                >
-                    <KanbanColumn
-                        id="todo"
-                        title="Pendiente"
-                        tasks={tasks.filter(t => t.status === 'todo')}
-                        color="text-slate-300"
-                    />
-                </div>
-
-                <div
-                    className="flex-1 min-w-[300px]"
-                    onDrop={(e) => handleDrop(e, 'in-progress')}
-                    onDragOver={handleDragOver}
-                >
-                    <KanbanColumn
-                        id="in-progress"
-                        title="En Progreso"
-                        tasks={tasks.filter(t => t.status === 'in-progress')}
-                        color="text-blue-400"
-                    />
-                </div>
-
-                <div
-                    className="flex-1 min-w-[300px]"
-                    onDrop={(e) => handleDrop(e, 'done')}
-                    onDragOver={handleDragOver}
-                >
-                    <KanbanColumn
-                        id="done"
-                        title="Completado"
-                        tasks={tasks.filter(t => t.status === 'done')}
-                        color="text-green-400"
-                    />
-                </div>
+                <KanbanColumn
+                    id="todo"
+                    title="Pendiente"
+                    tasks={tasks.filter(t => t.status === 'todo')}
+                    color="text-slate-300"
+                    onDrop={handleUpdateStatus}
+                />
+                <KanbanColumn
+                    id="in-progress"
+                    title="En Progreso"
+                    tasks={tasks.filter(t => t.status === 'in-progress')}
+                    color="text-blue-400"
+                    onDrop={handleUpdateStatus}
+                />
+                <KanbanColumn
+                    id="done"
+                    title="Completado"
+                    tasks={tasks.filter(t => t.status === 'done')}
+                    color="text-green-400"
+                    onDrop={handleUpdateStatus}
+                />
             </div>
         </div>
     );
