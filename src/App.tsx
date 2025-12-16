@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useState } from 'react';
+import React, { lazy, Suspense, useState, useEffect } from 'react';
 import { useStore } from './store/useStore';
 import { Dashboard } from './components/Dashboard';
 import { LayoutDashboard, Calendar, ShoppingCart, Database, CalendarDays, ChefHat, Package, Truck, ClipboardList, ShoppingBag, Trash2, ShieldCheck, TrendingUp } from 'lucide-react';
@@ -37,6 +37,30 @@ const LoadingFallback = () => (
 function App() {
   const { currentView, setCurrentView } = useStore();
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+
+  // Sync state with hash on mount and hashchange
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.replace(/^#\//, '');
+      if (hash) {
+        setCurrentView(hash as any);
+      } else {
+        window.location.hash = `#/${currentView}`;
+      }
+    };
+
+    // Initial check
+    handleHashChange();
+
+    // Listen for changes
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, [setCurrentView]);
+
+  const handleNavigation = (view: typeof currentView) => {
+    setCurrentView(view);
+    window.location.hash = `#/${view}`;
+  };
 
   // Command Palette keyboard shortcut (Cmd+K / Ctrl+K)
   useCommandPalette(() => setIsCommandPaletteOpen(prev => !prev));
@@ -81,43 +105,43 @@ function App() {
             icon={<LayoutDashboard />}
             label="Inicio"
             active={currentView === 'dashboard'}
-            onClick={() => setCurrentView('dashboard')}
+            onClick={() => handleNavigation('dashboard')}
           />
           <NavItem
             icon={<Calendar />}
             label="Horario"
             active={currentView === 'schedule'}
-            onClick={() => setCurrentView('schedule')}
+            onClick={() => handleNavigation('schedule')}
           />
           <NavItem
             icon={<CalendarDays />}
             label="Eventos"
             active={currentView === 'events'}
-            onClick={() => setCurrentView('events')}
+            onClick={() => handleNavigation('events')}
           />
           <NavItem
             icon={<ShoppingBag />}
             label="Compras Auto"
             active={currentView === 'purchasing'}
-            onClick={() => setCurrentView('purchasing')}
+            onClick={() => handleNavigation('purchasing')}
           />
           <NavItem
             icon={<Trash2 />}
             label="Mermas"
             active={currentView === 'waste'}
-            onClick={() => setCurrentView('waste')}
+            onClick={() => handleNavigation('waste')}
           />
           <NavItem
             icon={<ShieldCheck />}
             label="HACCP Digital"
             active={currentView === 'haccp'}
-            onClick={() => setCurrentView('haccp')}
+            onClick={() => handleNavigation('haccp')}
           />
           <NavItem
             icon={<TrendingUp />}
             label="Ingeniería Menú"
             active={currentView === 'analytics'}
-            onClick={() => setCurrentView('analytics')}
+            onClick={() => handleNavigation('analytics')}
           />
 
           <div className="pt-4 pb-2">
@@ -128,25 +152,25 @@ function App() {
             icon={<Package />}
             label="Ingredientes"
             active={currentView === 'ingredients'}
-            onClick={() => setCurrentView('ingredients')}
+            onClick={() => handleNavigation('ingredients')}
           />
           <NavItem
             icon={<ClipboardList />}
             label="Inventario"
             active={currentView === 'inventory'}
-            onClick={() => setCurrentView('inventory')}
+            onClick={() => handleNavigation('inventory')}
           />
           <NavItem
             icon={<ChefHat />}
             label="Recetas"
             active={currentView === 'recipes'}
-            onClick={() => setCurrentView('recipes')}
+            onClick={() => handleNavigation('recipes')}
           />
           <NavItem
             icon={<Truck />}
             label="Proveedores"
             active={currentView === 'suppliers'}
-            onClick={() => setCurrentView('suppliers')}
+            onClick={() => handleNavigation('suppliers')}
           />
 
           <div className="pt-4 pb-2">
@@ -157,19 +181,19 @@ function App() {
             icon={<ShoppingCart />}
             label="Producción"
             active={currentView === 'production'}
-            onClick={() => setCurrentView('production')}
+            onClick={() => handleNavigation('production')}
           />
           <NavItem
             icon={<ChefHat />}
             label="Modo KDS (Tablet)"
             active={currentView === 'kds'}
-            onClick={() => setCurrentView('kds')}
+            onClick={() => handleNavigation('kds')}
           />
           <NavItem
             icon={<Database />}
             label="Datos"
             active={currentView === 'data'}
-            onClick={() => setCurrentView('data')}
+            onClick={() => handleNavigation('data')}
           />
         </nav>
 
