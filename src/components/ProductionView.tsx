@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useStore } from '../store/useStore';
 import type { EventType } from '../types';
 import { calculateShoppingList } from '../utils/production';
@@ -7,12 +7,21 @@ import { printLabel, formatLabelData } from './printing/PrintService';
 import * as XLSX from 'xlsx';
 import { format } from 'date-fns';
 import { ProductionKanbanBoard } from './production/ProductionKanbanBoard';
+import { ProductionSkeleton } from './ui/Skeletons';
+import { ErrorState } from './ui/ErrorState';
+import { EmptyState } from './ui/EmptyState';
 
 export const ProductionView: React.FC = () => {
     const { menus, events, setEvents } = useStore();
     const [newEvent, setNewEvent] = useState({ name: '', date: format(new Date(), 'yyyy-MM-dd'), pax: 10, menuId: '' });
     const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<'shopping' | 'mise-en-place' | 'kanban'>('shopping');
+    const [isMounted, setIsMounted] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        setIsMounted(true);
+    }, []);
 
     const handleCreateEvent = (e: React.FormEvent) => {
         e.preventDefault();
@@ -67,6 +76,10 @@ export const ProductionView: React.FC = () => {
         XLSX.writeFile(wb, `Produccion_${selectedEvent.name.replace(/\s+/g, '_')}.xlsx`);
     };
 
+    if (!isMounted) return <ProductionSkeleton />;
+    // In a real app, we would check store.error here
+    if (error) return <ErrorState message={error} onRetry={() => setError(null)} />;
+
     return (
         <div className="flex h-full bg-background">
             {/* Event List / Sidebar */}
@@ -115,7 +128,11 @@ export const ProductionView: React.FC = () => {
                 </form>
 
                 <div className="flex-1 overflow-auto space-y-2">
-                    {events.length === 0 && <p className="text-center text-slate-500 text-sm py-4">No hay eventos todavía.</p>}
+                    {events.length === 0 && (
+                        <div className="py-8">
+                             <EmptyState title="Sin eventos" message="No hay eventos programados." />
+                        </div>
+                    )}
                     {events.map(event => (
                         <div
                             key={event.id}
@@ -289,18 +306,22 @@ export const ProductionView: React.FC = () => {
                                     );
                                 })}
                                 {(!selectedEvent.menu?.recipes || selectedEvent.menu.recipes.length === 0) && (
-                                    <div className="col-span-full text-center text-slate-500 py-12">
-                                        No hay recetas configuradas en este menú.
+                                    <div className="col-span-full py-12">
+                                        <EmptyState
+                                            title="No hay recetas"
+                                            message="Este menú no tiene recetas configuradas."
+                                        />
                                     </div>
                                 )}
                             </div>
                         )}
                     </div>
                 ) : (
-                    <div className="h-full flex flex-col items-center justify-center text-slate-500">
-                        <ShoppingCart className="w-16 h-16 opacity-20 mb-4" />
-                        <p>Selecciona un evento para ver la hoja de producción.</p>
-                    </div>
+                    <EmptyState
+                        title="Ningún evento seleccionado"
+                        message="Selecciona un evento de la lista para ver la hoja de producción."
+                        action={<ShoppingCart className="w-12 h-12 opacity-20 mb-4 mx-auto" />}
+                    />
                 )
                 }
             </div >
