@@ -1,10 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useStore } from '../store/useStore';
 import { Calendar, ChevronLeft, ChevronRight, Users, Upload } from 'lucide-react';
+import { normalizeDate } from '../utils/date';
 import type { EventType } from '../types';
 import { EventForm } from './EventForm';
 import { EventImportModal } from './EventImportModal';
 import { DayDetailsModal } from './DayDetailsModal';
+import { EventsSkeleton } from './ui/Skeletons';
+import { ErrorState } from './ui/ErrorState';
 
 export const EventsView: React.FC = () => {
     const { events } = useStore();
@@ -13,6 +16,12 @@ export const EventsView: React.FC = () => {
     const [showAddModal, setShowAddModal] = useState(false);
     const [showDayDetailsModal, setShowDayDetailsModal] = useState(false);
     const [showImportModal, setShowImportModal] = useState(false);
+    const [isMounted, setIsMounted] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        setIsMounted(true);
+    }, []);
 
     const handleDayClick = (dateStr: string) => {
         setSelectedDate(dateStr);
@@ -56,6 +65,10 @@ export const EventsView: React.FC = () => {
         'Boda': 'bg-rose-500/20 text-rose-300 border-rose-500/50',
         'Otros': 'bg-gray-500/20 text-gray-300 border-gray-500/50',
     };
+
+    if (!isMounted) return <EventsSkeleton />;
+    // In a real app, we would check store.error here
+    if (error) return <ErrorState message={error} onRetry={() => setError(null)} />;
 
     return (
         <div className="h-full flex flex-col p-6 overflow-hidden">
@@ -109,7 +122,7 @@ export const EventsView: React.FC = () => {
                     {Array.from({ length: daysInMonth }).map((_, i) => {
                         const dayNum = i + 1;
                         const dateStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
-                        const dayEvents = events.filter(e => e.date === dateStr);
+                        const dayEvents = events.filter(e => normalizeDate(e.date) === dateStr);
 
                         return (
                             <div
@@ -169,7 +182,7 @@ export const EventsView: React.FC = () => {
             {showDayDetailsModal && selectedDate && (
                 <DayDetailsModal
                     date={new Date(selectedDate)}
-                    events={events.filter(e => e.date === selectedDate)}
+                    events={events.filter(e => normalizeDate(e.date) === selectedDate)}
                     onClose={() => setShowDayDetailsModal(false)}
                     onAddEvent={() => {
                         setShowDayDetailsModal(false);

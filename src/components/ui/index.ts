@@ -9,12 +9,4 @@ export {
     SkeletonStatCard,
     SkeletonListItem
 } from './Skeleton';
-export {
-    EmptyState,
-    EmptyIngredients,
-    EmptyRecipes,
-    EmptyEvents,
-    EmptyOrders,
-    EmptyWaste,
-    EmptyHACCP
-} from './EmptyState';
+export { EmptyState } from './EmptyState';
