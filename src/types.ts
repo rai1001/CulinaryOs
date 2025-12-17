@@ -272,3 +272,5 @@ export interface PaginatedResult<T> {
     nextCursor: PageCursor | null;
     hasMore: boolean;
 }
+
+export type ViewType = 'dashboard' | 'schedule' | 'production' | 'data' | 'events' | 'recipes' | 'ingredients' | 'suppliers' | 'inventory' | 'purchasing' | 'waste' | 'haccp' | 'analytics' | 'kds' | 'ai-scanner' | 'ai-search' | 'ai-menu' | 'ai-ingredients' | 'outlets';

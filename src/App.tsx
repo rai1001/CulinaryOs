@@ -9,6 +9,8 @@ import { InstallPrompt } from './components/ui';
 import { CommandPalette } from './components/CommandPalette';
 import { useCommandPalette } from './hooks/useCommandPalette';
 
+import type { ViewType } from './types';
+
 // Lazy load views for better initial load performance
 const ScheduleView = lazy(() => import('./components/ScheduleView').then(m => ({ default: m.ScheduleView })));
 const ProductionView = lazy(() => import('./components/ProductionView').then(m => ({ default: m.ProductionView })));
@@ -36,6 +38,16 @@ const LoadingFallback = () => (
   </div>
 );
 
+const isValidView = (view: string): view is ViewType => {
+  const validViews: ViewType[] = [
+    'dashboard', 'schedule', 'production', 'data', 'events', 'recipes',
+    'ingredients', 'suppliers', 'inventory', 'purchasing', 'waste',
+    'haccp', 'analytics', 'kds',
+    'ai-scanner', 'ai-search', 'ai-menu', 'ai-ingredients', 'outlets'
+  ];
+  return validViews.includes(view as ViewType);
+};
+
 function App() {
   const { currentView, setCurrentView } = useStore();
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
@@ -44,8 +56,8 @@ function App() {
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash.replace(/^#\//, '');
-      if (hash) {
-        setCurrentView(hash as any);
+      if (hash && isValidView(hash)) {
+        setCurrentView(hash);
       } else {
         window.location.hash = `#/${currentView}`;
       }

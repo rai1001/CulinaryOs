@@ -143,8 +143,8 @@ export interface AppState extends
     HACCPSlice,
     AnalyticsSlice,
     OutletSlice {
-    currentView: 'dashboard' | 'schedule' | 'production' | 'data' | 'events' | 'recipes' | 'ingredients' | 'suppliers' | 'inventory' | 'purchasing' | 'waste' | 'haccp' | 'analytics' | 'kds' | 'ai-scanner' | 'ai-search' | 'ai-menu' | 'ai-ingredients' | 'outlets';
-    setCurrentView: (view: 'dashboard' | 'schedule' | 'production' | 'data' | 'events' | 'recipes' | 'ingredients' | 'suppliers' | 'inventory' | 'purchasing' | 'waste' | 'haccp' | 'analytics' | 'kds' | 'ai-scanner' | 'ai-search' | 'ai-menu' | 'ai-ingredients' | 'outlets') => void;
+    currentView: import('../types').ViewType;
+    setCurrentView: (view: import('../types').ViewType) => void;
     // activeOutletId is inherited from OutletSlice
     // setActiveOutletId should optionally match setActiveOutlet or be separate. 
     // OutletSlice has setActiveOutlet. Let's add alias or stick to what's used.

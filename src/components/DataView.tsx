@@ -165,33 +165,31 @@ export const DataView: React.FC = () => {
         <TabButton
           active={activeTab === 'ingredients'}
           onClick={() => setActiveTab('ingredients')}
-          icon={<Package className="w-4 h-4" />}
-          label="Ingredientes"
-        />
+        >
+          <Package className="w-4 h-4" />
+          Ingredientes
+        </TabButton>
         <TabButton
           active={activeTab === 'recipes'}
           onClick={() => setActiveTab('recipes')}
-          icon={<ChefHat className="w-4 h-4" />}
-          label="Recetas"
-        />
+        >
+          <ChefHat className="w-4 h-4" />
+          Recetas
+        </TabButton>
         <TabButton
           active={activeTab === 'menus'}
           onClick={() => setActiveTab('menus')}
-          icon={<BookOpen className="w-4 h-4" />}
-          label="Menús"
-        />
-        <TabButton
-          active={activeTab === 'ingredients'}
-          onClick={() => setActiveTab('ingredients')}
-          icon={<Package className="w-4 h-4" />}
-          label="Ingredientes"
-        />
+        >
+          <BookOpen className="w-4 h-4" />
+          Menús
+        </TabButton>
         <TabButton
           active={activeTab === 'staff'}
           onClick={() => setActiveTab('staff')}
-          icon={<Users className="w-4 h-4" />}
-          label="Personal"
-        />
+        >
+          <Users className="w-4 h-4" />
+          Personal
+        </TabButton>
       </div>
 
       {/* Content */}
@@ -204,14 +202,19 @@ export const DataView: React.FC = () => {
   );
 };
 
-const TabButton = ({ active, onClick, icon, label }: any) => (
+interface TabButtonProps {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}
+
+const TabButton: React.FC<TabButtonProps> = ({ active, onClick, children }) => (
   <button
     onClick={onClick}
     className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors relative ${active ? 'text-primary' : 'text-slate-400 hover:text-slate-200'
       }`}
   >
-    {icon}
-    {label}
+    {children}
     {active && (
       <div className="absolute bottom-[-5px] left-0 right-0 h-0.5 bg-primary rounded-t-full" />
     )}

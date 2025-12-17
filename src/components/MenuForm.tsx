@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useStore } from '../store/useStore';
+import type { Recipe } from '../types';
 
 
 export const MenuForm: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
@@ -14,7 +15,7 @@ export const MenuForm: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
         e.preventDefault();
 
         // Hydrate recipes
-        const menuRecipes = formData.recipeIds.map(id => recipes.find(r => r.id === id)).filter(Boolean) as any[];
+        const menuRecipes = formData.recipeIds.map(id => recipes.find(r => r.id === id)).filter((r): r is Recipe => r !== undefined);
 
         addMenu({
             id: crypto.randomUUID(),

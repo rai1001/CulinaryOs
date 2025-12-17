@@ -159,30 +159,31 @@ export const InventoryView: React.FC = () => {
     };
 
     // Filter logic
-    const getFilteredIngredients = () => {
-        let filtered = ingredients.filter(ing =>
-            ing.name.toLowerCase().includes(searchTerm.toLowerCase())
-        );
-
-        if (activeFilter === 'expiring') {
-            filtered = filtered.filter(ing => {
-                const nearExpiryBatches = ing.batches?.filter(b => getDaysUntilExpiry(b.expiryDate) <= 7) || [];
-                return nearExpiryBatches.length > 0;
-            });
-        } else if (activeFilter === 'low-stock') {
-            filtered = filtered.filter(ing => {
-                const totalStock = ing.stock || 0;
-                const minStock = ing.minStock || 0;
-                return totalStock <= minStock;
-            });
-        } else if (activeFilter !== 'all') {
-            filtered = filtered.filter(ing => ing.category === activeFilter);
+    const filteredIngredients = React.useMemo(() => {
+        let filtered = ingredients;
+        if (searchTerm.trim()) {
+            filtered = filtered.filter(ing => ing.name.toLowerCase().includes(searchTerm.toLowerCase()) || ing.category?.toLowerCase().includes(searchTerm.toLowerCase()));
         }
-
+        if (activeFilter !== 'all') {
+            if (activeFilter === 'low-stock') {
+                filtered = filtered.filter(ing => {
+                    const totalStock = (ing.batches || []).reduce((sum, batch) => sum + batch.quantity, 0);
+                    return totalStock < (ing.minStock || 0);
+                });
+            } else if (activeFilter === 'expiring') {
+                filtered = filtered.filter(ing => {
+                    const batches = ing.batches || [];
+                    return batches.some(batch => {
+                        const daysUntilExpiry = Math.floor((new Date(batch.expiryDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+                        return daysUntilExpiry <= 7 && daysUntilExpiry >= 0;
+                    });
+                });
+            } else {
+                filtered = filtered.filter(ing => ing.category === activeFilter);
+            }
+        }
         return filtered;
-    };
-
-    const filteredIngredients = getFilteredIngredients();
+    }, [ingredients, searchTerm, activeFilter]);
 
     // Count for badges
     const expiringCount = ingredients.filter(ing => {

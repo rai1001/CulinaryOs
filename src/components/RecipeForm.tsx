@@ -38,7 +38,7 @@ export const RecipeForm: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
         });
     };
 
-    const updateIngredientRow = (index: number, field: 'ingredientId' | 'quantity', value: any) => {
+    const updateIngredientRow = (index: number, field: 'ingredientId' | 'quantity', value: string | number) => {
         const newIngredients = [...formData.ingredients];
         newIngredients[index] = { ...newIngredients[index], [field]: value };
         setFormData({ ...formData, ingredients: newIngredients });

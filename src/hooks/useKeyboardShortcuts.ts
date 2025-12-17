@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from 'react';
+import React, { useEffect, useCallback } from 'react';
 
 type KeyCombo = string; // e.g., 'ctrl+n', 'escape', 'ctrl+shift+s'
 
@@ -52,6 +52,12 @@ const matchesCombo = (event: KeyboardEvent, combo: string): boolean => {
  * ]);
  */
 export const useKeyboardShortcuts = (shortcuts: KeyboardShortcut[]) => {
+    const shortcutsRef = React.useRef(shortcuts);
+
+    React.useEffect(() => {
+        shortcutsRef.current = shortcuts;
+    }, [shortcuts]);
+
     const handleKeyDown = useCallback((event: KeyboardEvent) => {
         // Don't trigger shortcuts when typing in inputs
         const target = event.target as HTMLElement;
@@ -62,7 +68,7 @@ export const useKeyboardShortcuts = (shortcuts: KeyboardShortcut[]) => {
             }
         }
 
-        for (const shortcut of shortcuts) {
+        for (const shortcut of shortcutsRef.current) {
             if (matchesCombo(event, shortcut.key)) {
                 if (shortcut.preventDefault !== false) {
                     event.preventDefault();
@@ -71,7 +77,7 @@ export const useKeyboardShortcuts = (shortcuts: KeyboardShortcut[]) => {
                 break;
             }
         }
-    }, [shortcuts]);
+    }, []);
 
     useEffect(() => {
         document.addEventListener('keydown', handleKeyDown);

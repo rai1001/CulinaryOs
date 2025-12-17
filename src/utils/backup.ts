@@ -5,6 +5,10 @@
 
 import { useStore } from '../store/useStore';
 import { logger } from './logger';
+import type {
+    Ingredient, Recipe, Menu, Event, Employee, Supplier,
+    PurchaseOrder, WasteRecord, DailySchedule
+} from '../types';
 
 // Version for migration compatibility
 const BACKUP_VERSION = '1.0';
@@ -150,48 +154,54 @@ export const importData = async (
                 if (mode === 'replace') {
                     // Replace all data
                     if (backup.data.ingredients) {
-                        const ingredients = safeArrayCast(backup.data.ingredients as unknown[], 'ingredients');
-                        state.setIngredients(ingredients as never[]);
+                        const ingredients = safeArrayCast<Ingredient>(backup.data.ingredients as unknown[], 'ingredients');
+                        state.setIngredients(ingredients);
                         stats.ingredients = ingredients.length;
                     }
                     if (backup.data.recipes) {
-                        const recipes = safeArrayCast(backup.data.recipes as unknown[], 'recipes');
-                        state.setRecipes(recipes as never[]);
+                        const recipes = safeArrayCast<Recipe>(backup.data.recipes as unknown[], 'recipes');
+                        state.setRecipes(recipes);
                         stats.recipes = recipes.length;
                     }
                     if (backup.data.menus) {
-                        const menus = safeArrayCast(backup.data.menus as unknown[], 'menus');
-                        state.setMenus(menus as never[]);
+                        const menus = safeArrayCast<Menu>(backup.data.menus as unknown[], 'menus');
+                        state.setMenus(menus);
                         stats.menus = menus.length;
                     }
                     if (backup.data.events) {
-                        const events = safeArrayCast(backup.data.events as unknown[], 'events');
-                        state.setEvents(events as never[]);
+                        const events = safeArrayCast<Event>(backup.data.events as unknown[], 'events');
+                        state.setEvents(events);
                         stats.events = events.length;
                     }
                     if (backup.data.staff) {
-                        const staff = safeArrayCast(backup.data.staff as unknown[], 'staff');
-                        state.setStaff(staff as never[]);
+                        const staff = safeArrayCast<Employee>(backup.data.staff as unknown[], 'staff');
+                        state.setStaff(staff);
                         stats.staff = staff.length;
                     }
                     if (backup.data.suppliers) {
-                        const suppliers = safeArrayCast(backup.data.suppliers as unknown[], 'suppliers');
-                        state.setSuppliers(suppliers as never[]);
+                        const suppliers = safeArrayCast<Supplier>(backup.data.suppliers as unknown[], 'suppliers');
+                        state.setSuppliers(suppliers);
                         stats.suppliers = suppliers.length;
                     }
                     if (backup.data.purchaseOrders) {
-                        const orders = safeArrayCast(backup.data.purchaseOrders as unknown[], 'purchaseOrders');
-                        state.setPurchaseOrders(orders as never[]);
+                        const orders = safeArrayCast<PurchaseOrder>(backup.data.purchaseOrders as unknown[], 'purchaseOrders');
+                        state.setPurchaseOrders(orders);
                         stats.purchaseOrders = orders.length;
                     }
                     // Schedule is handled differently - it's a Record
                     if (backup.data.schedule && typeof backup.data.schedule === 'object') {
                         for (const [key, value] of Object.entries(backup.data.schedule)) {
                             if (value && typeof value === 'object') {
-                                state.updateSchedule(key, value as never);
+                                state.updateSchedule(key, value as DailySchedule);
                             }
                         }
                         stats.schedule = Object.keys(backup.data.schedule).length;
+                    }
+                    // Waste records
+                    if (backup.data.wasteRecords) {
+                        const waste = safeArrayCast<WasteRecord>(backup.data.wasteRecords as unknown[], 'wasteRecords');
+                        state.setWasteRecords(waste);
+                        stats.wasteRecords = waste.length;
                     }
                 }
 
