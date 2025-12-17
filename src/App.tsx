@@ -8,6 +8,8 @@ import { ShiftEndReminder } from './components/haccp/ShiftEndReminder';
 import { InstallPrompt } from './components/ui';
 import { CommandPalette } from './components/CommandPalette';
 import { useCommandPalette } from './hooks/useCommandPalette';
+import { useNotificationSubscription } from './hooks/useNotificationSubscription';
+import { KitchenCopilot } from './components/ai/KitchenCopilot';
 
 import type { ViewType } from './types';
 
@@ -51,6 +53,9 @@ const isValidView = (view: string): view is ViewType => {
 function App() {
   const { currentView, setCurrentView } = useStore();
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+
+  // Subscribe to AI Notifications
+  useNotificationSubscription();
 
   // Sync state with hash on mount and hashchange
   useEffect(() => {
@@ -138,9 +143,11 @@ function App() {
 
   return (
     <div className="flex h-screen bg-background text-slate-100 overflow-hidden selection:bg-primary/30">
+
       <PrintManager />
       <ShiftEndReminder />
       <InstallPrompt />
+      <KitchenCopilot />
       <CommandPalette isOpen={isCommandPaletteOpen} onClose={() => setIsCommandPaletteOpen(false)} />
       {/* Sidebar */}
       <aside className="w-64 bg-surface border-r border-white/5 flex flex-col overflow-y-auto">

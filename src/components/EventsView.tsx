@@ -1,10 +1,12 @@
+
 import React, { useState, useEffect } from 'react';
 import { useStore } from '../store/useStore';
-import { Calendar, ChevronLeft, ChevronRight, Users, Upload } from 'lucide-react';
+import { Calendar, ChevronLeft, ChevronRight, Users, Upload, Sparkles } from 'lucide-react';
 import { normalizeDate } from '../utils/date';
-import type { EventType } from '../types';
+import type { EventType, GeneratedMenu } from '../types';
 import { EventForm } from './EventForm';
 import { EventImportModal } from './EventImportModal';
+import { MenuGeneratorModal } from './ai/MenuGeneratorModal';
 import { DayDetailsModal } from './DayDetailsModal';
 import { EventsSkeleton } from './ui/Skeletons';
 import { ErrorState } from './ui/ErrorState';
@@ -17,6 +19,7 @@ export const EventsView: React.FC = () => {
     const [showAddModal, setShowAddModal] = useState(false);
     const [showDayDetailsModal, setShowDayDetailsModal] = useState(false);
     const [showImportModal, setShowImportModal] = useState(false);
+    const [showMenuGenerator, setShowMenuGenerator] = useState(false);
     const [isMounted, setIsMounted] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -71,7 +74,7 @@ export const EventsView: React.FC = () => {
                 const y = d.getFullYear();
                 const m = String(d.getMonth() + 1).padStart(2, '0');
                 const day = String(d.getDate()).padStart(2, '0');
-                return `${y}-${m}-${day}`;
+                return `${y} -${m} -${day} `;
             };
 
             const startStr = formatDate(start);
@@ -125,6 +128,13 @@ export const EventsView: React.FC = () => {
         'Otros': 'bg-gray-500/20 text-gray-300 border-gray-500/50',
     };
 
+    const handleApplyMenu = (menu: GeneratedMenu) => {
+        console.log("Applying menu:", menu);
+        // TODO: Integrate with creating a new Event or filling an existing one
+        // For now just close the modal
+        setShowMenuGenerator(false);
+    };
+
     if (!isMounted) return <EventsSkeleton />;
     // In a real app, we would check store.error here
     if (error) return <ErrorState message={error} onRetry={() => setError(null)} />;
@@ -139,13 +149,22 @@ export const EventsView: React.FC = () => {
                     {eventsLoading && <span className="ml-2 text-sm text-slate-400 animate-pulse">Cargando...</span>}
                 </div>
 
-                <button
-                    onClick={() => setShowImportModal(true)}
-                    className="flex items-center gap-2 bg-emerald-500/20 text-emerald-400 border border-emerald-500/50 px-4 py-2 rounded-lg hover:bg-emerald-500/30 transition-colors mr-auto ml-6"
-                >
-                    <Upload className="w-4 h-4" />
-                    <span>Importar Excel</span>
-                </button>
+                <div className="flex gap-2 ml-auto">
+                    <button
+                        onClick={() => setShowMenuGenerator(true)}
+                        className="flex items-center gap-2 bg-purple-500/20 text-purple-400 border border-purple-500/50 px-4 py-2 rounded-lg hover:bg-purple-500/30 transition-colors"
+                    >
+                        <Sparkles className="w-4 h-4" />
+                        <span>Asistente IA</span>
+                    </button>
+                    <button
+                        onClick={() => setShowImportModal(true)}
+                        className="flex items-center gap-2 bg-emerald-500/20 text-emerald-400 border border-emerald-500/50 px-4 py-2 rounded-lg hover:bg-emerald-500/30 transition-colors"
+                    >
+                        <Upload className="w-4 h-4" />
+                        <span>Importar Excel</span>
+                    </button>
+                </div>
 
                 <div className="flex items-center gap-4 bg-surface/50 rounded-lg p-1">
                     <button onClick={prevMonth} className="p-2 hover:bg-slate-700 rounded-md transition-colors text-slate-300">
@@ -175,13 +194,13 @@ export const EventsView: React.FC = () => {
                 <div className="flex-1 grid grid-cols-7 auto-rows-fr gap-1 overflow-auto">
                     {/* Empty cells for padding */}
                     {Array.from({ length: firstDay }).map((_, i) => (
-                        <div key={`empty-${i}`} className="bg-slate-900/30 rounded-lg" />
+                        <div key={`empty - ${i} `} className="bg-slate-900/30 rounded-lg" />
                     ))}
 
                     {/* Actual Days */}
                     {Array.from({ length: daysInMonth }).map((_, i) => {
                         const dayNum = i + 1;
-                        const dateStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+                        const dateStr = `${currentDate.getFullYear()} -${String(currentDate.getMonth() + 1).padStart(2, '0')} -${String(dayNum).padStart(2, '0')} `;
                         const dayEvents = events.filter(e => normalizeDate(e.date) === dateStr);
 
                         return (
@@ -190,10 +209,10 @@ export const EventsView: React.FC = () => {
                                 onClick={() => handleDayClick(dateStr)}
                                 className="bg-slate-800/40 rounded-lg p-2 flex flex-col border border-transparent hover:border-slate-600 transition-colors min-h-[100px] cursor-pointer group"
                             >
-                                <span className={`text-sm font-semibold mb-1 ${dateStr === new Date().toISOString().split('T')[0]
+                                <span className={`text - sm font - semibold mb - 1 ${dateStr === new Date().toISOString().split('T')[0]
                                     ? 'bg-primary text-white w-6 h-6 rounded-full flex items-center justify-center'
                                     : 'text-slate-400'
-                                    }`}>
+                                    } `}>
                                     {dayNum}
                                 </span>
 
@@ -201,7 +220,7 @@ export const EventsView: React.FC = () => {
                                     {dayEvents.map(event => (
                                         <div
                                             key={event.id}
-                                            className={`text-xs p-1.5 rounded border ${eventColors[event.type] || 'bg-slate-700 text-slate-300'} cursor-pointer hover:opacity-80 transition-opacity`}
+                                            className={`text - xs p - 1.5 rounded border ${eventColors[event.type] || 'bg-slate-700 text-slate-300'} cursor - pointer hover: opacity - 80 transition - opacity`}
                                         >
                                             <div className="font-semibold truncate">{event.name}</div>
                                             <div className="flex items-center justify-between mt-0.5 opacity-80">
@@ -238,6 +257,12 @@ export const EventsView: React.FC = () => {
                     }}
                 />
             )}
+
+            <MenuGeneratorModal
+                isOpen={showMenuGenerator}
+                onClose={() => setShowMenuGenerator(false)}
+                onApply={handleApplyMenu}
+            />
 
             {showDayDetailsModal && selectedDate && (
                 <DayDetailsModal

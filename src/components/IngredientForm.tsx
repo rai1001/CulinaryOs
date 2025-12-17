@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { useStore } from '../store/useStore';
 import type { Unit, Ingredient } from '../types';
-import { Plus } from 'lucide-react';
+import { Plus, Sparkles, Loader2 } from 'lucide-react';
+import { enrichIngredientCallable } from '../api/ai';
+import type { IngredientEnrichment } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 
 export const IngredientForm: React.FC<{ initialData?: Ingredient; onClose?: () => void }> = ({ initialData, onClose }) => {
@@ -24,6 +26,27 @@ export const IngredientForm: React.FC<{ initialData?: Ingredient; onClose?: () =
             }
         }
     );
+    const [enriching, setEnriching] = useState(false);
+
+    const handleEnrich = async () => {
+        if (!formData.name) return;
+        setEnriching(true);
+        try {
+            const result = await enrichIngredientCallable({ name: formData.name });
+            const data = result.data as IngredientEnrichment;
+            if (data) {
+                setFormData(prev => ({
+                    ...prev,
+                    nutritionalInfo: data.nutritionalInfo,
+                    allergens: data.allergens
+                }));
+            }
+        } catch (error) {
+            console.error("Enrichment failed", error);
+        } finally {
+            setEnriching(false);
+        }
+    };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -56,12 +79,23 @@ export const IngredientForm: React.FC<{ initialData?: Ingredient; onClose?: () =
             <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
                     <label className="text-sm text-slate-400">Nombre</label>
-                    <input
-                        required
-                        className="w-full bg-black/20 border border-white/10 rounded px-3 py-2 text-white focus:border-primary"
-                        value={formData.name}
-                        onChange={e => setFormData({ ...formData, name: e.target.value })}
-                    />
+                    <div className="flex gap-2">
+                        <input
+                            required
+                            className="w-full bg-black/20 border border-white/10 rounded px-3 py-2 text-white focus:border-primary"
+                            value={formData.name}
+                            onChange={e => setFormData({ ...formData, name: e.target.value })}
+                        />
+                        <button
+                            type="button"
+                            onClick={handleEnrich}
+                            disabled={enriching || !formData.name}
+                            className="p-2 bg-purple-500/20 text-purple-400 border border-purple-500/50 rounded hover:bg-purple-500/30 disabled:opacity-50 transition-colors"
+                            title="Auto-completar con IA"
+                        >
+                            {enriching ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
+                        </button>
+                    </div>
                 </div>
 
                 <div className="space-y-1">

@@ -4,6 +4,7 @@ import type {
     PCC, HACCPLog, HACCPTask, HACCPTaskCompletion, MenuItemAnalytics,
     KanbanTask, KanbanTaskStatus
 } from '../types';
+import type { NotificationSlice } from './slices/createNotificationSlice';
 
 export interface IngredientSlice {
     ingredients: Ingredient[];
@@ -142,7 +143,8 @@ export interface AppState extends
     WasteSlice,
     HACCPSlice,
     AnalyticsSlice,
-    OutletSlice {
+    OutletSlice,
+    NotificationSlice {
     currentView: import('../types').ViewType;
     setCurrentView: (view: import('../types').ViewType) => void;
     // activeOutletId is inherited from OutletSlice

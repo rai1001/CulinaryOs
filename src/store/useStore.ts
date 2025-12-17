@@ -11,6 +11,7 @@ import { createWasteSlice } from './slices/createWasteSlice';
 import { createHACCPSlice } from './slices/createHACCPSlice';
 import { createAnalyticsSlice } from './slices/createAnalyticsSlice';
 import { createOutletSlice } from './slices/createOutletSlice';
+import { createNotificationSlice } from './slices/createNotificationSlice';
 import type { AppState } from './types';
 
 // Re-export AppState for consumers
@@ -30,6 +31,7 @@ export const useStore = create<AppState>()(
             ...createHACCPSlice(...a),
             ...createAnalyticsSlice(...a),
             ...createOutletSlice(...a),
+            ...createNotificationSlice(...a),
 
             // UI State
             currentView: 'dashboard',

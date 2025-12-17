@@ -16,7 +16,7 @@ interface Alert {
 }
 
 export const HACCPAlerts: React.FC = () => {
-    const { pccs, haccpLogs, haccpTasks, haccpTaskCompletions } = useStore();
+    const { pccs, haccpLogs, haccpTasks, haccpTaskCompletions, notifications } = useStore();
 
     // Generate alerts based on current data
     const alerts = useMemo(() => {
@@ -89,6 +89,18 @@ export const HACCPAlerts: React.FC = () => {
             }
         });
 
+        // 4. Add Backend/AI Notifications
+        notifications.filter(n => !n.read && n.type === 'HACCP_ALERT').forEach(n => {
+            alertList.push({
+                id: n.id,
+                type: 'critical', // Treat AI alerts as critical/warning based on message? defaulting to critical/warning style usually
+                title: 'Alerta IA: Anomalía Detectada',
+                description: n.message,
+                timestamp: new Date(n.timestamp?.toDate ? n.timestamp.toDate() : n.timestamp), // Handle Firestore Timestamp
+                pccId: n.pccId
+            });
+        });
+
         // Sort by type priority and timestamp
         return alertList.sort((a, b) => {
             const priority = { critical: 0, warning: 1, overdue: 2, info: 3 };
@@ -97,7 +109,7 @@ export const HACCPAlerts: React.FC = () => {
             }
             return b.timestamp.getTime() - a.timestamp.getTime();
         });
-    }, [pccs, haccpLogs, haccpTasks, haccpTaskCompletions]);
+    }, [pccs, haccpLogs, haccpTasks, haccpTaskCompletions, notifications]);
 
     const getAlertStyle = (type: Alert['type']) => {
         switch (type) {

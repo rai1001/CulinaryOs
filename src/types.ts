@@ -273,4 +273,52 @@ export interface PaginatedResult<T> {
     hasMore: boolean;
 }
 
+
+// AI Integration Types
+
+export interface ProcessedInvoice {
+    supplierName: string;
+    date: string;
+    totalCost: number;
+    items: {
+        description: string;
+        quantity: number;
+        unitPrice: number;
+    }[];
+}
+
+export interface GeneratedMenu {
+    name: string;
+    description: string;
+    dishes: {
+        name: string;
+        description: string;
+        category: 'Starter' | 'Main' | 'Dessert';
+        allergens: string[];
+    }[];
+}
+
+export interface IngredientEnrichment {
+    nutritionalInfo: NutritionalInfo;
+    allergens: string[];
+}
+
+export interface DemandPrediction {
+    suggestions: {
+        ingredientName: string;
+        quantity: number;
+        unit: string;
+        reason: string;
+    }[];
+}
+
 export type ViewType = 'dashboard' | 'schedule' | 'production' | 'data' | 'events' | 'recipes' | 'ingredients' | 'suppliers' | 'inventory' | 'purchasing' | 'waste' | 'haccp' | 'analytics' | 'kds' | 'ai-scanner' | 'ai-search' | 'ai-menu' | 'ai-ingredients' | 'outlets';
+
+export interface Notification {
+    id: string;
+    type: 'HACCP_ALERT' | 'SYSTEM';
+    message: string;
+    pccId?: string;
+    read: boolean;
+    timestamp: any; // Firestore Timestamp or Date
+}
