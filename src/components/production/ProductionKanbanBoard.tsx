@@ -1,14 +1,14 @@
 import React from 'react';
 import { ChefHat, AlertCircle, CheckCircle, Plus } from 'lucide-react';
 import { useStore } from '../../store/useStore';
-import type { ProductionTask } from '../../types';
+import type { KanbanTask, KanbanTaskStatus } from '../../types';
 
 interface ColumnProps {
     id: string;
     title: string;
-    tasks: ProductionTask[];
+    tasks: KanbanTask[];
     color: string;
-    onDrop: (taskId: string, status: 'todo' | 'in-progress' | 'done') => void;
+    onDrop: (taskId: string, status: KanbanTaskStatus) => void;
 }
 
 const KanbanColumn: React.FC<ColumnProps> = ({ id, title, tasks, color, onDrop }) => {
@@ -20,7 +20,7 @@ const KanbanColumn: React.FC<ColumnProps> = ({ id, title, tasks, color, onDrop }
         e.preventDefault();
         const taskId = e.dataTransfer.getData('taskId');
         if (taskId) {
-            onDrop(taskId, id as 'todo' | 'in-progress' | 'done');
+            onDrop(taskId, id as KanbanTaskStatus);
         }
     };
 
@@ -75,35 +75,22 @@ export const ProductionKanbanBoard: React.FC = () => {
     const {
         selectedProductionEventId,
         productionTasks,
-        setProductionTasks,
-        updateProductionTaskStatus,
+        generateProductionTasks,
+        updateTaskStatus,
         events
     } = useStore();
 
     const selectedEvent = events.find(e => e.id === selectedProductionEventId);
     const tasks = selectedProductionEventId ? (productionTasks[selectedProductionEventId] || []) : [];
 
-    const handleGenerateTasks = () => {
-        if (!selectedEvent || !selectedEvent.menu || !selectedProductionEventId) return;
-
-        // Generate tasks from menu recipes
-        const newTasks: ProductionTask[] = (selectedEvent.menu.recipes || []).map((recipe) => ({
-            id: crypto.randomUUID(),
-            title: recipe.name,
-            quantity: selectedEvent.pax, // Simple assumption: quantity refers to servings or similar
-            unit: 'raciones',
-            description: recipe.station ? `Partida: ${recipe.station}` : 'General',
-            status: 'todo',
-            recipeId: recipe.id,
-            station: recipe.station
-        }));
-
-        setProductionTasks(selectedProductionEventId, newTasks);
+    const handleGenerateTasksAction = () => {
+        if (!selectedEvent) return;
+        generateProductionTasks(selectedEvent);
     };
 
-    const handleUpdateStatus = (taskId: string, status: 'todo' | 'in-progress' | 'done') => {
+    const handleUpdateStatus = (taskId: string, status: KanbanTaskStatus) => {
         if (selectedProductionEventId) {
-            updateProductionTaskStatus(selectedProductionEventId, taskId, status);
+            updateTaskStatus(selectedProductionEventId, taskId, status);
         }
     };
 
@@ -120,7 +107,7 @@ export const ProductionKanbanBoard: React.FC = () => {
                 </div>
                 {tasks.length === 0 && (
                     <button
-                        onClick={handleGenerateTasks}
+                        onClick={handleGenerateTasksAction}
                         className="bg-primary hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
                     >
                         <Plus size={16} /> Generar Tareas del Menú

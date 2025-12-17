@@ -109,15 +109,18 @@ export interface Event {
     notes?: string;
 }
 
-export interface ProductionTask {
+export type KanbanTaskStatus = 'todo' | 'in-progress' | 'done';
+
+export interface KanbanTask {
     id: string;
     title: string;
     quantity: number;
     unit: string;
     description: string;
-    status: 'todo' | 'in-progress' | 'done';
+    status: KanbanTaskStatus;
     recipeId?: string;
     station?: 'hot' | 'cold' | 'dessert';
+    eventId?: string; // Added field referenced in slice
 }
 
 // Staff & Scheduling Types

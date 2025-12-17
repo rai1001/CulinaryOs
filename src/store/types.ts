@@ -2,7 +2,7 @@ import type {
     Ingredient, IngredientBatch, Event, Employee, DailySchedule,
     Recipe, Menu, Supplier, PurchaseOrder, WasteRecord,
     PCC, HACCPLog, HACCPTask, HACCPTaskCompletion, MenuItemAnalytics,
-    ProductionTask
+    KanbanTask, KanbanTaskStatus
 } from '../types';
 
 export interface IngredientSlice {
@@ -16,14 +16,19 @@ export interface IngredientSlice {
 
 export interface EventSlice {
     events: Event[];
-    selectedProductionEventId: string | null;
-    productionTasks: Record<string, ProductionTask[]>;
     setEvents: (items: Event[]) => void;
     addEvent: (event: Event) => void;
     updateEvent: (event: Event) => void;
+}
+
+export interface ProductionSlice {
+    selectedProductionEventId: string | null;
+    productionTasks: Record<string, KanbanTask[]>; // { eventId: [tasks] }
     setSelectedProductionEventId: (id: string | null) => void;
-    setProductionTasks: (eventId: string, tasks: ProductionTask[]) => void;
-    updateProductionTaskStatus: (eventId: string, taskId: string, status: 'todo' | 'in-progress' | 'done') => void;
+    generateProductionTasks: (event: Event) => void;
+    updateTaskStatus: (eventId: string, taskId: string, status: KanbanTaskStatus) => void;
+    clearProductionTasks: (eventId: string) => void;
+    setProductionTasks?: (eventId: string, tasks: KanbanTask[]) => void; // Optional if used by load/sync?
 }
 
 export interface StaffSlice {
@@ -93,6 +98,7 @@ export interface AnalyticsSlice {
 export interface AppState extends
     IngredientSlice,
     EventSlice,
+    ProductionSlice,
     StaffSlice,
     RecipeSlice,
     MenuSlice,
@@ -101,6 +107,8 @@ export interface AppState extends
     HACCPSlice,
     AnalyticsSlice {
     // UI State
-    currentView: 'dashboard' | 'schedule' | 'production' | 'data' | 'events' | 'recipes' | 'ingredients' | 'suppliers' | 'inventory' | 'purchasing' | 'waste' | 'haccp' | 'analytics' | 'kds';
-    setCurrentView: (view: 'dashboard' | 'schedule' | 'production' | 'data' | 'events' | 'recipes' | 'ingredients' | 'suppliers' | 'inventory' | 'purchasing' | 'waste' | 'haccp' | 'analytics' | 'kds') => void;
+    currentView: 'dashboard' | 'schedule' | 'production' | 'data' | 'events' | 'recipes' | 'ingredients' | 'suppliers' | 'inventory' | 'purchasing' | 'waste' | 'haccp' | 'analytics' | 'kds' | 'ai-scanner' | 'ai-search' | 'ai-menu' | 'ai-ingredients' | 'outlets';
+    setCurrentView: (view: 'dashboard' | 'schedule' | 'production' | 'data' | 'events' | 'recipes' | 'ingredients' | 'suppliers' | 'inventory' | 'purchasing' | 'waste' | 'haccp' | 'analytics' | 'kds' | 'ai-scanner' | 'ai-search' | 'ai-menu' | 'ai-ingredients' | 'outlets') => void;
+    activeOutletId: string | null;
+    setActiveOutletId: (id: string | null) => void;
 }

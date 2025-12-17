@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useStore } from './useStore';
-import type { ProductionTask } from '../types';
+import type { KanbanTask } from '../types';
 
 describe('Event Slice Production Logic', () => {
     beforeEach(() => {
@@ -17,20 +17,20 @@ describe('Event Slice Production Logic', () => {
     });
 
     it('should set production tasks for an event', () => {
-        const tasks: ProductionTask[] = [
+        const tasks: KanbanTask[] = [
             { id: '1', title: 'Task 1', quantity: 10, unit: 'kg', description: 'Desc', status: 'todo' }
         ];
-        useStore.getState().setProductionTasks('event-123', tasks);
+        useStore.getState().setProductionTasks!('event-123', tasks);
         expect(useStore.getState().productionTasks['event-123']).toEqual(tasks);
     });
 
     it('should update production task status', () => {
-        const tasks: ProductionTask[] = [
+        const tasks: KanbanTask[] = [
             { id: '1', title: 'Task 1', quantity: 10, unit: 'kg', description: 'Desc', status: 'todo' }
         ];
-        useStore.getState().setProductionTasks('event-123', tasks);
+        useStore.getState().setProductionTasks!('event-123', tasks);
 
-        useStore.getState().updateProductionTaskStatus('event-123', '1', 'in-progress');
+        useStore.getState().updateTaskStatus('event-123', '1', 'in-progress');
 
         const updatedTasks = useStore.getState().productionTasks['event-123'];
         expect(updatedTasks[0].status).toBe('in-progress');
@@ -38,17 +38,17 @@ describe('Event Slice Production Logic', () => {
 
     it('should handle updating status for non-existent event gracefully', () => {
         // Should not throw
-        useStore.getState().updateProductionTaskStatus('non-existent', '1', 'in-progress');
+        useStore.getState().updateTaskStatus('non-existent', '1', 'in-progress');
         expect(useStore.getState().productionTasks['non-existent']).toBeUndefined();
     });
 
     it('should handle updating status for non-existent task gracefully', () => {
-        const tasks: ProductionTask[] = [
+        const tasks: KanbanTask[] = [
             { id: '1', title: 'Task 1', quantity: 10, unit: 'kg', description: 'Desc', status: 'todo' }
         ];
-        useStore.getState().setProductionTasks('event-123', tasks);
+        useStore.getState().setProductionTasks!('event-123', tasks);
 
-        useStore.getState().updateProductionTaskStatus('event-123', '999', 'done');
+        useStore.getState().updateTaskStatus('event-123', '999', 'done');
 
         const updatedTasks = useStore.getState().productionTasks['event-123'];
         expect(updatedTasks[0].status).toBe('todo'); // Unchanged

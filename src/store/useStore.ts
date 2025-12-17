@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { createIngredientSlice } from './slices/createIngredientSlice';
 import { createEventSlice } from './slices/createEventSlice';
+import { createProductionSlice } from './slices/createProductionSlice';
 import { createStaffSlice } from './slices/createStaffSlice';
 import { createRecipeSlice } from './slices/createRecipeSlice';
 import { createMenuSlice } from './slices/createMenuSlice';
@@ -19,6 +20,7 @@ export const useStore = create<AppState>()(
         (...a) => ({
             ...createIngredientSlice(...a),
             ...createEventSlice(...a),
+            ...createProductionSlice(...a),
             ...createStaffSlice(...a),
             ...createRecipeSlice(...a),
             ...createMenuSlice(...a),
@@ -30,6 +32,8 @@ export const useStore = create<AppState>()(
             // UI State
             currentView: 'dashboard',
             setCurrentView: (view) => a[0]({ currentView: view }),
+            activeOutletId: null,
+            setActiveOutletId: (id) => a[0]({ activeOutletId: id }),
         }),
         {
             name: 'kitchen-manager-storage',
@@ -47,7 +51,9 @@ export const useStore = create<AppState>()(
                 pccs: state.pccs,
                 haccpLogs: state.haccpLogs,
                 haccpTasks: state.haccpTasks,
-                haccpTaskCompletions: state.haccpTaskCompletions
+                haccpTaskCompletions: state.haccpTaskCompletions,
+                productionTasks: state.productionTasks,
+                selectedProductionEventId: state.selectedProductionEventId
             }),
         }
     )
