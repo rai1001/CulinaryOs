@@ -78,6 +78,7 @@ export const KitchenCopilot: React.FC = () => {
                 <button
                     onClick={() => setIsOpen(false)}
                     className="text-slate-400 hover:text-white transition-colors"
+                    aria-label="Minimizar chat"
                 >
                     <Minimize2 className="w-4 h-4" />
                 </button>
@@ -130,6 +131,7 @@ export const KitchenCopilot: React.FC = () => {
                         onClick={handleSend}
                         disabled={!input.trim() || loading}
                         className="absolute right-2 top-2 p-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded-lg transition-colors disabled:opacity-50 disabled:bg-transparent"
+                        aria-label="Enviar mensaje"
                     >
                         <Send className="w-4 h-4" />
                     </button>
