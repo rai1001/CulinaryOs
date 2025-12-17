@@ -12,9 +12,8 @@ import { ErrorState } from './ui/ErrorState';
 import { EmptyState } from './ui/EmptyState';
 
 export const ProductionView: React.FC = () => {
-    const { menus, events, setEvents } = useStore();
+    const { menus, events, setEvents, selectedProductionEventId, setSelectedProductionEventId } = useStore();
     const [newEvent, setNewEvent] = useState({ name: '', date: format(new Date(), 'yyyy-MM-dd'), pax: 10, menuId: '' });
-    const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<'shopping' | 'mise-en-place' | 'kanban'>('shopping');
     const [isMounted, setIsMounted] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -41,11 +40,11 @@ export const ProductionView: React.FC = () => {
         };
 
         setEvents([...events, event]);
-        setSelectedEventId(event.id);
+        setSelectedProductionEventId(event.id);
         setNewEvent({ name: '', date: format(new Date(), 'yyyy-MM-dd'), pax: 10, menuId: '' });
     };
 
-    const selectedEvent = events.find(e => e.id === selectedEventId);
+    const selectedEvent = events.find(e => e.id === selectedProductionEventId);
 
     const shoppingList = useMemo(() => {
         if (!selectedEvent || !selectedEvent.menu) return [];
@@ -136,8 +135,8 @@ export const ProductionView: React.FC = () => {
                     {events.map(event => (
                         <div
                             key={event.id}
-                            onClick={() => setSelectedEventId(event.id)}
-                            className={`p-3 rounded-lg cursor-pointer border transition-all ${selectedEventId === event.id
+                            onClick={() => setSelectedProductionEventId(event.id)}
+                            className={`p-3 rounded-lg cursor-pointer border transition-all ${selectedProductionEventId === event.id
                                 ? 'bg-primary/10 border-primary/50 text-blue-100'
                                 : 'bg-surface/40 border-transparent hover:bg-surface/60 text-slate-300'
                                 }`}

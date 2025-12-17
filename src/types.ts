@@ -109,6 +109,17 @@ export interface Event {
     notes?: string;
 }
 
+export interface ProductionTask {
+    id: string;
+    title: string;
+    quantity: number;
+    unit: string;
+    description: string;
+    status: 'todo' | 'in-progress' | 'done';
+    recipeId?: string;
+    station?: 'hot' | 'cold' | 'dessert';
+}
+
 // Staff & Scheduling Types
 
 export type Role = 'HEAD_CHEF' | 'COOK_MORNING' | 'COOK_ROTATING';
