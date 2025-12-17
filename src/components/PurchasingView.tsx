@@ -5,6 +5,7 @@ import { ShoppingCart, RefreshCw, CheckCircle, FileText, Filter } from 'lucide-r
 import type { PurchaseOrder } from '../types';
 import { useToast, ConfirmModal } from './ui';
 import { InvoiceUploader } from './ai/InvoiceUploader';
+import { OrderDetailModal } from './purchasing/OrderDetailModal';
 
 interface StatusCardProps {
     title: string;
@@ -27,6 +28,7 @@ const statusLabels: Record<string, string> = {
     'DRAFT': 'Borrador',
     'ORDERED': 'Pedido',
     'RECEIVED': 'Recibido',
+    'PARTIAL': 'Parcial',
     'CANCELLED': 'Cancelado'
 };
 
@@ -35,7 +37,8 @@ export const PurchasingView: React.FC = () => {
         ingredients, events, suppliers, purchaseOrders,
         addPurchaseOrder, deletePurchaseOrder,
         purchaseOrdersLoading, purchaseOrdersHasMore, fetchPurchaseOrders, loadMorePurchaseOrders,
-        setPurchaseOrderFilters, purchaseOrdersFilters, activeOutletId
+        setPurchaseOrderFilters, purchaseOrdersFilters, activeOutletId,
+        receivePurchaseOrderItems
     } = useStore();
 
     const { addToast } = useToast();
@@ -82,22 +85,6 @@ export const PurchasingView: React.FC = () => {
         }
     };
 
-    // Alternative calculation logic from stashed changes
-    /*
-    const handleCalculateNeeds = () => {
-        const needs = calculateIngredientNeeds(events, menus, recipes, ingredients, 14);
-         if (needs.length === 0) {
-            addToast('Stock suficiente para los próximos 14 días', 'success');
-            setCalculatedNeeds([]);
-            setShowNeeds(false);
-        } else {
-            setCalculatedNeeds(needs);
-            setShowNeeds(true);
-            addToast(`Se detectaron ${needs.length} ingredientes con falta de stock`, 'info');
-        }
-    };
-    */
-
     const handleDeleteOrder = (orderId: string) => {
         setDeleteConfirm({ isOpen: true, orderId });
     };
@@ -110,8 +97,6 @@ export const PurchasingView: React.FC = () => {
         }
         setDeleteConfirm({ isOpen: false, orderId: null });
     };
-
-
 
     return (
         <div className="p-6 md:p-8 space-y-8 animate-in fade-in duration-500">
@@ -263,7 +248,7 @@ export const PurchasingView: React.FC = () => {
                                                                 order.status === 'ORDERED' ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30' :
                                                                     'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
                                                                 }`}>
-                                                                {statusLabels[order.status]}
+                                                                {statusLabels[order.status] || order.status}
                                                             </span>
                                                         </td>
                                                         <td className="p-4 text-right text-slate-400">{order.items.length}</td>
@@ -332,6 +317,18 @@ export const PurchasingView: React.FC = () => {
                 onConfirm={confirmDelete}
                 onCancel={() => setDeleteConfirm({ isOpen: false, orderId: null })}
             />
+
+            {/* Order Detail Modal */}
+            {selectedOrder && (
+                <OrderDetailModal
+                    order={selectedOrder}
+                    onClose={() => setSelectedOrder(null)}
+                    onReceive={async (id, items) => {
+                        await receivePurchaseOrderItems(id, items);
+                        addToast('Recepción registrada', 'success');
+                    }}
+                />
+            )}
         </div>
     );
 };

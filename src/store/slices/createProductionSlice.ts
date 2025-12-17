@@ -74,5 +74,49 @@ export const createProductionSlice: StateCreator<
                 [eventId]: tasks
             }
         }));
+    },
+
+    toggleTaskTimer: (eventId, taskId) => {
+        set((state) => {
+            const tasks = state.productionTasks[eventId] || [];
+            const updatedTasks = tasks.map(task => {
+                if (task.id !== taskId) return task;
+
+                const isRunning = !!task.timerStart;
+                const now = Date.now();
+
+                if (isRunning) {
+                    // Pause: Add elapsed time to total
+                    const elapsed = Math.floor((now - task.timerStart!) / 1000); // seconds
+                    return {
+                        ...task,
+                        timerStart: undefined, // Stop
+                        totalTimeSpent: (task.totalTimeSpent || 0) + elapsed
+                    };
+                } else {
+                    // Start
+                    return {
+                        ...task,
+                        timerStart: now
+                    };
+                }
+            });
+
+            return {
+                productionTasks: { ...state.productionTasks, [eventId]: updatedTasks }
+            };
+        });
+    },
+
+    updateTaskSchedule: (eventId, taskId, updates) => {
+        set((state) => {
+            const tasks = state.productionTasks[eventId] || [];
+            const updatedTasks = tasks.map(task =>
+                task.id === taskId ? { ...task, ...updates } : task
+            );
+            return {
+                productionTasks: { ...state.productionTasks, [eventId]: updatedTasks }
+            };
+        });
     }
 });

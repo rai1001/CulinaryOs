@@ -7,6 +7,7 @@ import { printLabel, formatLabelData } from './printing/PrintService';
 import * as XLSX from 'xlsx';
 import { format } from 'date-fns';
 import { ProductionKanbanBoard } from './production/ProductionKanbanBoard';
+import { ProductionPlanner } from './production/ProductionPlanner';
 import { EmptyState } from './ui/EmptyState';
 
 export const ProductionView: React.FC = () => {
@@ -25,7 +26,7 @@ export const ProductionView: React.FC = () => {
 
     // Local state for event creation 
     const [newEvent, setNewEvent] = useState({ name: '', date: format(new Date(), 'yyyy-MM-dd'), pax: 10, menuId: '' });
-    const [activeTab, setActiveTab] = useState<'shopping' | 'mise-en-place' | 'kanban'>('kanban');
+    const [activeTab, setActiveTab] = useState<'shopping' | 'mise-en-place' | 'kanban' | 'planning'>('kanban');
 
     // Resolving Selected Event
     const selectedEvent = events.find(e => e.id === selectedProductionEventId);
@@ -212,6 +213,13 @@ export const ProductionView: React.FC = () => {
                                 Tablero Kanban
                             </button>
                             <button
+                                onClick={() => setActiveTab('planning')}
+                                className={`pb-2 text-sm font-medium transition-colors border-b-2 ${activeTab === 'planning' ? 'border-primary text-primary' : 'border-transparent text-slate-400 hover:text-slate-200'
+                                    }`}
+                            >
+                                Planificación Semanal
+                            </button>
+                            <button
                                 onClick={() => setActiveTab('shopping')}
                                 className={`pb-2 text-sm font-medium transition-colors border-b-2 ${activeTab === 'shopping' ? 'border-primary text-primary' : 'border-transparent text-slate-400 hover:text-slate-200'
                                     }`}
@@ -285,6 +293,8 @@ export const ProductionView: React.FC = () => {
                                     />
                                 )}
                             </div>
+                        ) : activeTab === 'planning' ? (
+                            <ProductionPlanner tasks={eventTasks} eventId={selectedEvent.id} />
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                 {/* Mise en Place by Station */}

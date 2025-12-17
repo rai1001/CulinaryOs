@@ -56,13 +56,14 @@ export interface Ingredient {
     category?: InventoryCategory;
 }
 
-export type PurchaseStatus = 'DRAFT' | 'ORDERED' | 'RECEIVED' | 'CANCELLED';
+export type PurchaseStatus = 'DRAFT' | 'ORDERED' | 'RECEIVED' | 'PARTIAL' | 'CANCELLED';
 
 export interface PurchaseOrderItem {
     ingredientId: string;
     quantity: number;
     unit: Unit;
     costPerUnit: number;
+    receivedQuantity?: number; // For partial/full reception
 }
 
 export interface PurchaseOrder {
@@ -94,11 +95,19 @@ export interface Recipe {
     nutritionalInfo?: NutritionalInfo; // Calculated
 }
 
+export interface MenuVariation {
+    dishName: string; // The original dish name
+    alternativeDishName: string; // The variaton (e.g., "Hamburguesa Vegana")
+    notes?: string;
+}
+
 export interface Menu {
     id: string;
     name: string;
+    description?: string; // Added description
     recipeIds: string[];
     recipes?: Recipe[]; // Hydrated
+    variations?: MenuVariation[]; // New field for variations
     sellPrice?: number;
 }
 
@@ -128,6 +137,13 @@ export interface KanbanTask {
     recipeId?: string;
     station?: 'hot' | 'cold' | 'dessert';
     eventId?: string; // Added field referenced in slice
+
+    // Timer & Scheduling
+    estimatedTime?: number; // In minutes
+    timerStart?: number; // Timestamp (Date.now()) or null
+    totalTimeSpent?: number; // In seconds
+    shift?: ShiftType;
+    assignedDate?: string; // YYYY-MM-DD
 }
 
 // Staff & Scheduling Types
@@ -235,6 +251,22 @@ export interface MenuItemAnalytics {
     lastOrdered?: string; // ISO Date
 }
 
+// Breakfast Module Types
+export interface BreakfastService {
+    id: string; // YYYY-MM-DD
+    date: string; // YYYY-MM-DD
+    forecastPax: number;
+    realPax: number;
+    consumption: Record<string, number>; // ingredientId -> quantity
+    notes?: string;
+    outletId?: string;
+}
+
+export interface OccupancyData {
+    date: string;
+    pax: number;
+}
+
 // Multi-Kitchen / Outlet Management Types
 
 export type OutletType = 'main_kitchen' | 'bar' | 'banquet' | 'room_service' | 'pizzeria' | 'other';
@@ -312,7 +344,7 @@ export interface DemandPrediction {
     }[];
 }
 
-export type ViewType = 'dashboard' | 'schedule' | 'production' | 'data' | 'events' | 'recipes' | 'ingredients' | 'suppliers' | 'inventory' | 'purchasing' | 'waste' | 'haccp' | 'analytics' | 'kds' | 'ai-scanner' | 'ai-search' | 'ai-menu' | 'ai-ingredients' | 'outlets';
+export type ViewType = 'dashboard' | 'schedule' | 'production' | 'data' | 'events' | 'recipes' | 'ingredients' | 'suppliers' | 'inventory' | 'purchasing' | 'waste' | 'haccp' | 'analytics' | 'kds' | 'ai-scanner' | 'ai-search' | 'ai-menu' | 'ai-ingredients' | 'outlets' | 'menus' | 'breakfast';
 
 export interface Notification {
     id: string;

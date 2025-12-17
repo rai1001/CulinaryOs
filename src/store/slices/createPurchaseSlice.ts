@@ -126,6 +126,59 @@ export const createPurchaseSlice: StateCreator<
         get().fetchPurchaseOrders({ reset: true });
     },
 
+    receivePurchaseOrderItems: async (orderId: string, receivedItems: Record<string, number>) => {
+        const state = get();
+        const order = state.purchaseOrders.find((o: import('../../types').PurchaseOrder) => o.id === orderId);
+        if (!order) return;
+
+        // 1. Update Order Items
+        const updatedItems = order.items.map((item: import('../../types').PurchaseOrderItem) => {
+            const receivedNow = receivedItems[item.ingredientId] || 0;
+            return {
+                ...item,
+                receivedQuantity: (item.receivedQuantity || 0) + receivedNow
+            };
+        });
+
+        // 2. Determine Status
+        const allReceived = updatedItems.every((i: import('../../types').PurchaseOrderItem) => (i.receivedQuantity || 0) >= i.quantity);
+        const anyReceived = updatedItems.some((i: import('../../types').PurchaseOrderItem) => (i.receivedQuantity || 0) > 0);
+        const newStatus = allReceived ? 'RECEIVED' : (anyReceived ? 'PARTIAL' : order.status);
+
+        const updatedOrder = { ...order, items: updatedItems, status: newStatus };
+
+        try {
+            // Save Order
+            await setDocument("purchaseOrders", orderId, updatedOrder);
+
+            // 3. Update Inventory (Batches)
+            for (const [ingId, qty] of Object.entries(receivedItems)) {
+                if (qty <= 0) continue;
+                const item = updatedItems.find((i: import('../../types').PurchaseOrderItem) => i.ingredientId === ingId);
+                const cost = item?.costPerUnit || 0;
+
+                // Use the store action to update state logic
+                get().addBatch(ingId, {
+                    quantity: qty,
+                    costPerUnit: cost,
+                    expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // Default 30 days
+                    receivedDate: new Date().toISOString()
+                });
+
+                // Get updated ingredient from state to persist
+                const updatedIngredient = get().ingredients.find((i: import('../../types').Ingredient) => i.id === ingId);
+                if (updatedIngredient) {
+                    await setDocument("ingredients", ingId, updatedIngredient);
+                }
+            }
+
+            // Refresh orders list
+            get().fetchPurchaseOrders({ reset: true });
+
+        } catch (error) {
+            console.error("Failed to receive items", error);
+        }
+    },
+
     clearSuppliers: () => set({ suppliers: [] })
 });
-

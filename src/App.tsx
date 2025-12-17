@@ -1,7 +1,7 @@
 import React, { lazy, Suspense, useState, useEffect } from 'react';
 import { useStore } from './store/useStore';
 import { Dashboard } from './components/Dashboard';
-import { LayoutDashboard, Calendar, ShoppingCart, Database, CalendarDays, ChefHat, Package, Truck, ClipboardList, ShoppingBag, Trash2, ShieldCheck, TrendingUp, Search } from 'lucide-react';
+import { LayoutDashboard, Calendar, ShoppingCart, Database, CalendarDays, ChefHat, Package, Truck, ClipboardList, ShoppingBag, Trash2, ShieldCheck, TrendingUp, Search, BookOpen, Sparkles, Coffee, Menu as MenuIcon, X } from 'lucide-react';
 
 import { PrintManager } from './components/printing/PrintManager';
 import { ShiftEndReminder } from './components/haccp/ShiftEndReminder';
@@ -29,6 +29,8 @@ const MenuAnalyticsView = lazy(() => import('./components/MenuAnalyticsView').th
 const KitchenDisplayView = lazy(() => import('./components/KitchenDisplayView').then(m => ({ default: m.KitchenDisplayView })));
 const AIMenuView = lazy(() => import('./components/AIFeatures').then(m => ({ default: m.AIMenuGenerator })));
 const AISearchView = lazy(() => import('./components/AIFeatures').then(m => ({ default: m.AIChefAssistant }))); // Search/Assistant
+const MenuView = lazy(() => import('./components/MenuView').then(m => ({ default: m.MenuView }))); // New Manual Menu View
+const BreakfastView = lazy(() => import('./components/BreakfastView').then(m => ({ default: m.BreakfastView })));
 
 // Loading fallback component
 const LoadingFallback = () => (
@@ -45,7 +47,7 @@ const isValidView = (view: string): view is ViewType => {
     'dashboard', 'schedule', 'production', 'data', 'events', 'recipes',
     'ingredients', 'suppliers', 'inventory', 'purchasing', 'waste',
     'haccp', 'analytics', 'kds',
-    'ai-scanner', 'ai-search', 'ai-menu', 'ai-ingredients', 'outlets'
+    'ai-scanner', 'ai-search', 'ai-menu', 'ai-ingredients', 'outlets', 'menus', 'breakfast'
   ];
   return validViews.includes(view as ViewType);
 };
@@ -53,6 +55,7 @@ const isValidView = (view: string): view is ViewType => {
 function App() {
   const { currentView, setCurrentView } = useStore();
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Subscribe to AI Notifications
   useNotificationSubscription();
@@ -79,6 +82,7 @@ function App() {
   const handleNavigation = (view: typeof currentView) => {
     setCurrentView(view);
     window.location.hash = `#/${view}`;
+    setIsSidebarOpen(false); // Close sidebar on mobile nav
   };
 
   // Navigation Logic (Hash Routing)
@@ -87,10 +91,6 @@ function App() {
     const handleHashChange = () => {
       const hash = window.location.hash.slice(2); // Remove '#/'
       if (hash && hash !== currentView) {
-        // Map hash to view if valid, otherwise default or 404 behavior (fallback to default in switch)
-        // Simple mapping: hash matches view key
-        // We need to ensure we don't loop infinitely if store updates hash.
-        // But store update is triggered by UI click usually.
         setCurrentView(hash as any);
       } else if (!hash) {
         window.location.hash = '#/dashboard';
@@ -104,7 +104,7 @@ function App() {
     // 2. Listen for hash changes (Back/Forward buttons)
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
-  }, [setCurrentView]); // Dependency on setCurrentView (stable)
+  }, [setCurrentView]);
 
   // Update hash when view changes (Internal navigation)
   useEffect(() => {
@@ -137,6 +137,8 @@ function App() {
       case 'ai-scanner': return <PurchasingView />; // Scan is inside Purchasing
       case 'ai-menu': return <AIMenuView />;
       case 'ai-search': return <AISearchView />;
+      case 'menus': return <MenuView />;
+      case 'breakfast': return <BreakfastView />;
       default: return <Dashboard />;
     }
   };
@@ -149,13 +151,32 @@ function App() {
       <InstallPrompt />
       <KitchenCopilot />
       <CommandPalette isOpen={isCommandPaletteOpen} onClose={() => setIsCommandPaletteOpen(false)} />
+
+      {/* Mobile Sidebar Overlay */}
+      {isSidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 md:hidden backdrop-blur-sm"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className="w-64 bg-surface border-r border-white/5 flex flex-col overflow-y-auto">
-        <div className="p-6">
-          <h1 className="text-2xl font-bold tracking-tight text-white">
-            Chef<span className="text-primary">OS</span>
-          </h1>
-          <p className="text-xs text-slate-500 mt-1">Gestión de Cocina Premium</p>
+      <aside className={`
+        fixed inset-y-0 left-0 z-50 w-64 bg-surface border-r border-white/5 flex flex-col overflow-y-auto
+        transform transition-transform duration-300 ease-in-out
+        ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+        md:relative md:translate-x-0 md:bg-transparent md:border-r md:border-white/5
+      `}>
+        <div className="p-6 flex justify-between items-center md:block">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-white">
+              Chef<span className="text-primary">OS</span>
+            </h1>
+            <p className="text-xs text-slate-500 mt-1">Gestión de Cocina Premium</p>
+          </div>
+          <button onClick={() => setIsSidebarOpen(false)} className="md:hidden text-slate-400">
+            <X size={24} />
+          </button>
         </div>
 
         <nav className="flex-1 px-4 space-y-2 py-4">
@@ -176,6 +197,12 @@ function App() {
             label="Eventos"
             active={currentView === 'events'}
             onClick={() => handleNavigation('events')}
+          />
+          <NavItem
+            icon={<Coffee />}
+            label="Desayunos"
+            active={currentView === 'breakfast'}
+            onClick={() => handleNavigation('breakfast')}
           />
           <NavItem
             icon={<ShoppingBag />}
@@ -203,15 +230,26 @@ function App() {
           />
 
           <div className="pt-4 pb-2">
-            <p className="px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Chef AI</p>
+            <p className="px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Menús</p>
           </div>
 
           <NavItem
-            icon={<ChefHat />}
-            label="Generador Menús"
+            icon={<BookOpen />}
+            label="Mis Menús"
+            active={currentView === 'menus'}
+            onClick={() => handleNavigation('menus')}
+          />
+          <NavItem
+            icon={<Sparkles />}
+            label="Generador IA"
             active={currentView === 'ai-menu'}
             onClick={() => handleNavigation('ai-menu')}
           />
+
+          <div className="pt-4 pb-2">
+            <p className="px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Chef AI</p>
+          </div>
+
           <NavItem
             icon={<Search />}
             label="Asistente Chef"
@@ -284,11 +322,22 @@ function App() {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-auto relative">
+      <main className="flex-1 overflow-auto relative flex flex-col">
+        {/* Mobile Header */}
+        <div className="md:hidden bg-surface border-b border-white/5 p-4 flex items-center justify-between sticky top-0 z-30">
+          <button onClick={() => setIsSidebarOpen(true)} className="text-slate-300">
+            <MenuIcon size={24} />
+          </button>
+          <h1 className="text-lg font-bold text-white">Chef<span className="text-primary">OS</span></h1>
+          <div className="w-6" /> {/* Placeholder for balance */}
+        </div>
+
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-accent/5 pointer-events-none" />
-        <Suspense fallback={<LoadingFallback />}>
-          {renderContent()}
-        </Suspense>
+        <div className="flex-1 overflow-auto p-4 md:p-0"> {/* Padded on mobile, reset on desktop if needed, or let component handle padding */}
+          <Suspense fallback={<LoadingFallback />}>
+            {renderContent()}
+          </Suspense>
+        </div>
       </main>
     </div>
   );

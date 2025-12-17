@@ -1,6 +1,7 @@
-import React from 'react';
-import { ChefHat, AlertCircle, CheckCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ChefHat, AlertCircle, CheckCircle, Play, Pause, Clock } from 'lucide-react';
 import type { KanbanTask, KanbanTaskStatus } from '../../types';
+import { useStore } from '../../store/useStore';
 
 interface ColumnProps {
     id: KanbanTaskStatus;
@@ -8,9 +9,10 @@ interface ColumnProps {
     tasks: KanbanTask[];
     color: string;
     onDrop: (taskId: string, status: KanbanTaskStatus) => void;
+    onToggleTimer: (taskId: string) => void;
 }
 
-const KanbanColumn: React.FC<ColumnProps> = ({ id, title, tasks, color, onDrop }) => {
+const KanbanColumn: React.FC<ColumnProps> = ({ id, title, tasks, color, onDrop, onToggleTimer }) => {
     const handleDragOver = (e: React.DragEvent) => {
         e.preventDefault();
     };
@@ -45,25 +47,85 @@ const KanbanColumn: React.FC<ColumnProps> = ({ id, title, tasks, color, onDrop }
 
             <div className="flex-1 p-3 space-y-3 overflow-y-auto">
                 {tasks.map(task => (
-                    <div
-                        key={task.id}
-                        className="bg-surface p-4 rounded-lg border border-white/5 shadow-sm hover:border-primary/50 cursor-grab active:cursor-grabbing transition-colors"
-                        draggable
-                        onDragStart={(e) => e.dataTransfer.setData('taskId', task.id)}
-                    >
-                        <h4 className="font-medium text-slate-200">{task.title}</h4>
-                        <div className="flex justify-between items-center mt-2 text-sm text-slate-400">
-                            <span>{task.description}</span>
-                            <span className="font-mono bg-white/5 px-1.5 py-0.5 rounded text-white">
-                                {task.quantity} {task.unit}
-                            </span>
-                        </div>
-                    </div>
+                    <TaskCard key={task.id} task={task} onToggleTimer={onToggleTimer} />
                 ))}
                 {tasks.length === 0 && (
                     <div className="text-center py-8 text-slate-600 text-sm italic">
                         No hay tareas
                     </div>
+                )}
+            </div>
+        </div>
+    );
+};
+
+const TaskCard = ({ task, onToggleTimer }: { task: KanbanTask, onToggleTimer: (id: string) => void }) => {
+    // Local state for ticking timer
+    const [elapsed, setElapsed] = useState(task.totalTimeSpent || 0);
+
+    useEffect(() => {
+        setElapsed(task.totalTimeSpent || 0);
+    }, [task.totalTimeSpent]);
+
+    useEffect(() => {
+        let interval: ReturnType<typeof setInterval>;
+        if (task.timerStart) {
+            interval = setInterval(() => {
+                const currentSession = Math.floor((Date.now() - task.timerStart!) / 1000);
+                setElapsed((task.totalTimeSpent || 0) + currentSession);
+            }, 1000);
+        }
+        return () => clearInterval(interval);
+    }, [task.timerStart, task.totalTimeSpent]);
+
+    const formatTime = (seconds: number) => {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    };
+
+    return (
+        <div
+            className={`bg-surface p-4 rounded-lg border shadow-sm hover:border-primary/50 cursor-grab active:cursor-grabbing transition-colors ${task.timerStart ? 'border-emerald-500/50 shadow-[0_0_10px_rgba(16,185,129,0.1)]' : 'border-white/5'
+                }`}
+            draggable
+            onDragStart={(e) => e.dataTransfer.setData('taskId', task.id)}
+        >
+            <div className="flex justify-between items-start mb-2">
+                <h4 className="font-medium text-slate-200">{task.title}</h4>
+                <div className="flex items-center gap-1">
+                    {task.shift && (
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded uppercase font-bold ${task.shift === 'MORNING' ? 'bg-orange-500/20 text-orange-300' : 'bg-indigo-500/20 text-indigo-300'
+                            }`}>
+                            {task.shift === 'MORNING' ? 'M' : 'T'}
+                        </span>
+                    )}
+                </div>
+            </div>
+
+            <div className="flex justify-between items-center text-sm text-slate-400 mb-3">
+                <span>{task.description}</span>
+                <span className="font-mono bg-white/5 px-1.5 py-0.5 rounded text-white">
+                    {task.quantity} {task.unit}
+                </span>
+            </div>
+
+            {/* Timer Controls */}
+            <div className="flex items-center justify-between pt-2 border-t border-white/5">
+                <div className={`flex items-center gap-2 font-mono text-sm ${task.timerStart ? 'text-emerald-400' : 'text-slate-500'}`}>
+                    <Clock size={14} />
+                    {formatTime(elapsed)}
+                </div>
+                {task.status !== 'done' && (
+                    <button
+                        onClick={(e) => { e.stopPropagation(); onToggleTimer(task.id); }}
+                        className={`p-1.5 rounded-full transition-colors ${task.timerStart
+                            ? 'bg-amber-500/20 text-amber-400 hover:bg-amber-500/30'
+                            : 'bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30'
+                            }`}
+                    >
+                        {task.timerStart ? <Pause size={14} fill="currentColor" /> : <Play size={14} fill="currentColor" />}
+                    </button>
                 )}
             </div>
         </div>
@@ -76,9 +138,16 @@ interface ProductionKanbanBoardProps {
 }
 
 export const ProductionKanbanBoard: React.FC<ProductionKanbanBoardProps> = ({ tasks, onTaskStatusChange }) => {
+    const { toggleTaskTimer, selectedProductionEventId } = useStore();
 
     const handleUpdateStatus = (taskId: string, status: KanbanTaskStatus) => {
         onTaskStatusChange(taskId, status);
+    };
+
+    const handleToggleTimer = (taskId: string) => {
+        if (selectedProductionEventId) {
+            toggleTaskTimer(selectedProductionEventId, taskId);
+        }
     };
 
     return (
@@ -90,13 +159,14 @@ export const ProductionKanbanBoard: React.FC<ProductionKanbanBoardProps> = ({ ta
                 </div>
             </div>
 
-            <div className="flex-1 flex gap-6 overflow-x-auto pb-4">
+            <div className="flex-1 flex gap-6 overflow-x-auto pb-4 custom-scrollbar">
                 <KanbanColumn
                     id="todo"
                     title="Pendiente"
                     tasks={tasks.filter(t => t.status === 'todo')}
                     color="text-slate-300"
                     onDrop={handleUpdateStatus}
+                    onToggleTimer={handleToggleTimer}
                 />
                 <KanbanColumn
                     id="in-progress"
@@ -104,6 +174,7 @@ export const ProductionKanbanBoard: React.FC<ProductionKanbanBoardProps> = ({ ta
                     tasks={tasks.filter(t => t.status === 'in-progress')}
                     color="text-blue-400"
                     onDrop={handleUpdateStatus}
+                    onToggleTimer={handleToggleTimer}
                 />
                 <KanbanColumn
                     id="done"
@@ -111,8 +182,10 @@ export const ProductionKanbanBoard: React.FC<ProductionKanbanBoardProps> = ({ ta
                     tasks={tasks.filter(t => t.status === 'done')}
                     color="text-green-400"
                     onDrop={handleUpdateStatus}
+                    onToggleTimer={handleToggleTimer}
                 />
             </div>
         </div>
     );
 };
+

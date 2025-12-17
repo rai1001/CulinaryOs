@@ -2,9 +2,17 @@ import type {
     Ingredient, IngredientBatch, Event, Employee, DailySchedule,
     Recipe, Menu, Supplier, PurchaseOrder, WasteRecord,
     PCC, HACCPLog, HACCPTask, HACCPTaskCompletion, MenuItemAnalytics,
-    KanbanTask, KanbanTaskStatus
+    KanbanTask, KanbanTaskStatus, BreakfastService, OccupancyData
 } from '../types';
 import type { NotificationSlice } from './slices/createNotificationSlice';
+
+export interface BreakfastSlice {
+    breakfastServices: BreakfastService[];
+    setBreakfastServices: (services: BreakfastService[]) => void;
+    updateBreakfastService: (service: BreakfastService) => Promise<void>;
+    importOccupancy: (data: OccupancyData[]) => Promise<void>;
+    fetchBreakfastServices: () => Promise<void>;
+}
 
 export interface IngredientSlice {
     ingredients: Ingredient[];
@@ -35,6 +43,8 @@ export interface ProductionSlice {
     updateTaskStatus: (eventId: string, taskId: string, status: KanbanTaskStatus) => void;
     clearProductionTasks: (eventId: string) => void;
     setProductionTasks?: (eventId: string, tasks: KanbanTask[]) => void; // Optional if used by load/sync?
+    toggleTaskTimer: (eventId: string, taskId: string) => void;
+    updateTaskSchedule: (eventId: string, taskId: string, updates: { assignedDate?: string; shift?: import('../types').ShiftType }) => void;
 }
 
 export interface StaffSlice {
@@ -89,6 +99,7 @@ export interface PurchaseSlice {
     fetchPurchaseOrders: (options?: { reset?: boolean }) => Promise<void>;
     loadMorePurchaseOrders: () => Promise<void>;
     setPurchaseOrderFilters: (filters: import('../types').PurchaseOrderFilters) => void;
+    receivePurchaseOrderItems: (orderId: string, receivedItems: Record<string, number>) => Promise<void>;
 }
 
 export interface WasteSlice {
@@ -144,6 +155,7 @@ export interface AppState extends
     HACCPSlice,
     AnalyticsSlice,
     OutletSlice,
+    BreakfastSlice,
     NotificationSlice {
     currentView: import('../types').ViewType;
     setCurrentView: (view: import('../types').ViewType) => void;

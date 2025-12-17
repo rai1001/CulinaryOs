@@ -12,6 +12,7 @@ import { createHACCPSlice } from './slices/createHACCPSlice';
 import { createAnalyticsSlice } from './slices/createAnalyticsSlice';
 import { createOutletSlice } from './slices/createOutletSlice';
 import { createNotificationSlice } from './slices/createNotificationSlice';
+import { createBreakfastSlice } from './slices/createBreakfastSlice';
 import type { AppState } from './types';
 
 // Re-export AppState for consumers
@@ -32,6 +33,7 @@ export const useStore = create<AppState>()(
             ...createAnalyticsSlice(...a),
             ...createOutletSlice(...a),
             ...createNotificationSlice(...a),
+            ...createBreakfastSlice(...a),
 
             // UI State
             currentView: 'dashboard',
@@ -59,7 +61,8 @@ export const useStore = create<AppState>()(
                 productionTasks: state.productionTasks,
                 outlets: state.outlets,
                 activeOutletId: state.activeOutletId,
-                selectedProductionEventId: state.selectedProductionEventId
+                selectedProductionEventId: state.selectedProductionEventId,
+                breakfastServices: state.breakfastServices
             }),
         }
     )

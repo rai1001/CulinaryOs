@@ -221,7 +221,7 @@ export const InventoryView: React.FC = () => {
             </div>
 
             {/* Filter Tabs */}
-            <div className="flex gap-2 border-b border-gray-200">
+            <div className="flex gap-2 border-b border-gray-200 overflow-x-auto pb-2">
                 <button
                     onClick={() => setActiveFilter('all')}
                     className={`px-4 py-3 font-medium text-sm transition-all whitespace-nowrap ${activeFilter === 'all'

@@ -36,6 +36,11 @@ export const getAllDocuments = async <T>(collectionRef: CollectionReference<T>):
     return querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
 };
 
+export const getCollection = async <T>(collectionName: string): Promise<T[]> => {
+    const colRef = collection(db, collectionName) as CollectionReference<T>;
+    return getAllDocuments(colRef);
+};
+
 // Helper to strip undefined values (Firestore rejects them)
 const sanitizeData = <T extends object>(data: T): T => {
     const cleanFn = (obj: any): any => {
