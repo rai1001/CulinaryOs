@@ -10,6 +10,7 @@ import { createPurchaseSlice } from './slices/createPurchaseSlice';
 import { createWasteSlice } from './slices/createWasteSlice';
 import { createHACCPSlice } from './slices/createHACCPSlice';
 import { createAnalyticsSlice } from './slices/createAnalyticsSlice';
+import { createOutletSlice } from './slices/createOutletSlice';
 import type { AppState } from './types';
 
 // Re-export AppState for consumers
@@ -28,6 +29,7 @@ export const useStore = create<AppState>()(
             ...createWasteSlice(...a),
             ...createHACCPSlice(...a),
             ...createAnalyticsSlice(...a),
+            ...createOutletSlice(...a),
 
             // UI State
             currentView: 'dashboard',
@@ -53,6 +55,8 @@ export const useStore = create<AppState>()(
                 haccpTasks: state.haccpTasks,
                 haccpTaskCompletions: state.haccpTaskCompletions,
                 productionTasks: state.productionTasks,
+                outlets: state.outlets,
+                activeOutletId: state.activeOutletId,
                 selectedProductionEventId: state.selectedProductionEventId
             }),
         }

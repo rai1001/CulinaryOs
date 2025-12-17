@@ -1,7 +1,7 @@
 import React, { lazy, Suspense, useState, useEffect } from 'react';
 import { useStore } from './store/useStore';
 import { Dashboard } from './components/Dashboard';
-import { LayoutDashboard, Calendar, ShoppingCart, Database, CalendarDays, ChefHat, Package, Truck, ClipboardList, ShoppingBag, Trash2, ShieldCheck, TrendingUp } from 'lucide-react';
+import { LayoutDashboard, Calendar, ShoppingCart, Database, CalendarDays, ChefHat, Package, Truck, ClipboardList, ShoppingBag, Trash2, ShieldCheck, TrendingUp, Search } from 'lucide-react';
 
 import { PrintManager } from './components/printing/PrintManager';
 import { ShiftEndReminder } from './components/haccp/ShiftEndReminder';
@@ -23,6 +23,8 @@ const WasteView = lazy(() => import('./components/WasteView').then(m => ({ defau
 const HACCPView = lazy(() => import('./components/HACCPView').then(m => ({ default: m.HACCPView })));
 const MenuAnalyticsView = lazy(() => import('./components/MenuAnalyticsView').then(m => ({ default: m.MenuAnalyticsView })));
 const KitchenDisplayView = lazy(() => import('./components/KitchenDisplayView').then(m => ({ default: m.KitchenDisplayView })));
+const AIMenuView = lazy(() => import('./components/AIFeatures').then(m => ({ default: m.AIMenuGenerator })));
+const AISearchView = lazy(() => import('./components/AIFeatures').then(m => ({ default: m.AIChefAssistant }))); // Search/Assistant
 
 // Loading fallback component
 const LoadingFallback = () => (
@@ -62,6 +64,40 @@ function App() {
     window.location.hash = `#/${view}`;
   };
 
+  // Navigation Logic (Hash Routing)
+  useEffect(() => {
+    // 1. Handle initial load based on hash
+    const handleHashChange = () => {
+      const hash = window.location.hash.slice(2); // Remove '#/'
+      if (hash && hash !== currentView) {
+        // Map hash to view if valid, otherwise default or 404 behavior (fallback to default in switch)
+        // Simple mapping: hash matches view key
+        // We need to ensure we don't loop infinitely if store updates hash.
+        // But store update is triggered by UI click usually.
+        setCurrentView(hash as any);
+      } else if (!hash) {
+        window.location.hash = '#/dashboard';
+        setCurrentView('dashboard');
+      }
+    };
+
+    // Initialize
+    handleHashChange();
+
+    // 2. Listen for hash changes (Back/Forward buttons)
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, [setCurrentView]); // Dependency on setCurrentView (stable)
+
+  // Update hash when view changes (Internal navigation)
+  useEffect(() => {
+    const targetHash = `#/${currentView}`;
+    if (window.location.hash !== targetHash) {
+      window.location.hash = targetHash;
+    }
+  }, [currentView]);
+
+
   // Command Palette keyboard shortcut (Cmd+K / Ctrl+K)
   useCommandPalette(() => setIsCommandPaletteOpen(prev => !prev));
 
@@ -81,6 +117,9 @@ function App() {
       case 'haccp': return <HACCPView />;
       case 'analytics': return <MenuAnalyticsView />;
       case 'kds': return <KitchenDisplayView />;
+      case 'ai-scanner': return <PurchasingView />; // Scan is inside Purchasing
+      case 'ai-menu': return <AIMenuView />;
+      case 'ai-search': return <AISearchView />;
       default: return <Dashboard />;
     }
   };
@@ -142,6 +181,23 @@ function App() {
             label="Ingeniería Menú"
             active={currentView === 'analytics'}
             onClick={() => handleNavigation('analytics')}
+          />
+
+          <div className="pt-4 pb-2">
+            <p className="px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Chef AI</p>
+          </div>
+
+          <NavItem
+            icon={<ChefHat />}
+            label="Generador Menús"
+            active={currentView === 'ai-menu'}
+            onClick={() => handleNavigation('ai-menu')}
+          />
+          <NavItem
+            icon={<Search />}
+            label="Asistente Chef"
+            active={currentView === 'ai-search'}
+            onClick={() => handleNavigation('ai-search')}
           />
 
           <div className="pt-4 pb-2">

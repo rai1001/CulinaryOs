@@ -7,6 +7,8 @@ import { IngredientForm } from './IngredientForm';
 
 export const IngredientsView: React.FC = () => {
     const { ingredients } = useStore();
+    // const { getFilteredIngredients } = useStore(); // TODO: Check if this selector exists in store
+    // const ingredients = getFilteredIngredients(); // For now fallback to simple list until slice is verified
     const [searchTerm, setSearchTerm] = useState('');
     const [showAddModal, setShowAddModal] = useState(false);
 

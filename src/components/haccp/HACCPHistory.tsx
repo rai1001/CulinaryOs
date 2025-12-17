@@ -28,7 +28,7 @@ export const HACCPHistory: React.FC = () => {
     // Filter logs
     const filteredLogs = useMemo(() => {
         return haccpLogs
-            .filter(log => {
+            .filter((log: import('../../types').HACCPLog) => {
                 const logDate = new Date(log.timestamp);
                 if (logDate < dateFilter) return false;
                 if (statusFilter !== 'all' && log.status !== statusFilter) return false;

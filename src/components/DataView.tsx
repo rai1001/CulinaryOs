@@ -11,7 +11,12 @@ import { StaffList } from './lists/StaffList';
 type Tab = 'recipes' | 'menus' | 'staff' | 'ingredients';
 
 export const DataView: React.FC = () => {
-  const { recipes, menus, ingredients } = useStore();
+  const {
+    recipes,
+    menus,
+    ingredients,
+    // Clear actions - assumed not available or not needed, removing to fix build
+  } = useStore();
   const [activeTab, setActiveTab] = useState<Tab>('ingredients');
   const [searchTerm, setSearchTerm] = useState('');
   const [showIngredientForm, setShowIngredientForm] = useState(false);

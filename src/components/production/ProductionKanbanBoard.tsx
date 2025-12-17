@@ -1,10 +1,9 @@
 import React from 'react';
-import { ChefHat, AlertCircle, CheckCircle, Plus } from 'lucide-react';
-import { useStore } from '../../store/useStore';
+import { ChefHat, AlertCircle, CheckCircle } from 'lucide-react';
 import type { KanbanTask, KanbanTaskStatus } from '../../types';
 
 interface ColumnProps {
-    id: string;
+    id: KanbanTaskStatus;
     title: string;
     tasks: KanbanTask[];
     color: string;
@@ -71,32 +70,16 @@ const KanbanColumn: React.FC<ColumnProps> = ({ id, title, tasks, color, onDrop }
     );
 };
 
-export const ProductionKanbanBoard: React.FC = () => {
-    const {
-        selectedProductionEventId,
-        productionTasks,
-        generateProductionTasks,
-        updateTaskStatus,
-        events
-    } = useStore();
+interface ProductionKanbanBoardProps {
+    tasks: KanbanTask[];
+    onTaskStatusChange: (taskId: string, newStatus: KanbanTaskStatus) => void;
+}
 
-    const selectedEvent = events.find(e => e.id === selectedProductionEventId);
-    const tasks = selectedProductionEventId ? (productionTasks[selectedProductionEventId] || []) : [];
-
-    const handleGenerateTasksAction = () => {
-        if (!selectedEvent) return;
-        generateProductionTasks(selectedEvent);
-    };
+export const ProductionKanbanBoard: React.FC<ProductionKanbanBoardProps> = ({ tasks, onTaskStatusChange }) => {
 
     const handleUpdateStatus = (taskId: string, status: KanbanTaskStatus) => {
-        if (selectedProductionEventId) {
-            updateTaskStatus(selectedProductionEventId, taskId, status);
-        }
+        onTaskStatusChange(taskId, status);
     };
-
-    if (!selectedProductionEventId) {
-        return <div className="text-center text-slate-500 mt-10">Selecciona un evento para ver el tablero.</div>;
-    }
 
     return (
         <div className="h-full flex flex-col">
@@ -105,14 +88,6 @@ export const ProductionKanbanBoard: React.FC = () => {
                     <h2 className="text-xl font-bold text-white">Tablero Kanban</h2>
                     <p className="text-slate-400 text-sm">Gestiona el flujo de trabajo de la cocina</p>
                 </div>
-                {tasks.length === 0 && (
-                    <button
-                        onClick={handleGenerateTasksAction}
-                        className="bg-primary hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
-                    >
-                        <Plus size={16} /> Generar Tareas del Menú
-                    </button>
-                )}
             </div>
 
             <div className="flex-1 flex gap-6 overflow-x-auto pb-4">

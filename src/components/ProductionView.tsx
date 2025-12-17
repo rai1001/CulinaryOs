@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useStore } from '../store/useStore';
 import type { EventType } from '../types';
 import { calculateShoppingList } from '../utils/production';
@@ -7,20 +7,31 @@ import { printLabel, formatLabelData } from './printing/PrintService';
 import * as XLSX from 'xlsx';
 import { format } from 'date-fns';
 import { ProductionKanbanBoard } from './production/ProductionKanbanBoard';
-import { ProductionSkeleton } from './ui/Skeletons';
-import { ErrorState } from './ui/ErrorState';
 import { EmptyState } from './ui/EmptyState';
 
 export const ProductionView: React.FC = () => {
-    const { menus, events, setEvents, selectedProductionEventId, setSelectedProductionEventId } = useStore();
-    const [newEvent, setNewEvent] = useState({ name: '', date: format(new Date(), 'yyyy-MM-dd'), pax: 10, menuId: '' });
-    const [activeTab, setActiveTab] = useState<'shopping' | 'mise-en-place' | 'kanban'>('shopping');
-    const [isMounted, setIsMounted] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    // New Store Props
+    const {
+        menus,
+        events,
+        setEvents,
+        activeOutletId,
+        selectedProductionEventId,
+        setSelectedProductionEventId,
+        productionTasks,
+        generateProductionTasks,
+        updateTaskStatus
+    } = useStore();
 
-    useEffect(() => {
-        setIsMounted(true);
-    }, []);
+    // Local state for event creation 
+    const [newEvent, setNewEvent] = useState({ name: '', date: format(new Date(), 'yyyy-MM-dd'), pax: 10, menuId: '' });
+    const [activeTab, setActiveTab] = useState<'shopping' | 'mise-en-place' | 'kanban'>('kanban');
+
+    // Resolving Selected Event
+    const selectedEvent = events.find(e => e.id === selectedProductionEventId);
+
+    // Derived Data
+    const eventTasks = selectedProductionEventId ? (productionTasks[selectedProductionEventId] || []) : [];
 
     const handleCreateEvent = (e: React.FormEvent) => {
         e.preventDefault();
@@ -36,7 +47,8 @@ export const ProductionView: React.FC = () => {
             pax: newEvent.pax,
             type: 'Comida' as EventType,
             menuId: newEvent.menuId,
-            menu: menu
+            menu: menu,
+            outletId: activeOutletId || undefined
         };
 
         setEvents([...events, event]);
@@ -44,7 +56,6 @@ export const ProductionView: React.FC = () => {
         setNewEvent({ name: '', date: format(new Date(), 'yyyy-MM-dd'), pax: 10, menuId: '' });
     };
 
-    const selectedEvent = events.find(e => e.id === selectedProductionEventId);
 
     const shoppingList = useMemo(() => {
         if (!selectedEvent || !selectedEvent.menu) return [];
@@ -54,13 +65,11 @@ export const ProductionView: React.FC = () => {
     const totalCost = shoppingList.reduce((sum, item) => sum + item.totalCost, 0);
 
     const handlePrint = () => {
-        // Default browser print for the whole page (Production Sheet)
         window.print();
     };
 
     const handleExport = () => {
         if (!selectedEvent) return;
-
         const rows = shoppingList.map(item => ({
             Ingrediente: item.ingredientName,
             Cantidad: item.totalQuantity,
@@ -68,27 +77,34 @@ export const ProductionView: React.FC = () => {
             CosteUnitario: item.totalQuantity > 0 ? (item.totalCost / item.totalQuantity) : 0,
             CosteTotal: item.totalCost
         }));
-
         const ws = XLSX.utils.json_to_sheet(rows);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Lista de Compra");
         XLSX.writeFile(wb, `Produccion_${selectedEvent.name.replace(/\s+/g, '_')}.xlsx`);
     };
 
-    if (!isMounted) return <ProductionSkeleton />;
-    // In a real app, we would check store.error here
-    if (error) return <ErrorState message={error} onRetry={() => setError(null)} />;
+    const handleGenerateTasks = () => {
+        if (selectedEvent) {
+            generateProductionTasks(selectedEvent);
+        }
+    };
+
+    const handleTaskStatusChange = (taskId: string, newStatus: 'todo' | 'in-progress' | 'done') => {
+        if (selectedProductionEventId) {
+            updateTaskStatus(selectedProductionEventId, taskId, newStatus);
+        }
+    };
 
     return (
         <div className="flex h-full bg-background">
             {/* Event List / Sidebar */}
-            <div className="w-80 border-r border-white/5 bg-surface/30 p-4 flex flex-col">
+            <div className="w-80 border-r border-white/5 bg-surface/30 p-4 flex flex-col overflow-hidden">
                 <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
                     <Calendar className="w-5 h-5 text-primary" /> Eventos
                 </h3>
 
                 {/* New Event Form */}
-                <form onSubmit={handleCreateEvent} className="bg-surface/50 p-4 rounded-xl border border-white/5 space-y-3 mb-6">
+                <form onSubmit={handleCreateEvent} className="bg-surface/50 p-4 rounded-xl border border-white/5 space-y-3 mb-6 flex-none">
                     <input
                         className="w-full bg-black/20 border border-white/10 rounded px-3 py-2 text-sm text-white focus:border-primary placeholder:text-slate-500"
                         placeholder="Nombre del Evento"
@@ -127,34 +143,32 @@ export const ProductionView: React.FC = () => {
                 </form>
 
                 <div className="flex-1 overflow-auto space-y-2">
-                    {events.length === 0 && (
-                        <div className="py-8">
-                             <EmptyState title="Sin eventos" message="No hay eventos programados." />
-                        </div>
-                    )}
-                    {events.map(event => (
-                        <div
-                            key={event.id}
-                            onClick={() => setSelectedProductionEventId(event.id)}
-                            className={`p-3 rounded-lg cursor-pointer border transition-all ${selectedProductionEventId === event.id
-                                ? 'bg-primary/10 border-primary/50 text-blue-100'
-                                : 'bg-surface/40 border-transparent hover:bg-surface/60 text-slate-300'
-                                }`}
-                        >
-                            <div className="font-medium">{event.name}</div>
-                            <div className="text-xs opacity-70 flex justify-between mt-1">
-                                <span>{event.date}</span>
-                                <span>{event.pax} PAX</span>
+                    {events.length === 0 && <p className="text-center text-slate-500 text-sm py-4">No hay eventos todavía.</p>}
+                    {events
+                        .filter(e => !activeOutletId || e.outletId === activeOutletId)
+                        .map(event => (
+                            <div
+                                key={event.id}
+                                onClick={() => setSelectedProductionEventId(event.id)}
+                                className={`p-3 rounded-lg cursor-pointer border transition-all ${selectedProductionEventId === event.id
+                                    ? 'bg-primary/10 border-primary/50 text-blue-100'
+                                    : 'bg-surface/40 border-transparent hover:bg-surface/60 text-slate-300'
+                                    }`}
+                            >
+                                <div className="font-medium">{event.name}</div>
+                                <div className="text-xs opacity-70 flex justify-between mt-1">
+                                    <span>{event.date}</span>
+                                    <span>{event.pax} PAX</span>
+                                </div>
                             </div>
-                        </div>
-                    ))}
+                        ))}
                 </div>
             </div>
 
             {/* Main Content: Production Sheet */}
             <div className="flex-1 p-8 overflow-auto">
                 {selectedEvent ? (
-                    <div className="max-w-4xl mx-auto space-y-8">
+                    <div className="max-w-6xl mx-auto space-y-8">
                         <header className="flex items-start justify-between">
                             <div>
                                 <h1 className="text-3xl font-bold text-white">{selectedEvent.name}</h1>
@@ -191,6 +205,13 @@ export const ProductionView: React.FC = () => {
                         {/* Tabs */}
                         <div className="flex border-b border-white/10 space-x-4 print:hidden">
                             <button
+                                onClick={() => setActiveTab('kanban')}
+                                className={`pb-2 text-sm font-medium transition-colors border-b-2 ${activeTab === 'kanban' ? 'border-primary text-primary' : 'border-transparent text-slate-400 hover:text-slate-200'
+                                    }`}
+                            >
+                                Tablero Kanban
+                            </button>
+                            <button
                                 onClick={() => setActiveTab('shopping')}
                                 className={`pb-2 text-sm font-medium transition-colors border-b-2 ${activeTab === 'shopping' ? 'border-primary text-primary' : 'border-transparent text-slate-400 hover:text-slate-200'
                                     }`}
@@ -203,13 +224,6 @@ export const ProductionView: React.FC = () => {
                                     }`}
                             >
                                 Mise en Place (Por Partida)
-                            </button>
-                            <button
-                                onClick={() => setActiveTab('kanban')}
-                                className={`pb-2 text-sm font-medium transition-colors border-b-2 ${activeTab === 'kanban' ? 'border-primary text-primary' : 'border-transparent text-slate-400 hover:text-slate-200'
-                                    }`}
-                            >
-                                Tablero Kanban
                             </button>
                         </div>
 
@@ -249,8 +263,27 @@ export const ProductionView: React.FC = () => {
                                 </table>
                             </div>
                         ) : activeTab === 'kanban' ? (
-                            <div className="h-[600px]">
-                                <ProductionKanbanBoard />
+                            <div className="h-[600px] flex flex-col">
+                                {eventTasks.length === 0 ? (
+                                    <div className="flex-1 flex flex-col items-center justify-center p-8 border border-dashed border-white/10 rounded-xl bg-surface/20">
+                                        <p className="text-slate-400 mb-4 text-center">
+                                            No se han generado tareas de producción para este evento.<br />
+                                            Genera las tareas basadas en el menú para comenzar el seguimiento.
+                                        </p>
+                                        <button
+                                            onClick={handleGenerateTasks}
+                                            className="px-6 py-2 bg-primary hover:bg-primary/80 text-white rounded-lg transition-colors flex items-center gap-2"
+                                        >
+                                            <Plus size={18} />
+                                            Generar Tareas del KDS
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <ProductionKanbanBoard
+                                        tasks={eventTasks}
+                                        onTaskStatusChange={handleTaskStatusChange}
+                                    />
+                                )}
                             </div>
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

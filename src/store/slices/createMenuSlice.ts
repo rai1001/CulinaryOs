@@ -1,14 +1,5 @@
 import type { StateCreator } from 'zustand';
-import type { Menu } from '../../types';
-import type { AppState } from '../types';
-
-export interface MenuSlice {
-    menus: Menu[];
-    setMenus: (menus: Menu[]) => void;
-    addMenu: (menu: Menu) => void;
-    updateMenu: (menu: Menu) => void;
-    deleteMenu: (id: string) => void;
-}
+import type { AppState, MenuSlice } from '../types';
 
 export const createMenuSlice: StateCreator<
     AppState,

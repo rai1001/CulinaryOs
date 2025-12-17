@@ -1,29 +1,5 @@
 import type { StateCreator } from 'zustand';
-import type { PCC, HACCPLog, HACCPTask, HACCPTaskCompletion } from '../../types';
-import type { AppState } from '../types';
-
-export interface HACCPSlice {
-    pccs: PCC[];
-    haccpLogs: HACCPLog[];
-    haccpTasks: HACCPTask[];
-    haccpTaskCompletions: HACCPTaskCompletion[];
-
-    // PCC actions
-    addPCC: (pcc: PCC) => void;
-    updatePCC: (pcc: PCC) => void;
-    deletePCC: (id: string) => void;
-
-    // HACCP Log actions
-    addHACCPLog: (log: HACCPLog) => void;
-
-    // HACCP Task actions
-    addHACCPTask: (task: HACCPTask) => void;
-    updateHACCPTask: (task: HACCPTask) => void;
-    deleteHACCPTask: (id: string) => void;
-
-    // HACCP Task Completion actions
-    completeHACCPTask: (completion: HACCPTaskCompletion) => void;
-}
+import type { AppState, HACCPSlice } from '../types';
 
 export const createHACCPSlice: StateCreator<
     AppState,
@@ -39,6 +15,12 @@ export const createHACCPSlice: StateCreator<
         { id: 'task-3', name: 'Revisión Calibración Termómetros', description: 'Verificar calibración de termómetros', frequency: 'MONTHLY', isActive: true },
     ],
     haccpTaskCompletions: [],
+
+    // Setters for Sync
+    setPCCs: (pccs) => set({ pccs }),
+    setHACCPLogs: (logs) => set({ haccpLogs: logs }),
+    setHACCPTasks: (tasks) => set({ haccpTasks: tasks }),
+    setHACCPTaskCompletions: (completions) => set({ haccpTaskCompletions: completions }),
 
     // PCC actions
     addPCC: (pcc) => set((state) => ({

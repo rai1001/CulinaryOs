@@ -16,9 +16,14 @@ export interface IngredientSlice {
 
 export interface EventSlice {
     events: Event[];
+    eventsLoading: boolean;
+    eventsError: string | null;
+    eventsRange: { start: string; end: string } | null;
     setEvents: (items: Event[]) => void;
     addEvent: (event: Event) => void;
     updateEvent: (event: Event) => void;
+    getFilteredEvents: () => Event[];
+    fetchEventsRange: (start: string, end: string) => Promise<void>;
 }
 
 export interface ProductionSlice {
@@ -59,19 +64,35 @@ export interface MenuSlice {
 
 export interface PurchaseSlice {
     suppliers: Supplier[];
+
+    // Pagination State
     purchaseOrders: PurchaseOrder[];
+    purchaseOrdersLoading: boolean;
+    purchaseOrdersError: string | null;
+    purchaseOrdersHasMore: boolean;
+    purchaseOrdersCursor: import('../types').PageCursor | null;
+    purchaseOrdersFilters: import('../types').PurchaseOrderFilters;
+
     setSuppliers: (suppliers: Supplier[]) => void;
     addSupplier: (supplier: Supplier) => void;
     updateSupplier: (supplier: Supplier) => void;
     deleteSupplier: (id: string) => void;
-    setPurchaseOrders: (purchaseOrders: PurchaseOrder[]) => void;
+    clearSuppliers: () => void;
+
+    // Purchase Order Actions
+    setPurchaseOrders: (purchaseOrders: PurchaseOrder[]) => void; // Keep for legacy or manual set
     addPurchaseOrder: (order: PurchaseOrder) => void;
     updatePurchaseOrder: (order: PurchaseOrder) => void;
     deletePurchaseOrder: (id: string) => void;
+    // Async Actions
+    fetchPurchaseOrders: (options?: { reset?: boolean }) => Promise<void>;
+    loadMorePurchaseOrders: () => Promise<void>;
+    setPurchaseOrderFilters: (filters: import('../types').PurchaseOrderFilters) => void;
 }
 
 export interface WasteSlice {
     wasteRecords: WasteRecord[];
+    setWasteRecords: (records: WasteRecord[]) => void;
     addWasteRecord: (record: WasteRecord) => void;
     deleteWasteRecord: (id: string) => void;
 }
@@ -81,6 +102,10 @@ export interface HACCPSlice {
     haccpLogs: HACCPLog[];
     haccpTasks: HACCPTask[];
     haccpTaskCompletions: HACCPTaskCompletion[];
+    setPCCs: (pccs: PCC[]) => void;
+    setHACCPLogs: (logs: HACCPLog[]) => void;
+    setHACCPTasks: (tasks: HACCPTask[]) => void;
+    setHACCPTaskCompletions: (completions: HACCPTaskCompletion[]) => void;
     addPCC: (pcc: PCC) => void;
     updatePCC: (pcc: PCC) => void;
     deletePCC: (id: string) => void;
@@ -95,6 +120,17 @@ export interface AnalyticsSlice {
     calculateMenuAnalytics: (startDate: string, endDate: string) => MenuItemAnalytics[];
 }
 
+export interface OutletSlice {
+    outlets: import('../types').Outlet[];
+    activeOutletId: string | null;
+    setOutlets: (outlets: import('../types').Outlet[]) => void;
+    addOutlet: (outlet: import('../types').Outlet) => void;
+    updateOutlet: (id: string, updates: Partial<import('../types').Outlet>) => void;
+    setActiveOutlet: (id: string | null) => void;
+    deleteOutlet: (id: string) => void;
+    toggleOutletActive: (id: string) => void;
+    getOutlet: (id: string) => import('../types').Outlet | undefined;
+}
 export interface AppState extends
     IngredientSlice,
     EventSlice,
@@ -105,10 +141,12 @@ export interface AppState extends
     PurchaseSlice,
     WasteSlice,
     HACCPSlice,
-    AnalyticsSlice {
-    // UI State
+    AnalyticsSlice,
+    OutletSlice {
     currentView: 'dashboard' | 'schedule' | 'production' | 'data' | 'events' | 'recipes' | 'ingredients' | 'suppliers' | 'inventory' | 'purchasing' | 'waste' | 'haccp' | 'analytics' | 'kds' | 'ai-scanner' | 'ai-search' | 'ai-menu' | 'ai-ingredients' | 'outlets';
     setCurrentView: (view: 'dashboard' | 'schedule' | 'production' | 'data' | 'events' | 'recipes' | 'ingredients' | 'suppliers' | 'inventory' | 'purchasing' | 'waste' | 'haccp' | 'analytics' | 'kds' | 'ai-scanner' | 'ai-search' | 'ai-menu' | 'ai-ingredients' | 'outlets') => void;
-    activeOutletId: string | null;
+    // activeOutletId is inherited from OutletSlice
+    // setActiveOutletId should optionally match setActiveOutlet or be separate. 
+    // OutletSlice has setActiveOutlet. Let's add alias or stick to what's used.
     setActiveOutletId: (id: string | null) => void;
 }

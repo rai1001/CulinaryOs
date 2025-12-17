@@ -7,7 +7,7 @@ import { ExpiryDateScanner } from './scanner/ExpiryDateScanner';
 import { lookupProductByBarcode, type ProductLookupResult } from '../services/productLookupService';
 
 type ScanStep = 'idle' | 'scanning-barcode' | 'product-found' | 'scanning-expiry' | 'confirm-batch';
-type FilterTab = 'all' | 'expiring' | 'low-stock';
+type FilterTab = 'all' | 'expiring' | 'low-stock' | 'meat' | 'fish' | 'produce' | 'dairy' | 'dry' | 'frozen' | 'canned' | 'cocktail' | 'sports_menu' | 'corporate_menu' | 'coffee_break' | 'restaurant' | 'other';
 
 export const InventoryView: React.FC = () => {
     const { ingredients, addBatch, addIngredient } = useStore();
@@ -175,6 +175,8 @@ export const InventoryView: React.FC = () => {
                 const minStock = ing.minStock || 0;
                 return totalStock <= minStock;
             });
+        } else if (activeFilter !== 'all') {
+            filtered = filtered.filter(ing => ing.category === activeFilter);
         }
 
         return filtered;
@@ -221,9 +223,46 @@ export const InventoryView: React.FC = () => {
             <div className="flex gap-2 border-b border-gray-200">
                 <button
                     onClick={() => setActiveFilter('all')}
-                    className={`px-4 py-3 font-medium text-sm transition-all relative ${activeFilter === 'all'
+                    className={`px-4 py-3 font-medium text-sm transition-all whitespace-nowrap ${activeFilter === 'all'
+                        ? 'text-primary border-b-2 border-primary'
+                        : 'text-gray-500 hover:text-gray-700'
+                        }`}
+                >
+                    Todo
+                </button>
+                {/* Category Tabs */}
+                {[
+                    { id: 'meat', label: 'Carne' },
+                    { id: 'fish', label: 'Pescado' },
+                    { id: 'produce', label: 'Frutas/Verduras' },
+                    { id: 'dairy', label: 'Lácteos' },
+                    { id: 'dry', label: 'Secos' },
+                    { id: 'frozen', label: 'Congelados' },
+                    { id: 'canned', label: 'Latas' },
+                    { id: 'cocktail', label: 'Cóctel' },
+                    { id: 'sports_menu', label: 'Deportivo' },
+                    { id: 'corporate_menu', label: 'Empresa' },
+                    { id: 'coffee_break', label: 'Coffee' },
+                    { id: 'restaurant', label: 'Restaurante' },
+                    { id: 'other', label: 'Otros' }
+                ].map(cat => (
+                    <button
+                        key={cat.id}
+                        onClick={() => setActiveFilter(cat.id as any)}
+                        className={`px-4 py-3 font-medium text-sm transition-all whitespace-nowrap ${activeFilter === cat.id
                             ? 'text-primary border-b-2 border-primary'
                             : 'text-gray-500 hover:text-gray-700'
+                            }`}
+                    >
+                        {cat.label}
+                    </button>
+                ))}
+
+                <button
+                    onClick={() => setActiveFilter('all')}
+                    className={`px-4 py-3 font-medium text-sm transition-all relative ${activeFilter === 'all'
+                        ? 'text-primary border-b-2 border-primary'
+                        : 'text-gray-500 hover:text-gray-700'
                         }`}
                 >
                     <div className="flex items-center gap-2">
@@ -238,8 +277,8 @@ export const InventoryView: React.FC = () => {
                 <button
                     onClick={() => setActiveFilter('expiring')}
                     className={`px-4 py-3 font-medium text-sm transition-all relative ${activeFilter === 'expiring'
-                            ? 'text-orange-600 border-b-2 border-orange-600'
-                            : 'text-gray-500 hover:text-gray-700'
+                        ? 'text-orange-600 border-b-2 border-orange-600'
+                        : 'text-gray-500 hover:text-gray-700'
                         }`}
                 >
                     <div className="flex items-center gap-2">
@@ -256,8 +295,8 @@ export const InventoryView: React.FC = () => {
                 <button
                     onClick={() => setActiveFilter('low-stock')}
                     className={`px-4 py-3 font-medium text-sm transition-all relative ${activeFilter === 'low-stock'
-                            ? 'text-red-600 border-b-2 border-red-600'
-                            : 'text-gray-500 hover:text-gray-700'
+                        ? 'text-red-600 border-b-2 border-red-600'
+                        : 'text-gray-500 hover:text-gray-700'
                         }`}
                 >
                     <div className="flex items-center gap-2">
@@ -461,198 +500,206 @@ export const InventoryView: React.FC = () => {
             {/* Scanner Workflow Modals */}
 
             {/* Barcode Scanner */}
-            {scanStep === 'scanning-barcode' && (
-                <BarcodeScanner
-                    onScan={handleBarcodeScan}
-                    onClose={() => setScanStep('idle')}
-                />
-            )}
+            {
+                scanStep === 'scanning-barcode' && (
+                    <BarcodeScanner
+                        onScan={handleBarcodeScan}
+                        onClose={() => setScanStep('idle')}
+                    />
+                )
+            }
 
             {/* Product Found Modal */}
-            {scanStep === 'product-found' && productLookup && (
-                <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
-                    <div className="bg-white rounded-2xl p-6 w-full max-w-lg shadow-2xl animate-in zoom-in-95 duration-200">
-                        <h3 className="text-2xl font-bold mb-4">
-                            {productLookup.found ? '✓ Producto Encontrado' : '⚠️ Producto No Encontrado'}
-                        </h3>
+            {
+                scanStep === 'product-found' && productLookup && (
+                    <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
+                        <div className="bg-white rounded-2xl p-6 w-full max-w-lg shadow-2xl animate-in zoom-in-95 duration-200">
+                            <h3 className="text-2xl font-bold mb-4">
+                                {productLookup.found ? '✓ Producto Encontrado' : '⚠️ Producto No Encontrado'}
+                            </h3>
 
-                        {isLookingUp ? (
-                            <div className="flex flex-col items-center py-12">
-                                <div className="animate-spin rounded-full h-16 w-16 border-4 border-primary border-t-transparent mb-4" />
-                                <p className="text-gray-600">Buscando producto...</p>
-                            </div>
-                        ) : productLookup.found ? (
-                            <div className="space-y-4">
-                                {productLookup.imageUrl && (
-                                    <img
-                                        src={productLookup.imageUrl}
-                                        alt={productLookup.name}
-                                        className="w-32 h-32 object-contain mx-auto rounded-lg border border-gray-200"
-                                    />
-                                )}
-                                <div className="bg-primary/5 p-4 rounded-xl border border-primary/10">
-                                    <p className="text-sm text-gray-500">Nombre</p>
-                                    <p className="text-xl font-bold text-gray-900">{productLookup.name}</p>
-                                    {productLookup.brand && (
-                                        <>
-                                            <p className="text-sm text-gray-500 mt-2">Marca</p>
-                                            <p className="text-gray-700">{productLookup.brand}</p>
-                                        </>
-                                    )}
-                                    {productLookup.allergens && productLookup.allergens.length > 0 && (
-                                        <>
-                                            <p className="text-sm text-gray-500 mt-2">Alérgenos</p>
-                                            <div className="flex flex-wrap gap-1 mt-1">
-                                                {productLookup.allergens.map((allergen, idx) => (
-                                                    <span
-                                                        key={idx}
-                                                        className="bg-orange-100 text-orange-800 text-xs px-2 py-1 rounded"
-                                                    >
-                                                        {allergen}
-                                                    </span>
-                                                ))}
-                                            </div>
-                                        </>
-                                    )}
+                            {isLookingUp ? (
+                                <div className="flex flex-col items-center py-12">
+                                    <div className="animate-spin rounded-full h-16 w-16 border-4 border-primary border-t-transparent mb-4" />
+                                    <p className="text-gray-600">Buscando producto...</p>
                                 </div>
-
-                                <div className="flex gap-3">
-                                    <button
-                                        onClick={resetScanWorkflow}
-                                        className="flex-1 px-4 py-3 bg-gray-100 font-medium rounded-xl hover:bg-gray-200 transition-colors"
-                                    >
-                                        Cancelar
-                                    </button>
-                                    <button
-                                        onClick={proceedToExpiryScan}
-                                        className="flex-1 px-4 py-3 bg-primary text-white font-bold rounded-xl hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20"
-                                    >
-                                        Escanear Fecha →
-                                    </button>
-                                </div>
-                            </div>
-                        ) : (
-                            <div className="space-y-4">
-                                <div className="bg-orange-50 border border-orange-200 rounded-xl p-4">
-                                    <p className="text-gray-700">
-                                        No se encontró información para el código <span className="font-mono font-bold">{scannedBarcode}</span>
-                                    </p>
-                                    <p className="text-sm text-gray-600 mt-2">
-                                        Puedes continuar introduciendo los datos manualmente.
-                                    </p>
-                                </div>
-
-                                <div className="space-y-3">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Nombre del Producto</label>
-                                        <input
-                                            type="text"
-                                            value={productLookup.name || ''}
-                                            onChange={(e) => setProductLookup({ ...productLookup, name: e.target.value })}
-                                            className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary focus:border-primary"
-                                            placeholder="Nombre..."
+                            ) : productLookup.found ? (
+                                <div className="space-y-4">
+                                    {productLookup.imageUrl && (
+                                        <img
+                                            src={productLookup.imageUrl}
+                                            alt={productLookup.name}
+                                            className="w-32 h-32 object-contain mx-auto rounded-lg border border-gray-200"
                                         />
+                                    )}
+                                    <div className="bg-primary/5 p-4 rounded-xl border border-primary/10">
+                                        <p className="text-sm text-gray-500">Nombre</p>
+                                        <p className="text-xl font-bold text-gray-900">{productLookup.name}</p>
+                                        {productLookup.brand && (
+                                            <>
+                                                <p className="text-sm text-gray-500 mt-2">Marca</p>
+                                                <p className="text-gray-700">{productLookup.brand}</p>
+                                            </>
+                                        )}
+                                        {productLookup.allergens && productLookup.allergens.length > 0 && (
+                                            <>
+                                                <p className="text-sm text-gray-500 mt-2">Alérgenos</p>
+                                                <div className="flex flex-wrap gap-1 mt-1">
+                                                    {productLookup.allergens.map((allergen, idx) => (
+                                                        <span
+                                                            key={idx}
+                                                            className="bg-orange-100 text-orange-800 text-xs px-2 py-1 rounded"
+                                                        >
+                                                            {allergen}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            </>
+                                        )}
+                                    </div>
+
+                                    <div className="flex gap-3">
+                                        <button
+                                            onClick={resetScanWorkflow}
+                                            className="flex-1 px-4 py-3 bg-gray-100 font-medium rounded-xl hover:bg-gray-200 transition-colors"
+                                        >
+                                            Cancelar
+                                        </button>
+                                        <button
+                                            onClick={proceedToExpiryScan}
+                                            className="flex-1 px-4 py-3 bg-primary text-white font-bold rounded-xl hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20"
+                                        >
+                                            Escanear Fecha →
+                                        </button>
                                     </div>
                                 </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    <div className="bg-orange-50 border border-orange-200 rounded-xl p-4">
+                                        <p className="text-gray-700">
+                                            No se encontró información para el código <span className="font-mono font-bold">{scannedBarcode}</span>
+                                        </p>
+                                        <p className="text-sm text-gray-600 mt-2">
+                                            Puedes continuar introduciendo los datos manualmente.
+                                        </p>
+                                    </div>
 
-                                <div className="flex gap-3">
-                                    <button
-                                        onClick={resetScanWorkflow}
-                                        className="flex-1 px-4 py-3 bg-gray-100 font-medium rounded-xl hover:bg-gray-200 transition-colors"
-                                    >
-                                        Cancelar
-                                    </button>
-                                    <button
-                                        onClick={proceedToExpiryScan}
-                                        disabled={!productLookup.name}
-                                        className="flex-1 px-4 py-3 bg-primary text-white font-bold rounded-xl hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed"
-                                    >
-                                        Continuar →
-                                    </button>
+                                    <div className="space-y-3">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Nombre del Producto</label>
+                                            <input
+                                                type="text"
+                                                value={productLookup.name || ''}
+                                                onChange={(e) => setProductLookup({ ...productLookup, name: e.target.value })}
+                                                className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary focus:border-primary"
+                                                placeholder="Nombre..."
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="flex gap-3">
+                                        <button
+                                            onClick={resetScanWorkflow}
+                                            className="flex-1 px-4 py-3 bg-gray-100 font-medium rounded-xl hover:bg-gray-200 transition-colors"
+                                        >
+                                            Cancelar
+                                        </button>
+                                        <button
+                                            onClick={proceedToExpiryScan}
+                                            disabled={!productLookup.name}
+                                            className="flex-1 px-4 py-3 bg-primary text-white font-bold rounded-xl hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            Continuar →
+                                        </button>
+                                    </div>
                                 </div>
-                            </div>
-                        )}
+                            )}
+                        </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             {/* Expiry Date Scanner */}
-            {scanStep === 'scanning-expiry' && productLookup && (
-                <ExpiryDateScanner
-                    productName={productLookup.name}
-                    onDateScanned={handleDateScanned}
-                    onClose={resetScanWorkflow}
-                />
-            )}
+            {
+                scanStep === 'scanning-expiry' && productLookup && (
+                    <ExpiryDateScanner
+                        productName={productLookup.name}
+                        onDateScanned={handleDateScanned}
+                        onClose={resetScanWorkflow}
+                    />
+                )
+            }
 
             {/* Confirm Batch Modal */}
-            {scanStep === 'confirm-batch' && productLookup && (
-                <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
-                    <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-200">
-                        <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
-                            <Plus className="text-primary" /> Confirmar Entrada de Stock
-                        </h3>
+            {
+                scanStep === 'confirm-batch' && productLookup && (
+                    <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
+                        <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-200">
+                            <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
+                                <Plus className="text-primary" /> Confirmar Entrada de Stock
+                            </h3>
 
-                        <div className="mb-6 bg-primary/5 p-4 rounded-xl border border-primary/10">
-                            <div className="text-sm text-gray-500">Producto</div>
-                            <div className="text-lg font-bold text-gray-900">{productLookup.name}</div>
-                            <div className="text-sm text-gray-500 mt-2">Fecha de Caducidad</div>
-                            <div className="text-lg font-bold text-gray-900">
-                                {new Date(batchForm.expiryDate).toLocaleDateString('es-ES')}
-                            </div>
-                        </div>
-
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Cantidad (unidades)
-                                </label>
-                                <input
-                                    type="number"
-                                    step="1"
-                                    min="1"
-                                    className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-lg font-medium focus:ring-2 focus:ring-primary focus:border-primary focus:outline-none"
-                                    value={batchForm.quantity}
-                                    onChange={e => setBatchForm({ ...batchForm, quantity: e.target.value })}
-                                    autoFocus
-                                    placeholder="1"
-                                />
+                            <div className="mb-6 bg-primary/5 p-4 rounded-xl border border-primary/10">
+                                <div className="text-sm text-gray-500">Producto</div>
+                                <div className="text-lg font-bold text-gray-900">{productLookup.name}</div>
+                                <div className="text-sm text-gray-500 mt-2">Fecha de Caducidad</div>
+                                <div className="text-lg font-bold text-gray-900">
+                                    {new Date(batchForm.expiryDate).toLocaleDateString('es-ES')}
+                                </div>
                             </div>
 
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Coste Unitario (€) <span className="text-gray-400">(opcional)</span>
-                                </label>
-                                <input
-                                    type="number"
-                                    step="0.01"
-                                    min="0"
-                                    className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 focus:ring-2 focus:ring-primary focus:border-primary focus:outline-none"
-                                    value={batchForm.costPerUnit}
-                                    onChange={e => setBatchForm({ ...batchForm, costPerUnit: e.target.value })}
-                                    placeholder="0.00"
-                                />
-                            </div>
-                        </div>
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Cantidad (unidades)
+                                    </label>
+                                    <input
+                                        type="number"
+                                        step="1"
+                                        min="1"
+                                        className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-lg font-medium focus:ring-2 focus:ring-primary focus:border-primary focus:outline-none"
+                                        value={batchForm.quantity}
+                                        onChange={e => setBatchForm({ ...batchForm, quantity: e.target.value })}
+                                        autoFocus
+                                        placeholder="1"
+                                    />
+                                </div>
 
-                        <div className="flex gap-3 mt-8">
-                            <button
-                                onClick={resetScanWorkflow}
-                                className="flex-1 px-4 py-3 bg-gray-100 font-medium rounded-xl hover:bg-gray-200 transition-colors"
-                            >
-                                Cancelar
-                            </button>
-                            <button
-                                onClick={handleConfirmBatch}
-                                disabled={!batchForm.quantity}
-                                className="flex-1 px-4 py-3 bg-primary text-white font-bold rounded-xl hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                Confirmar Entrada
-                            </button>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Coste Unitario (€) <span className="text-gray-400">(opcional)</span>
+                                    </label>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 focus:ring-2 focus:ring-primary focus:border-primary focus:outline-none"
+                                        value={batchForm.costPerUnit}
+                                        onChange={e => setBatchForm({ ...batchForm, costPerUnit: e.target.value })}
+                                        placeholder="0.00"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="flex gap-3 mt-8">
+                                <button
+                                    onClick={resetScanWorkflow}
+                                    className="flex-1 px-4 py-3 bg-gray-100 font-medium rounded-xl hover:bg-gray-200 transition-colors"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    onClick={handleConfirmBatch}
+                                    disabled={!batchForm.quantity}
+                                    className="flex-1 px-4 py-3 bg-primary text-white font-bold rounded-xl hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    Confirmar Entrada
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
         </div>
     );
 };

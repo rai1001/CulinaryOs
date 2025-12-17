@@ -36,6 +36,9 @@ export interface PriceHistoryEntry {
     changeReason?: string;
 }
 
+// Inventory Categories
+export type InventoryCategory = 'meat' | 'fish' | 'produce' | 'dairy' | 'dry' | 'frozen' | 'canned' | 'cocktail' | 'sports_menu' | 'corporate_menu' | 'coffee_break' | 'restaurant' | 'other';
+
 export interface Ingredient {
     id: string;
     name: string;
@@ -50,6 +53,7 @@ export interface Ingredient {
     supplierId?: string;
     priceHistory?: PriceHistoryEntry[];
     defaultBarcode?: string;
+    category?: InventoryCategory;
 }
 
 export type PurchaseStatus = 'DRAFT' | 'ORDERED' | 'RECEIVED' | 'CANCELLED';
@@ -70,6 +74,8 @@ export interface PurchaseOrder {
     status: PurchaseStatus;
     items: PurchaseOrderItem[];
     totalCost: number;
+    outletId?: string;
+    eventId?: string; // Link to an event
 }
 
 export interface RecipeIngredient {
@@ -107,6 +113,7 @@ export interface Event {
     menuId?: string;
     menu?: Menu;
     notes?: string;
+    outletId?: string;
 }
 
 export type KanbanTaskStatus = 'todo' | 'in-progress' | 'done';
@@ -134,7 +141,7 @@ export interface Employee {
     // Stats for algorithm
     consecutiveWorkDays: number;
     daysOffInLast28Days: number;
-    // Vacation Tracking
+    // Tracking
     vacationDaysTotal: number; // Annual allowance, default 30
     vacationDates: string[]; // ISO Dates (YYYY-MM-DD)
 }
@@ -226,4 +233,42 @@ export interface MenuItemAnalytics {
     profitabilityScore: number; // Profit margin percentage (0-1)
     classification: DishClassification;
     lastOrdered?: string; // ISO Date
+}
+
+// Multi-Kitchen / Outlet Management Types
+
+export type OutletType = 'main_kitchen' | 'bar' | 'banquet' | 'room_service' | 'pizzeria' | 'other';
+
+export interface Outlet {
+    id: string;
+    name: string;
+    type: OutletType;
+    isActive: boolean;
+    address?: string;
+    phone?: string;
+}
+
+// Extended types with Outlet context
+export interface MenuWithOutlet extends Menu {
+    outletId?: string;
+}
+
+export interface EventWithOutlet extends Event {
+    outletId?: string;
+}
+
+export interface PurchaseOrderFilters {
+    status?: string;
+    supplierId?: string | null; // null means "SIN_ASIGNAR"
+}
+
+export interface PageCursor {
+    lastDate: string; // Using string (ISO) to match types.ts
+    lastId: string;
+}
+
+export interface PaginatedResult<T> {
+    items: T[];
+    nextCursor: PageCursor | null;
+    hasMore: boolean;
 }

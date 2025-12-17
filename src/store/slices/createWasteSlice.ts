@@ -1,13 +1,7 @@
 import type { StateCreator } from 'zustand';
 import type { WasteRecord, Ingredient } from '../../types';
 import { consumeStockFIFO, createMigrationBatch } from '../../utils/inventory';
-import type { AppState } from '../types';
-
-export interface WasteSlice {
-    wasteRecords: WasteRecord[];
-    addWasteRecord: (record: WasteRecord) => void;
-    deleteWasteRecord: (id: string) => void;
-}
+import type { AppState, WasteSlice } from '../types';
 
 export const createWasteSlice: StateCreator<
     AppState,
@@ -17,7 +11,9 @@ export const createWasteSlice: StateCreator<
 > = (set) => ({
     wasteRecords: [],
 
-    addWasteRecord: (record) => set((state) => {
+    setWasteRecords: (records: WasteRecord[]) => set({ wasteRecords: records }),
+
+    addWasteRecord: (record) => set((state: AppState) => {
         const { ingredients } = state;
         const ingredientIndex = ingredients.findIndex((i: Ingredient) => i.id === record.ingredientId);
 
@@ -49,7 +45,7 @@ export const createWasteSlice: StateCreator<
         };
     }),
 
-    deleteWasteRecord: (id) => set((state) => ({
+    deleteWasteRecord: (id) => set((state: AppState) => ({
         wasteRecords: state.wasteRecords.filter(w => w.id !== id)
     })),
 });

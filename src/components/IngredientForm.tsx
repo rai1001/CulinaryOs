@@ -65,7 +65,30 @@ export const IngredientForm: React.FC<{ initialData?: Ingredient; onClose?: () =
                 </div>
 
                 <div className="space-y-1">
-                    <label className="text-sm text-slate-400">Unidad</label>
+                    <label className="text-sm text-slate-400">Categoría</label>
+                    <select
+                        className="w-full bg-black/20 border border-white/10 rounded px-3 py-2 text-white outline-none"
+                        value={formData.category || 'other'}
+                        onChange={e => setFormData({ ...formData, category: e.target.value as any })}
+                    >
+                        <option value="meat">Carne</option>
+                        <option value="fish">Pescado</option>
+                        <option value="produce">Frutas y Verduras</option>
+                        <option value="dairy">Lácteos</option>
+                        <option value="dry">Secos</option>
+                        <option value="frozen">Congelados</option>
+                        <option value="canned">Latas</option>
+                        <option value="cocktail">Cóctel</option>
+                        <option value="sports_menu">Menú Deportivo</option>
+                        <option value="corporate_menu">Menú Empresa</option>
+                        <option value="coffee_break">Coffee Break</option>
+                        <option value="restaurant">Restaurante</option>
+                        <option value="other">Otros</option>
+                    </select>
+                </div>
+
+                <div className="space-y-1">
+                    <label className="text-sm text-slate-400">Unidad (Receta)</label>
                     <select
                         className="w-full bg-black/20 border border-white/10 rounded px-3 py-2 text-white outline-none"
                         value={formData.unit}

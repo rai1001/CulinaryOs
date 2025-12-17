@@ -1,4 +1,4 @@
-import React from 'react';
+import type { FC } from 'react';
 import { X, Calendar, Users, Plus, FileText } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -9,6 +9,8 @@ interface DayDetailsModalProps {
     events: Event[];
     onClose: () => void;
     onAddEvent: () => void;
+    onEditEvent?: (event: Event) => void;
+    onOpenProduction?: (event: Event) => void;
 }
 
 const eventColors: Record<EventType, string> = {
@@ -24,7 +26,7 @@ const eventColors: Record<EventType, string> = {
     'Otros': 'bg-gray-500/20 text-gray-300 border-gray-500/50',
 };
 
-export const DayDetailsModal: React.FC<DayDetailsModalProps> = ({ date, events, onClose, onAddEvent }) => {
+export const DayDetailsModal: FC<DayDetailsModalProps> = ({ date, events, onClose, onAddEvent, onEditEvent, onOpenProduction }) => {
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
             <div className="relative w-full max-w-lg bg-surface border border-white/10 rounded-xl shadow-2xl flex flex-col max-h-[85vh]">
@@ -89,21 +91,41 @@ export const DayDetailsModal: React.FC<DayDetailsModalProps> = ({ date, events, 
                                         "{event.notes}"
                                     </div>
                                 )}
+
+                                <div className="mt-3 pt-3 border-t border-white/10 flex gap-2">
+                                    {onOpenProduction && (
+                                        <button
+                                            onClick={() => onOpenProduction(event)}
+                                            className="flex-1 bg-white/5 hover:bg-white/10 text-slate-300 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2 border border-white/5"
+                                        >
+                                            <Users className="w-4 h-4" /> KDS / Producción
+                                        </button>
+                                    )}
+                                    {onEditEvent && (
+                                        <button
+                                            onClick={() => onEditEvent(event)}
+                                            className="px-3 bg-white/5 hover:bg-white/10 text-slate-300 py-2 rounded-lg text-sm font-medium transition-colors border border-white/5"
+                                            title="Editar Evento"
+                                        >
+                                            <FileText className="w-4 h-4" />
+                                        </button>
+                                    )}
+                                </div>
                             </div>
                         ))
                     )}
-                </div>
+                </div >
 
                 {/* Footer Actions */}
-                <div className="p-4 border-t border-white/10 bg-white/5 shrink-0">
+                < div className="p-4 border-t border-white/10 bg-white/5 shrink-0" >
                     <button
                         onClick={onAddEvent}
                         className="w-full bg-primary hover:bg-blue-600 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-primary/20"
                     >
                         <Plus className="w-5 h-5" /> Añadir Nuevo Evento
                     </button>
-                </div>
-            </div>
-        </div>
+                </div >
+            </div >
+        </div >
     );
 };

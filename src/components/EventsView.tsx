@@ -10,7 +10,8 @@ import { EventsSkeleton } from './ui/Skeletons';
 import { ErrorState } from './ui/ErrorState';
 
 export const EventsView: React.FC = () => {
-    const { events } = useStore();
+    const { getFilteredEvents, fetchEventsRange, eventsLoading, activeOutletId, setSelectedProductionEventId, setCurrentView } = useStore();
+    const events = getFilteredEvents(); // This returns the currently loaded events (filtered by outlet)
     const [currentDate, setCurrentDate] = useState(new Date());
     const [selectedDate, setSelectedDate] = useState<string | null>(null);
     const [showAddModal, setShowAddModal] = useState(false);
@@ -22,6 +23,64 @@ export const EventsView: React.FC = () => {
     useEffect(() => {
         setIsMounted(true);
     }, []);
+
+    const handleOpenProduction = (event: any) => {
+        setSelectedProductionEventId(event.id);
+        setCurrentView('production');
+        setShowDayDetailsModal(false);
+    };
+
+    // ... existing logic ...
+
+
+
+    // ... rest of component ...
+
+    // In Render:
+    // ...
+    {
+        showDayDetailsModal && selectedDate && (
+            <DayDetailsModal
+                date={new Date(selectedDate)}
+                events={events.filter(e => normalizeDate(e.date) === selectedDate)}
+                onClose={() => setShowDayDetailsModal(false)}
+                onAddEvent={() => {
+                    setShowDayDetailsModal(false);
+                    setShowAddModal(true);
+                }}
+                onOpenProduction={handleOpenProduction}
+            />
+        )
+    }
+
+    useEffect(() => {
+        if (activeOutletId) {
+            // Calculate start and end of the month
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth();
+
+            // Start: First day of month
+            const start = new Date(year, month, 1);
+            // End: Last day of month
+            const end = new Date(year, month + 1, 0);
+
+            // Format as YYYY-MM-DD
+            // Note: toISOString uses UTC. We should use local YYYY-MM-DD construction to avoid timezone shifts affecting the "date" string used in queries.
+            // Or use a utility. For now, simple construction:
+            const formatDate = (d: Date) => {
+                const y = d.getFullYear();
+                const m = String(d.getMonth() + 1).padStart(2, '0');
+                const day = String(d.getDate()).padStart(2, '0');
+                return `${y}-${m}-${day}`;
+            };
+
+            const startStr = formatDate(start);
+            const endStr = formatDate(end);
+
+            fetchEventsRange(startStr, endStr);
+        }
+    }, [currentDate, activeOutletId, fetchEventsRange]);
+
 
     const handleDayClick = (dateStr: string) => {
         setSelectedDate(dateStr);
@@ -77,6 +136,7 @@ export const EventsView: React.FC = () => {
                 <div className="flex items-center gap-3">
                     <Calendar className="w-8 h-8 text-primary" />
                     <h2 className="text-2xl font-bold text-white">Events Calendar</h2>
+                    {eventsLoading && <span className="ml-2 text-sm text-slate-400 animate-pulse">Cargando...</span>}
                 </div>
 
                 <button
@@ -188,6 +248,7 @@ export const EventsView: React.FC = () => {
                         setShowDayDetailsModal(false);
                         setShowAddModal(true);
                     }}
+                    onOpenProduction={handleOpenProduction}
                 />
             )}
         </div>
