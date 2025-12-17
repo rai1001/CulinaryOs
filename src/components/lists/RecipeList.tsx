@@ -1,5 +1,5 @@
-import React, { useMemo } from 'react';
-import type { Recipe, Ingredient } from '../../types';
+import React, { useMemo, useCallback } from 'react';
+import type { Recipe } from '../../types';
 import { useStore } from '../../store/useStore';
 import { Printer } from 'lucide-react';
 import { printLabel, formatLabelData } from '../printing/PrintService';
@@ -11,14 +11,18 @@ interface RecipeListProps {
 export const RecipeList: React.FC<RecipeListProps> = ({ recipes }) => {
     const { ingredients } = useStore();
 
-    const getIngredient = (id: string): Ingredient | undefined => ingredients.find(i => i.id === id);
+    // Optimization: Create a map for O(1) ingredient lookup
+    // This reduces complexity from O(N*M*K) to O(N*M) where N=recipes, M=ingredients per recipe, K=total ingredients
+    const ingredientMap = useMemo(() => {
+        return new Map(ingredients.map(i => [i.id, i]));
+    }, [ingredients]);
 
-    const calculateStats = (recipe: Recipe) => {
+    const calculateStats = useCallback((recipe: Recipe) => {
         let totalCost = 0;
         let totalKcal = 0;
 
         recipe.ingredients.forEach(ri => {
-            const ing = getIngredient(ri.ingredientId);
+            const ing = ingredientMap.get(ri.ingredientId);
             if (!ing) return;
 
             // Cost Calculation
@@ -40,7 +44,7 @@ export const RecipeList: React.FC<RecipeListProps> = ({ recipes }) => {
         });
 
         return { totalCost, totalKcal };
-    };
+    }, [ingredientMap]);
 
     // Cache recipe stats to avoid recalculating on every render
     const recipeStats = useMemo(() => {
@@ -48,7 +52,7 @@ export const RecipeList: React.FC<RecipeListProps> = ({ recipes }) => {
             recipe,
             stats: calculateStats(recipe)
         }));
-    }, [recipes, ingredients]); // Recalculate only when recipes or ingredients change
+    }, [recipes, calculateStats]);
 
     return (
         <div className="bg-surface border border-white/5 rounded-xl overflow-hidden shadow-sm">
