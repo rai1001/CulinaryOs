@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useStore } from '../store/useStore';
-import { Plus, Edit2, Phone, Mail, Truck, ChevronDown, ChevronUp, History, Trash2, Loader2 } from 'lucide-react';
+import { Plus, Edit2, Phone, Mail, Truck, ChevronDown, ChevronUp, History, Trash2 } from 'lucide-react';
 import type { Supplier } from '../types';
 import { addDocument, updateDocument, deleteDocument } from '../services/firestoreService';
 import { collections } from '../firebase/collections';
@@ -329,9 +329,10 @@ export const SupplierView: React.FC = () => {
                                 </button>
                                 <button
                                     type="submit"
-                                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+                                    disabled={isSubmitting}
+                                    className={`px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
                                 >
-                                    Guardar
+                                    {isSubmitting ? 'Guardando...' : 'Guardar'}
                                 </button>
                             </div>
                         </form>

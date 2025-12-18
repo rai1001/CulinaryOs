@@ -27,7 +27,11 @@ export const DataView: React.FC = () => {
     switch (activeTab) {
       case 'recipes':
         const filteredRecipes = recipes.filter(r => r.name.toLowerCase().includes(searchTerm.toLowerCase()));
-        return <RecipeList recipes={filteredRecipes} />;
+        return <RecipeList
+          recipes={filteredRecipes}
+          onEdit={(recipe) => console.log('Edit recipe', recipe)}
+          onDelete={(id) => console.log('Delete recipe', id)}
+        />;
 
       case 'ingredients': {
         const filteredIngredients = ingredients.filter(i => i.name.toLowerCase().includes(searchTerm.toLowerCase()));

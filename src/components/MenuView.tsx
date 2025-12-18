@@ -256,9 +256,10 @@ export const MenuView: React.FC = () => {
                         </button>
                         <button
                             type="submit"
-                            className="px-6 py-2 bg-gradient-to-r from-primary to-blue-600 text-white rounded-lg hover:shadow-lg hover:scale-105 transition-all font-medium flex items-center gap-2"
+                            disabled={isSaving}
+                            className={`px-6 py-2 bg-gradient-to-r from-primary to-blue-600 text-white rounded-lg hover:shadow-lg hover:scale-105 transition-all font-medium flex items-center gap-2 ${isSaving ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
-                            <Save size={18} /> Guardar Menú
+                            <Save size={18} /> {isSaving ? 'Guardando...' : 'Guardar Menú'}
                         </button>
                     </div>
                 </form>
