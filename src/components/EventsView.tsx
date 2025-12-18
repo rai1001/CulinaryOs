@@ -1,9 +1,10 @@
 
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import { Calendar, ChevronLeft, ChevronRight, Users, Upload, Sparkles } from 'lucide-react';
 import { normalizeDate } from '../utils/date';
-import type { EventType, GeneratedMenu } from '../types';
+import type { EventType, GeneratedMenu, Event } from '../types';
 import { EventForm } from './EventForm';
 import { EventImportModal } from './EventImportModal';
 import { MenuGeneratorModal } from './ai/MenuGeneratorModal';
@@ -12,11 +13,13 @@ import { EventsSkeleton } from './ui/Skeletons';
 import { ErrorState } from './ui/ErrorState';
 
 export const EventsView: React.FC = () => {
-    const { getFilteredEvents, fetchEventsRange, eventsLoading, activeOutletId, setSelectedProductionEventId, setCurrentView } = useStore();
+    const { getFilteredEvents, fetchEventsRange, eventsLoading, activeOutletId, setSelectedProductionEventId } = useStore();
+    const navigate = useNavigate();
     const events = getFilteredEvents(); // This returns the currently loaded events (filtered by outlet)
     const [currentDate, setCurrentDate] = useState(new Date());
     const [selectedDate, setSelectedDate] = useState<string | null>(null);
     const [showAddModal, setShowAddModal] = useState(false);
+    const [editingEvent, setEditingEvent] = useState<Event | undefined>(undefined);
     const [showDayDetailsModal, setShowDayDetailsModal] = useState(false);
     const [showImportModal, setShowImportModal] = useState(false);
     const [showMenuGenerator, setShowMenuGenerator] = useState(false);
@@ -27,9 +30,19 @@ export const EventsView: React.FC = () => {
         setIsMounted(true);
     }, []);
 
+    const refreshEvents = () => {
+        if (activeOutletId) {
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth();
+            const startStr = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+            const endStr = `${year}-${String(month + 1).padStart(2, '0')}-${new Date(year, month + 1, 0).getDate()}`;
+            fetchEventsRange(startStr, endStr);
+        }
+    };
+
     const handleOpenProduction = (event: any) => {
         setSelectedProductionEventId(event.id);
-        setCurrentView('production');
+        navigate('/production');
         setShowDayDetailsModal(false);
     };
 
@@ -243,7 +256,12 @@ export const EventsView: React.FC = () => {
                         <div onClick={e => e.stopPropagation()}>
                             <EventForm
                                 initialDate={selectedDate || undefined}
-                                onClose={() => setShowAddModal(false)}
+                                initialData={editingEvent}
+                                onClose={() => {
+                                    setShowAddModal(false);
+                                    setEditingEvent(undefined);
+                                }}
+                                onSuccess={refreshEvents}
                             />
                         </div>
                     </div>
@@ -270,6 +288,12 @@ export const EventsView: React.FC = () => {
                     events={events.filter(e => normalizeDate(e.date) === selectedDate)}
                     onClose={() => setShowDayDetailsModal(false)}
                     onAddEvent={() => {
+                        setEditingEvent(undefined);
+                        setShowDayDetailsModal(false);
+                        setShowAddModal(true);
+                    }}
+                    onEditEvent={(event) => {
+                        setEditingEvent(event);
                         setShowDayDetailsModal(false);
                         setShowAddModal(true);
                     }}

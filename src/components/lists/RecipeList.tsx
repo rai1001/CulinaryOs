@@ -1,14 +1,16 @@
 import React, { useMemo, useCallback } from 'react';
 import type { Recipe } from '../../types';
 import { useStore } from '../../store/useStore';
-import { Printer } from 'lucide-react';
+import { Printer, Edit2, Trash2 } from 'lucide-react';
 import { printLabel, formatLabelData } from '../printing/PrintService';
 
 interface RecipeListProps {
     recipes: Recipe[];
+    onEdit: (recipe: Recipe) => void;
+    onDelete: (id: string) => void;
 }
 
-export const RecipeList: React.FC<RecipeListProps> = ({ recipes }) => {
+export const RecipeList: React.FC<RecipeListProps> = ({ recipes, onEdit, onDelete }) => {
     const { ingredients } = useStore();
 
     // Optimization: Create a map for O(1) ingredient lookup
@@ -97,13 +99,29 @@ export const RecipeList: React.FC<RecipeListProps> = ({ recipes }) => {
                                     {stats.totalCost.toFixed(2)}€
                                 </td>
                                 <td className="p-4 text-center">
-                                    <button
-                                        onClick={() => printLabel(formatLabelData(recipe, 'PREP'))}
-                                        className="p-2 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-colors"
-                                        title="Imprimir Etiqueta"
-                                    >
-                                        <Printer size={18} />
-                                    </button>
+                                    <div className="flex justify-center gap-1">
+                                        <button
+                                            onClick={() => onEdit(recipe)}
+                                            className="p-2 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-colors"
+                                            title="Editar"
+                                        >
+                                            <Edit2 size={18} />
+                                        </button>
+                                        <button
+                                            onClick={() => printLabel(formatLabelData(recipe, 'PREP'))}
+                                            className="p-2 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-colors"
+                                            title="Imprimir Etiqueta"
+                                        >
+                                            <Printer size={18} />
+                                        </button>
+                                        <button
+                                            onClick={() => onDelete(recipe.id)}
+                                            className="p-2 hover:bg-red-500/20 rounded-lg text-slate-400 hover:text-red-400 transition-colors"
+                                            title="Eliminar"
+                                        >
+                                            <Trash2 size={18} />
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         );

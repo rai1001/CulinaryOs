@@ -1,49 +1,79 @@
 import React, { useState } from 'react';
 import { useStore } from '../store/useStore';
-import { v4 as uuidv4 } from 'uuid';
 import type { Event, EventType } from '../types';
-import { Calendar, Users, FileText, X } from 'lucide-react';
+import { Calendar, Users, FileText, X, Loader2 } from 'lucide-react';
+import { addDocument, updateDocument } from '../services/firestoreService';
+import { collections } from '../firebase/collections';
+import { COLLECTIONS } from '../firebase/collections';
 
 interface EventFormProps {
     initialDate?: string;
+    initialData?: Event;
     onClose: () => void;
+    onSuccess?: () => void;
 }
 
 const EVENT_TYPES: EventType[] = [
     'Comida', 'Cena', 'Empresa', 'Coctel', 'Mediodia', 'Noche', 'Equipo Deportivo', 'Coffee Break'
 ];
 
-export const EventForm: React.FC<EventFormProps> = ({ initialDate, onClose }) => {
-    const { addEvent, menus } = useStore();
+export const EventForm: React.FC<EventFormProps> = ({ initialDate, initialData, onClose, onSuccess }) => {
+    const { menus, activeOutletId } = useStore();
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [formData, setFormData] = useState({
-        name: '',
-        date: initialDate || new Date().toISOString().split('T')[0],
-        pax: 0,
-        type: 'Comida' as EventType,
-        menuId: ''
+        name: initialData?.name || '',
+        date: initialData?.date || initialDate || new Date().toISOString().split('T')[0],
+        pax: initialData?.pax || 0,
+        type: (initialData?.type || 'Comida') as EventType,
+        menuId: initialData?.menuId || ''
     });
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        const newEvent: Event = {
-            id: uuidv4(),
-            name: formData.name,
-            date: formData.date,
-            pax: formData.pax,
-            type: formData.type,
-            menuId: formData.menuId,
-            menu: menus.find(m => m.id === formData.menuId) // Hydrate if needed for simple access
-        };
+        if (!activeOutletId) {
+            alert("Selecciona una cocina activa");
+            return;
+        }
 
-        addEvent(newEvent);
-        onClose();
+        setIsSubmitting(true);
+        try {
+            const eventData = {
+                name: formData.name,
+                date: formData.date,
+                pax: formData.pax,
+                type: formData.type,
+                menuId: formData.menuId || null,
+                outletId: activeOutletId
+            };
+
+            if (initialData) {
+                await updateDocument(COLLECTIONS.EVENTS, initialData.id, eventData);
+            } else {
+                await addDocument(collections.events, eventData);
+            }
+
+            // Refresh events in store
+            // We need to fetch the range that covers this event date
+            // For simplicity, we just trigger onSuccess which should ideally refresh parent
+            if (onSuccess) onSuccess();
+
+            // Also simpler: Create a date range around the event date and fetch?
+            // Or just rely on onSuccess callback to parent to decide what to refresh.
+
+            onClose();
+        } catch (error) {
+            console.error("Error saving event:", error);
+            alert("Error al guardar el evento");
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4 bg-surface p-6 rounded-xl border border-white/5 w-full max-w-md">
             <div className="flex justify-between items-center mb-4">
-                <h3 className="text-xl font-bold text-white">Nuevo Evento</h3>
+                <h3 className="text-xl font-bold text-white">{initialData ? 'Editar Evento' : 'Nuevo Evento'}</h3>
                 <button type="button" onClick={onClose} className="text-slate-400 hover:text-white">
                     <X size={20} />
                 </button>
@@ -123,9 +153,11 @@ export const EventForm: React.FC<EventFormProps> = ({ initialDate, onClose }) =>
 
             <button
                 type="submit"
-                className="w-full bg-primary hover:bg-blue-600 text-white py-2 rounded-lg font-medium transition-colors mt-2"
+                disabled={isSubmitting}
+                className="w-full bg-primary hover:bg-blue-600 disabled:opacity-50 text-white py-2 rounded-lg font-medium transition-colors mt-2 flex justify-center items-center gap-2"
             >
-                Crear Evento
+                {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
+                {initialData ? 'Guardar Cambios' : 'Crear Evento'}
             </button>
         </form>
     );

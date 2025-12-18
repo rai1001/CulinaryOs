@@ -1,7 +1,8 @@
-import React, { lazy, Suspense, useState, useEffect } from 'react';
-import { useStore } from './store/useStore';
+import React, { lazy, Suspense, useState } from 'react';
+import { Routes, Route, Navigate, NavLink, useLocation } from 'react-router-dom';
 import { Dashboard } from './components/Dashboard';
-import { LayoutDashboard, Calendar, ShoppingCart, Database, CalendarDays, ChefHat, Package, Truck, ClipboardList, ShoppingBag, Trash2, ShieldCheck, TrendingUp, Search, BookOpen, Sparkles, Coffee, Menu as MenuIcon, X } from 'lucide-react';
+import { LayoutDashboard, Calendar, ShoppingCart, Database, CalendarDays, ChefHat, Package, Truck, ClipboardList, ShoppingBag, Trash2, ShieldCheck, TrendingUp, Search, BookOpen, Sparkles, Coffee, Menu as MenuIcon, X, Briefcase } from 'lucide-react';
+import { OutletSelector } from './components/OutletSelector';
 
 import { PrintManager } from './components/printing/PrintManager';
 import { ShiftEndReminder } from './components/haccp/ShiftEndReminder';
@@ -10,8 +11,9 @@ import { CommandPalette } from './components/CommandPalette';
 import { useCommandPalette } from './hooks/useCommandPalette';
 import { useNotificationSubscription } from './hooks/useNotificationSubscription';
 import { KitchenCopilot } from './components/ai/KitchenCopilot';
+import { ProtectedRoute } from './components/auth/ProtectedRoute';
 
-import type { ViewType } from './types';
+
 
 // Lazy load views for better initial load performance
 const ScheduleView = lazy(() => import('./components/ScheduleView').then(m => ({ default: m.ScheduleView })));
@@ -31,6 +33,7 @@ const AIMenuView = lazy(() => import('./components/AIFeatures').then(m => ({ def
 const AISearchView = lazy(() => import('./components/AIFeatures').then(m => ({ default: m.AIChefAssistant }))); // Search/Assistant
 const MenuView = lazy(() => import('./components/MenuView').then(m => ({ default: m.MenuView }))); // New Manual Menu View
 const BreakfastView = lazy(() => import('./components/BreakfastView').then(m => ({ default: m.BreakfastView })));
+const StaffView = lazy(() => import('./components/StaffView').then(m => ({ default: m.StaffView })));
 
 // Loading fallback component
 const LoadingFallback = () => (
@@ -42,106 +45,21 @@ const LoadingFallback = () => (
   </div>
 );
 
-const isValidView = (view: string): view is ViewType => {
-  const validViews: ViewType[] = [
-    'dashboard', 'schedule', 'production', 'data', 'events', 'recipes',
-    'ingredients', 'suppliers', 'inventory', 'purchasing', 'waste',
-    'haccp', 'analytics', 'kds',
-    'ai-scanner', 'ai-search', 'ai-menu', 'ai-ingredients', 'outlets', 'menus', 'breakfast'
-  ];
-  return validViews.includes(view as ViewType);
-};
-
 function App() {
-  const { currentView, setCurrentView } = useStore();
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const location = useLocation();
 
   // Subscribe to AI Notifications
   useNotificationSubscription();
 
-  // Sync state with hash on mount and hashchange
-  useEffect(() => {
-    const handleHashChange = () => {
-      const hash = window.location.hash.replace(/^#\//, '');
-      if (hash && isValidView(hash)) {
-        setCurrentView(hash);
-      } else {
-        window.location.hash = `#/${currentView}`;
-      }
-    };
-
-    // Initial check
-    handleHashChange();
-
-    // Listen for changes
-    window.addEventListener('hashchange', handleHashChange);
-    return () => window.removeEventListener('hashchange', handleHashChange);
-  }, [setCurrentView]);
-
-  const handleNavigation = (view: typeof currentView) => {
-    setCurrentView(view);
-    window.location.hash = `#/${view}`;
-    setIsSidebarOpen(false); // Close sidebar on mobile nav
-  };
-
-  // Navigation Logic (Hash Routing)
-  useEffect(() => {
-    // 1. Handle initial load based on hash
-    const handleHashChange = () => {
-      const hash = window.location.hash.slice(2); // Remove '#/'
-      if (hash && hash !== currentView) {
-        setCurrentView(hash as any);
-      } else if (!hash) {
-        window.location.hash = '#/dashboard';
-        setCurrentView('dashboard');
-      }
-    };
-
-    // Initialize
-    handleHashChange();
-
-    // 2. Listen for hash changes (Back/Forward buttons)
-    window.addEventListener('hashchange', handleHashChange);
-    return () => window.removeEventListener('hashchange', handleHashChange);
-  }, [setCurrentView]);
-
-  // Update hash when view changes (Internal navigation)
-  useEffect(() => {
-    const targetHash = `#/${currentView}`;
-    if (window.location.hash !== targetHash) {
-      window.location.hash = targetHash;
-    }
-  }, [currentView]);
-
+  // Close sidebar on route change (mobile)
+  React.useEffect(() => {
+    setIsSidebarOpen(false);
+  }, [location.pathname]);
 
   // Command Palette keyboard shortcut (Cmd+K / Ctrl+K)
   useCommandPalette(() => setIsCommandPaletteOpen(prev => !prev));
-
-  const renderContent = () => {
-    switch (currentView) {
-      case 'dashboard': return <Dashboard />;
-      case 'schedule': return <ScheduleView />;
-      case 'production': return <ProductionView />;
-      case 'data': return <DataView />;
-      case 'events': return <EventsView />;
-      case 'recipes': return <RecipesView />;
-      case 'ingredients': return <IngredientsView />;
-      case 'suppliers': return <SupplierView />;
-      case 'inventory': return <InventoryView />;
-      case 'purchasing': return <PurchasingView />;
-      case 'waste': return <WasteView />;
-      case 'haccp': return <HACCPView />;
-      case 'analytics': return <MenuAnalyticsView />;
-      case 'kds': return <KitchenDisplayView />;
-      case 'ai-scanner': return <PurchasingView />; // Scan is inside Purchasing
-      case 'ai-menu': return <AIMenuView />;
-      case 'ai-search': return <AISearchView />;
-      case 'menus': return <MenuView />;
-      case 'breakfast': return <BreakfastView />;
-      default: return <Dashboard />;
-    }
-  };
 
   return (
     <div className="flex h-screen bg-background text-slate-100 overflow-hidden selection:bg-primary/30">
@@ -179,135 +97,48 @@ function App() {
           </button>
         </div>
 
+        <OutletSelector />
+
         <nav className="flex-1 px-4 space-y-2 py-4">
-          <NavItem
-            icon={<LayoutDashboard />}
-            label="Inicio"
-            active={currentView === 'dashboard'}
-            onClick={() => handleNavigation('dashboard')}
-          />
-          <NavItem
-            icon={<Calendar />}
-            label="Horario"
-            active={currentView === 'schedule'}
-            onClick={() => handleNavigation('schedule')}
-          />
-          <NavItem
-            icon={<CalendarDays />}
-            label="Eventos"
-            active={currentView === 'events'}
-            onClick={() => handleNavigation('events')}
-          />
-          <NavItem
-            icon={<Coffee />}
-            label="Desayunos"
-            active={currentView === 'breakfast'}
-            onClick={() => handleNavigation('breakfast')}
-          />
-          <NavItem
-            icon={<ShoppingBag />}
-            label="Compras Auto"
-            active={currentView === 'purchasing'}
-            onClick={() => handleNavigation('purchasing')}
-          />
-          <NavItem
-            icon={<Trash2 />}
-            label="Mermas"
-            active={currentView === 'waste'}
-            onClick={() => handleNavigation('waste')}
-          />
-          <NavItem
-            icon={<ShieldCheck />}
-            label="HACCP Digital"
-            active={currentView === 'haccp'}
-            onClick={() => handleNavigation('haccp')}
-          />
-          <NavItem
-            icon={<TrendingUp />}
-            label="Ingeniería Menú"
-            active={currentView === 'analytics'}
-            onClick={() => handleNavigation('analytics')}
-          />
+          <NavItem to="/dashboard" icon={<LayoutDashboard />} label="Inicio" />
+          <NavItem to="/schedule" icon={<Calendar />} label="Horario" />
+          <NavItem to="/events" icon={<CalendarDays />} label="Eventos" />
+          <NavItem to="/breakfast" icon={<Coffee />} label="Desayunos" />
+          <NavItem to="/purchasing" icon={<ShoppingBag />} label="Compras Auto" />
+          <NavItem to="/waste" icon={<Trash2 />} label="Mermas" />
+          <NavItem to="/haccp" icon={<ShieldCheck />} label="HACCP Digital" />
+          <NavItem to="/analytics" icon={<TrendingUp />} label="Ingeniería Menú" />
 
           <div className="pt-4 pb-2">
             <p className="px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Menús</p>
           </div>
 
-          <NavItem
-            icon={<BookOpen />}
-            label="Mis Menús"
-            active={currentView === 'menus'}
-            onClick={() => handleNavigation('menus')}
-          />
-          <NavItem
-            icon={<Sparkles />}
-            label="Generador IA"
-            active={currentView === 'ai-menu'}
-            onClick={() => handleNavigation('ai-menu')}
-          />
+          <NavItem to="/menus" icon={<BookOpen />} label="Mis Menús" />
+          <NavItem to="/ai-menu" icon={<Sparkles />} label="Generador IA" />
 
           <div className="pt-4 pb-2">
             <p className="px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Chef AI</p>
           </div>
 
-          <NavItem
-            icon={<Search />}
-            label="Asistente Chef"
-            active={currentView === 'ai-search'}
-            onClick={() => handleNavigation('ai-search')}
-          />
+          <NavItem to="/ai-search" icon={<Search />} label="Asistente Chef" />
 
           <div className="pt-4 pb-2">
             <p className="px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Gestión</p>
           </div>
 
-          <NavItem
-            icon={<Package />}
-            label="Ingredientes"
-            active={currentView === 'ingredients'}
-            onClick={() => handleNavigation('ingredients')}
-          />
-          <NavItem
-            icon={<ClipboardList />}
-            label="Inventario"
-            active={currentView === 'inventory'}
-            onClick={() => handleNavigation('inventory')}
-          />
-          <NavItem
-            icon={<ChefHat />}
-            label="Recetas"
-            active={currentView === 'recipes'}
-            onClick={() => handleNavigation('recipes')}
-          />
-          <NavItem
-            icon={<Truck />}
-            label="Proveedores"
-            active={currentView === 'suppliers'}
-            onClick={() => handleNavigation('suppliers')}
-          />
+          <NavItem to="/ingredients" icon={<Package />} label="Ingredientes" />
+          <NavItem to="/inventory" icon={<ClipboardList />} label="Inventario" />
+          <NavItem to="/recipes" icon={<ChefHat />} label="Recetas" />
+          <NavItem to="/suppliers" icon={<Truck />} label="Proveedores" />
+          <NavItem to="/staff" icon={<Briefcase />} label="Personal" />
 
           <div className="pt-4 pb-2">
             <p className="px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Producción</p>
           </div>
 
-          <NavItem
-            icon={<ShoppingCart />}
-            label="Producción"
-            active={currentView === 'production'}
-            onClick={() => handleNavigation('production')}
-          />
-          <NavItem
-            icon={<ChefHat />}
-            label="Modo KDS (Tablet)"
-            active={currentView === 'kds'}
-            onClick={() => handleNavigation('kds')}
-          />
-          <NavItem
-            icon={<Database />}
-            label="Datos"
-            active={currentView === 'data'}
-            onClick={() => handleNavigation('data')}
-          />
+          <NavItem to="/production" icon={<ShoppingCart />} label="Producción" />
+          <NavItem to="/kds" icon={<ChefHat />} label="Modo KDS (Tablet)" />
+          <NavItem to="/data" icon={<Database />} label="Datos" />
         </nav>
 
         <div className="p-4 border-t border-white/5 mx-4">
@@ -329,13 +160,40 @@ function App() {
             <MenuIcon size={24} />
           </button>
           <h1 className="text-lg font-bold text-white">Chef<span className="text-primary">OS</span></h1>
-          <div className="w-6" /> {/* Placeholder for balance */}
+          <div className="w-6" />
         </div>
 
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-accent/5 pointer-events-none" />
-        <div className="flex-1 overflow-auto p-4 md:p-0"> {/* Padded on mobile, reset on desktop if needed, or let component handle padding */}
+        <div className="flex-1 overflow-auto p-4 md:p-0">
           <Suspense fallback={<LoadingFallback />}>
-            {renderContent()}
+            <Routes>
+              {/* Public/Protected Routes Container can go here if needed. For now all are accessible or we use ProtectedRoute wrapper */}
+              <Route element={<ProtectedRoute />}>
+                <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/schedule" element={<ScheduleView />} />
+                <Route path="/production" element={<ProductionView />} />
+                <Route path="/data" element={<DataView />} />
+                <Route path="/events" element={<EventsView />} />
+                <Route path="/recipes" element={<RecipesView />} />
+                <Route path="/ingredients" element={<IngredientsView />} />
+                <Route path="/suppliers" element={<SupplierView />} />
+                <Route path="/staff" element={<StaffView />} />
+                <Route path="/inventory" element={<InventoryView />} />
+                <Route path="/purchasing" element={<PurchasingView />} />
+                <Route path="/waste" element={<WasteView />} />
+                <Route path="/haccp" element={<HACCPView />} />
+                <Route path="/analytics" element={<MenuAnalyticsView />} />
+                <Route path="/kds" element={<KitchenDisplayView />} />
+                <Route path="/ai-scanner" element={<Navigate to="/purchasing" replace />} />
+                <Route path="/ai-menu" element={<AIMenuView />} />
+                <Route path="/ai-search" element={<AISearchView />} />
+                <Route path="/menus" element={<MenuView />} />
+                <Route path="/breakfast" element={<BreakfastView />} />
+                {/* Fallback */}
+                <Route path="*" element={<Navigate to="/dashboard" replace />} />
+              </Route>
+            </Routes>
           </Suspense>
         </div>
       </main>
@@ -346,21 +204,22 @@ function App() {
 interface NavItemProps {
   icon: React.ReactElement<{ size?: number }>;
   label: string;
-  active: boolean;
-  onClick: () => void;
+  to: string;
 }
 
-const NavItem = ({ icon, label, active, onClick }: NavItemProps) => (
-  <button
-    onClick={onClick}
-    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${active
-      ? 'bg-primary text-white shadow-lg shadow-primary/20'
-      : 'text-slate-400 hover:bg-white/5 hover:text-white'
-      }`}
-  >
-    {React.cloneElement(icon, { size: 20 })}
-    <span className="font-medium text-sm">{label}</span>
-  </button>
-);
+const NavItem = ({ icon, label, to }: NavItemProps) => {
+  return (
+    <NavLink
+      to={to}
+      className={({ isActive }) => `w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${isActive
+        ? 'bg-primary text-white shadow-lg shadow-primary/20'
+        : 'text-slate-400 hover:bg-white/5 hover:text-white'
+        }`}
+    >
+      {React.cloneElement(icon, { size: 20 })}
+      <span className="font-medium text-sm">{label}</span>
+    </NavLink>
+  );
+};
 
 export default App;

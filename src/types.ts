@@ -11,6 +11,7 @@ export interface Supplier {
     leadTime?: number; // Days to deliver
     orderDays?: number[]; // Days of week (0-6) they accept/deliver orders
     minimumOrderValue?: number; // Minimum monetary value for an order
+    outletId?: string;
 }
 
 export interface IngredientBatch {
@@ -54,6 +55,7 @@ export interface Ingredient {
     priceHistory?: PriceHistoryEntry[];
     defaultBarcode?: string;
     category?: InventoryCategory;
+    outletId?: string;
 }
 
 export type PurchaseStatus = 'DRAFT' | 'ORDERED' | 'RECEIVED' | 'PARTIAL' | 'CANCELLED';
@@ -93,6 +95,7 @@ export interface Recipe {
     isBase?: boolean; // True if this is a base recipe (e.g., from "Bases" sheet)
     totalCost?: number; // Calculated
     nutritionalInfo?: NutritionalInfo; // Calculated
+    outletId?: string;
 }
 
 export interface MenuVariation {
@@ -109,6 +112,7 @@ export interface Menu {
     recipes?: Recipe[]; // Hydrated
     variations?: MenuVariation[]; // New field for variations
     sellPrice?: number;
+    outletId?: string;
 }
 
 export type EventType = 'Comida' | 'Cena' | 'Empresa' | 'Coctel' | 'Mediodia' | 'Noche' | 'Equipo Deportivo' | 'Coffee Break' | 'Boda' | 'Otros';
@@ -160,6 +164,7 @@ export interface Employee {
     // Tracking
     vacationDaysTotal: number; // Annual allowance, default 30
     vacationDates: string[]; // ISO Dates (YYYY-MM-DD)
+    outletId?: string;
 }
 
 export type ShiftType = 'MORNING' | 'AFTERNOON' | 'OFF';

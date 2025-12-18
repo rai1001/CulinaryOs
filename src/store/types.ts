@@ -41,8 +41,10 @@ export interface ProductionSlice {
     setSelectedProductionEventId: (id: string | null) => void;
     generateProductionTasks: (event: Event) => void;
     updateTaskStatus: (eventId: string, taskId: string, status: KanbanTaskStatus) => void;
+    todayProductionStats?: { total: number; completed: number; pending: number; }; // Computed?
     clearProductionTasks: (eventId: string) => void;
-    setProductionTasks?: (eventId: string, tasks: KanbanTask[]) => void; // Optional if used by load/sync?
+    setProductionTasks: (eventId: string, tasks: KanbanTask[]) => void;
+    replaceAllProductionTasks: (tasksByEvent: Record<string, KanbanTask[]>) => void;
     toggleTaskTimer: (eventId: string, taskId: string) => void;
     updateTaskSchedule: (eventId: string, taskId: string, updates: { assignedDate?: string; shift?: import('../types').ShiftType }) => void;
 }
@@ -51,7 +53,9 @@ export interface StaffSlice {
     staff: Employee[];
     schedule: Record<string, DailySchedule>;
     setStaff: (items: Employee[]) => void;
+    addEmployee: (employee: Employee) => void;
     updateEmployee: (employee: Employee) => void;
+    deleteEmployee: (id: string) => void;
     updateSchedule: (month: string, schedule: DailySchedule) => void;
     updateShift: (dateStr: string, employeeId: string, type: 'MORNING' | 'AFTERNOON') => void;
     removeShift: (dateStr: string, employeeId: string) => void;
@@ -157,8 +161,6 @@ export interface AppState extends
     OutletSlice,
     BreakfastSlice,
     NotificationSlice {
-    currentView: import('../types').ViewType;
-    setCurrentView: (view: import('../types').ViewType) => void;
     // activeOutletId is inherited from OutletSlice
     // setActiveOutletId should optionally match setActiveOutlet or be separate. 
     // OutletSlice has setActiveOutlet. Let's add alias or stick to what's used.

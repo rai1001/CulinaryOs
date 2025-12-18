@@ -17,6 +17,7 @@ export const createEventSlice: StateCreator<
     setEvents: (events) => set({ events }),
 
     addEvent: async (event) => {
+        set((state) => ({ events: [...state.events, event] }));
         try {
             await setDocument("events", event.id, event);
             // Reload current range if active
@@ -30,6 +31,9 @@ export const createEventSlice: StateCreator<
     },
 
     updateEvent: async (updatedEvent) => {
+        set((state) => ({
+            events: state.events.map((e) => (e.id === updatedEvent.id ? updatedEvent : e)),
+        }));
         try {
             await setDocument("events", updatedEvent.id, updatedEvent);
             const { eventsRange } = get();

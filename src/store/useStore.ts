@@ -36,8 +36,6 @@ export const useStore = create<AppState>()(
             ...createBreakfastSlice(...a),
 
             // UI State
-            currentView: 'dashboard',
-            setCurrentView: (view) => a[0]({ currentView: view }),
             activeOutletId: null,
             setActiveOutletId: (id) => a[0]({ activeOutletId: id }),
         }),
@@ -45,24 +43,7 @@ export const useStore = create<AppState>()(
             name: 'kitchen-manager-storage',
             storage: createJSONStorage(() => localStorage),
             partialize: (state) => ({
-                ingredients: state.ingredients,
-                recipes: state.recipes,
-                menus: state.menus,
-                events: state.events,
-                staff: state.staff,
-                suppliers: state.suppliers,
-                purchaseOrders: state.purchaseOrders,
-                wasteRecords: state.wasteRecords,
-                schedule: state.schedule,
-                pccs: state.pccs,
-                haccpLogs: state.haccpLogs,
-                haccpTasks: state.haccpTasks,
-                haccpTaskCompletions: state.haccpTaskCompletions,
-                productionTasks: state.productionTasks,
-                outlets: state.outlets,
                 activeOutletId: state.activeOutletId,
-                selectedProductionEventId: state.selectedProductionEventId,
-                breakfastServices: state.breakfastServices
             }),
         }
     )

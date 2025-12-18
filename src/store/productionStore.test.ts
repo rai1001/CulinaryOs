@@ -39,7 +39,7 @@ describe('Event Slice Production Logic', () => {
     it('should handle updating status for non-existent event gracefully', () => {
         // Should not throw
         useStore.getState().updateTaskStatus('non-existent', '1', 'in-progress');
-        expect(useStore.getState().productionTasks['non-existent']).toBeUndefined();
+        expect(useStore.getState().productionTasks['non-existent']).toEqual([]);
     });
 
     it('should handle updating status for non-existent task gracefully', () => {

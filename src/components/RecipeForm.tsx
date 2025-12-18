@@ -1,34 +1,63 @@
 import React, { useState } from 'react';
 import { useStore } from '../store/useStore';
-import { Plus, X } from 'lucide-react';
+import { Plus, X, Loader2 } from 'lucide-react';
+import { addDocument } from '../services/firestoreService';
+import { collections } from '../firebase/collections';
 
-export const RecipeForm: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
-    const { ingredients, addRecipe } = useStore();
+import type { Recipe } from '../types';
+import { updateDocument } from '../services/firestoreService';
+import { COLLECTIONS } from '../firebase/collections';
+
+export const RecipeForm: React.FC<{ initialData?: Recipe; onClose?: () => void }> = ({ initialData, onClose }) => {
+    const { ingredients, activeOutletId } = useStore();
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [formData, setFormData] = useState({
-        name: '',
-        station: 'hot',
-        isBase: false,
-        ingredients: [] as { ingredientId: string; quantity: number }[]
+        name: initialData?.name || '',
+        station: initialData?.station || 'hot',
+        isBase: initialData?.isBase || false,
+        ingredients: initialData?.ingredients || [] as { ingredientId: string; quantity: number }[]
     });
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        // Hydrate ingredients for the store (optional, but good for consistency if needed immediately)
-        const recipeIngredients = formData.ingredients.map(item => ({
-            ...item,
-            ingredient: ingredients.find(i => i.id === item.ingredientId)
-        }));
+        if (!activeOutletId) {
+            alert("No hay cocina activa seleccionada.");
+            return;
+        }
 
-        addRecipe({
-            id: crypto.randomUUID(),
-            name: formData.name,
-            station: formData.station as 'hot' | 'cold' | 'dessert',
-            isBase: formData.isBase,
-            ingredients: recipeIngredients
-        });
+        setIsSubmitting(true);
+        try {
+            // Hydrate ingredients for consistency if needed, but for DB we save IDs and quantities usually?
+            // Wait, Recipe type has 'ingredients: RecipeIngredient[]'. RecipeIngredient has 'ingredientId'.
+            // The logic below stores object with ingredientId.
+            // We just need to ensure correct structure.
 
-        if (onClose) onClose();
+            // Note: DB usually stores just IDs and quantities. The application hydrates them.
+            // But types.ts Recipe has `ingredients: RecipeIngredient[]` where `ingredient?: Ingredient`.
+            // We only save the flat data.
+
+            const recipeData = {
+                name: formData.name,
+                station: formData.station as 'hot' | 'cold' | 'dessert',
+                isBase: formData.isBase,
+                ingredients: formData.ingredients, // Array of { ingredientId, quantity }
+                outletId: activeOutletId
+            };
+
+            if (initialData) {
+                await updateDocument(COLLECTIONS.RECIPES, initialData.id, recipeData);
+            } else {
+                await addDocument(collections.recipes, recipeData);
+            }
+
+            if (onClose) onClose();
+        } catch (error) {
+            console.error("Error saving recipe:", error);
+            alert("Error al guardar la receta");
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     const addIngredientRow = () => {
@@ -51,7 +80,7 @@ export const RecipeForm: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4 bg-surface p-6 rounded-xl border border-white/5">
-            <h3 className="text-xl font-bold text-white mb-4">Añadir Receta</h3>
+            <h3 className="text-xl font-bold text-white mb-4">{initialData ? 'Editar Receta' : 'Añadir Receta'}</h3>
 
             <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
@@ -68,7 +97,7 @@ export const RecipeForm: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
                     <select
                         className="w-full bg-black/20 border border-white/10 rounded px-3 py-2 text-white"
                         value={formData.station}
-                        onChange={e => setFormData({ ...formData, station: e.target.value })}
+                        onChange={e => setFormData({ ...formData, station: e.target.value as 'hot' | 'cold' | 'dessert' })}
                     >
                         <option value="hot">Caliente</option>
                         <option value="cold">Fría</option>
@@ -136,8 +165,10 @@ export const RecipeForm: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
 
             <button
                 type="submit"
-                className="w-full bg-primary hover:bg-blue-600 text-white py-2 rounded-lg font-medium transition-colors"
+                disabled={isSubmitting}
+                className="w-full bg-primary hover:bg-blue-600 disabled:opacity-50 text-white py-2 rounded-lg font-medium transition-colors flex justify-center items-center gap-2"
             >
+                {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
                 Guardar Receta
             </button>
         </form>

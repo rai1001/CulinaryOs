@@ -1,13 +1,15 @@
 import React from 'react';
 import type { Ingredient } from '../../types';
-import { Printer } from 'lucide-react';
+import { Printer, Edit2, Trash2 } from 'lucide-react';
 import { printLabel, formatLabelData } from '../printing/PrintService';
 
 interface IngredientListProps {
     ingredients: Ingredient[];
+    onEdit: (ingredient: Ingredient) => void;
+    onDelete: (id: string) => void;
 }
 
-export const IngredientList: React.FC<IngredientListProps> = ({ ingredients }) => {
+export const IngredientList: React.FC<IngredientListProps> = ({ ingredients, onEdit, onDelete }) => {
     return (
         <div className="bg-surface border border-white/5 rounded-xl overflow-hidden shadow-sm">
             <table className="w-full text-left text-sm text-slate-300">
@@ -34,13 +36,29 @@ export const IngredientList: React.FC<IngredientListProps> = ({ ingredients }) =
                             <td className="p-4 text-right font-mono text-emerald-400">{ing.costPerUnit}€</td>
                             <td className="p-4 text-right opacity-70">{(ing.yield * 100).toFixed(0)}%</td>
                             <td className="p-4 text-center">
-                                <button
-                                    onClick={() => printLabel(formatLabelData(ing, 'INGREDIENT'))}
-                                    className="p-2 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-colors"
-                                    title="Imprimir Etiqueta"
-                                >
-                                    <Printer size={18} />
-                                </button>
+                                <div className="flex justify-center gap-1">
+                                    <button
+                                        onClick={() => onEdit(ing)}
+                                        className="p-2 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-colors"
+                                        title="Editar"
+                                    >
+                                        <Edit2 size={18} />
+                                    </button>
+                                    <button
+                                        onClick={() => printLabel(formatLabelData(ing, 'INGREDIENT'))}
+                                        className="p-2 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-colors"
+                                        title="Imprimir Etiqueta"
+                                    >
+                                        <Printer size={18} />
+                                    </button>
+                                    <button
+                                        onClick={() => onDelete(ing.id)}
+                                        className="p-2 hover:bg-red-500/20 rounded-lg text-slate-400 hover:text-red-400 transition-colors"
+                                        title="Eliminar"
+                                    >
+                                        <Trash2 size={18} />
+                                    </button>
+                                </div>
                             </td>
                         </tr>
                     ))}

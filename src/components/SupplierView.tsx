@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import { useStore } from '../store/useStore';
-import { v4 as uuidv4 } from 'uuid';
-import { Plus, Edit2, Phone, Mail, Truck, ChevronDown, ChevronUp, History } from 'lucide-react';
+import { Plus, Edit2, Phone, Mail, Truck, ChevronDown, ChevronUp, History, Trash2, Loader2 } from 'lucide-react';
 import type { Supplier } from '../types';
+import { addDocument, updateDocument, deleteDocument } from '../services/firestoreService';
+import { collections } from '../firebase/collections';
 
 export const SupplierView: React.FC = () => {
-    const { suppliers, addSupplier, setSuppliers, ingredients } = useStore();
+    const { suppliers, addSupplier, updateSupplier, deleteSupplier, ingredients, activeOutletId } = useStore();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Ingredient View State
     const [viewingIngredientsSupplier, setViewingIngredientsSupplier] = useState<Supplier | null>(null);
@@ -46,23 +48,56 @@ export const SupplierView: React.FC = () => {
     const handleCloseModal = () => {
         setIsModalOpen(false);
         setEditingSupplier(null);
+        setIsSubmitting(false);
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (editingSupplier) {
-            // Update existing
-            const updated = suppliers.map(s => s.id === editingSupplier.id ? { ...s, ...formData } as Supplier : s);
-            setSuppliers(updated);
-        } else {
-            // Create new
-            const newSupplier: Supplier = {
-                id: uuidv4(),
-                ...formData as Omit<Supplier, 'id'>
-            };
-            addSupplier(newSupplier);
+        if (!activeOutletId) {
+            alert("Por favor, selecciona una cocina activa.");
+            return;
         }
-        handleCloseModal();
+
+        setIsSubmitting(true);
+        try {
+            const supplierData = {
+                ...formData,
+                outletId: activeOutletId
+            };
+
+            if (editingSupplier) {
+                // Update existing
+                await updateDocument('suppliers', editingSupplier.id, supplierData);
+                updateSupplier({ ...editingSupplier, ...supplierData } as Supplier);
+            } else {
+                // Create new
+                // addDocument returns the generated ID (string)
+                const newId = await addDocument(collections.suppliers, supplierData);
+                const newSupplier: Supplier = {
+                    id: newId,
+                    ...supplierData as Omit<Supplier, 'id'>
+                } as Supplier;
+                addSupplier(newSupplier);
+            }
+            handleCloseModal();
+        } catch (error) {
+            console.error("Error saving supplier:", error);
+            alert("Error al guardar el proveedor. Inténtalo de nuevo.");
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const handleDelete = async (id: string, name: string) => {
+        if (!confirm(`¿Estás seguro de eliminar a ${name}?`)) return;
+
+        try {
+            await deleteDocument('suppliers', id);
+            deleteSupplier(id);
+        } catch (error) {
+            console.error("Error deleting supplier:", error);
+            alert("Error al eliminar el proveedor.");
+        }
     };
 
     const toggleDay = (day: number) => {
@@ -115,15 +150,25 @@ export const SupplierView: React.FC = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {suppliers.map(supplier => (
-                    <div key={supplier.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow relative">
+                    <div key={supplier.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow relative group">
                         <div className="flex justify-between items-start mb-4">
                             <h3 className="text-xl font-semibold text-gray-800">{supplier.name}</h3>
-                            <button
-                                onClick={() => handleOpenModal(supplier)}
-                                className="text-gray-400 hover:text-indigo-600"
-                            >
-                                <Edit2 size={18} />
-                            </button>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => handleOpenModal(supplier)}
+                                    className="text-gray-400 hover:text-indigo-600 p-1 rounded-md hover:bg-indigo-50 transition-colors"
+                                    title="Editar"
+                                >
+                                    <Edit2 size={18} />
+                                </button>
+                                <button
+                                    onClick={() => handleDelete(supplier.id, supplier.name)}
+                                    className="text-gray-400 hover:text-red-600 p-1 rounded-md hover:bg-red-50 transition-colors"
+                                    title="Eliminar"
+                                >
+                                    <Trash2 size={18} />
+                                </button>
+                            </div>
                         </div>
 
                         <div className="space-y-3 text-gray-600">
@@ -155,10 +200,10 @@ export const SupplierView: React.FC = () => {
                                     {daysOfWeek.map((day, index) => (
                                         <span
                                             key={day}
-                                            className={`text-xs px-2 py-1 rounded ${supplier.orderDays?.includes(index)
+                                            className={`text - xs px - 2 py - 1 rounded ${supplier.orderDays?.includes(index)
                                                 ? 'bg-green-100 text-green-700 font-medium'
                                                 : 'bg-gray-100 text-gray-400'
-                                                }`}
+                                                } `}
                                         >
                                             {day[0]}
                                         </span>
@@ -263,10 +308,10 @@ export const SupplierView: React.FC = () => {
                                             type="button"
                                             key={day}
                                             onClick={() => toggleDay(index)}
-                                            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${formData.orderDays?.includes(index)
+                                            className={`px - 3 py - 1 rounded - full text - xs font - medium transition - colors ${formData.orderDays?.includes(index)
                                                 ? 'bg-indigo-600 text-white'
                                                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                                }`}
+                                                } `}
                                         >
                                             {day}
                                         </button>

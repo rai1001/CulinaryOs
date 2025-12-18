@@ -6,10 +6,15 @@ import { RecipeList } from './lists/RecipeList';
 import { RecipeForm } from './RecipeForm';
 import { searchRecipes } from '../api/ai';
 
+import { deleteDocument } from '../services/firestoreService';
+import { COLLECTIONS } from '../firebase/collections';
+import type { Recipe } from '../types';
+
 export const RecipesView: React.FC = () => {
     const { recipes } = useStore();
     const [searchTerm, setSearchTerm] = useState('');
     const [showAddModal, setShowAddModal] = useState(false);
+    const [editingRecipe, setEditingRecipe] = useState<Recipe | undefined>(undefined);
     const [activeTab, setActiveTab] = useState<'all' | 'regular' | 'base'>('all');
 
     // AI Search State
@@ -29,6 +34,27 @@ export const RecipesView: React.FC = () => {
         } finally {
             setAiSearching(false);
         }
+    };
+
+    const handleDelete = async (id: string) => {
+        if (confirm('¿Estás seguro de que quieres eliminar esta receta?')) {
+            try {
+                await deleteDocument(COLLECTIONS.RECIPES, id);
+            } catch (error) {
+                console.error("Error deleting recipe:", error);
+                alert("Error al eliminar la receta");
+            }
+        }
+    };
+
+    const handleEdit = (recipe: Recipe) => {
+        setEditingRecipe(recipe);
+        setShowAddModal(true);
+    };
+
+    const closeModal = () => {
+        setShowAddModal(false);
+        setEditingRecipe(undefined);
     };
 
     // Separate base recipes from regular recipes
@@ -110,7 +136,10 @@ export const RecipesView: React.FC = () => {
                         {isAiSearch ? 'IA Activa' : 'IA'}
                     </button>
                     <button
-                        onClick={() => setShowAddModal(true)}
+                        onClick={() => {
+                            setEditingRecipe(undefined);
+                            setShowAddModal(true);
+                        }}
                         className="bg-primary hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 shadow-lg shadow-primary/25"
                     >
                         <Plus className="w-4 h-4" /> Nueva Receta
@@ -151,19 +180,26 @@ export const RecipesView: React.FC = () => {
                 </button>
             </div>
 
-            <RecipeList recipes={filteredRecipes} />
+            <RecipeList
+                recipes={filteredRecipes}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+            />
 
             {showAddModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
                     <div className="relative w-full max-w-lg">
                         <button
-                            onClick={() => setShowAddModal(false)}
+                            onClick={closeModal}
                             className="absolute top-4 right-4 text-slate-400 hover:text-white z-10"
                         >
                             <X className="w-5 h-5" />
                         </button>
                         <div onClick={e => e.stopPropagation()}>
-                            <RecipeForm onClose={() => setShowAddModal(false)} />
+                            <RecipeForm
+                                onClose={closeModal}
+                                initialData={editingRecipe}
+                            />
                         </div>
                     </div>
                 </div>

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useStore } from '../store/useStore';
 import { collections } from '../firebase/collections';
-import { getAllDocuments } from '../services/firestoreService';
+import { getAllDocuments, addDocument } from '../services/firestoreService';
 import type {
     Ingredient,
     Recipe,
@@ -22,21 +22,52 @@ export const useFirestoreSync = () => {
                 setLoading(true);
                 const store = useStore.getState();
 
+                // 1. Fetch & Setup Outlets First (Critical)
+                try {
+                    console.log("Fetching outlets...");
+                    let outletsData = await getAllDocuments(collections.outlets);
+
+                    if (outletsData.length === 0) {
+                        console.log("No outlets found. Seeding default 'Atlantico'...");
+                        const defaultOutlet = {
+                            name: 'Atlantico',
+                            type: 'main_kitchen',
+                            isActive: true
+                        };
+                        try {
+                            const newId = await addDocument(collections.outlets, defaultOutlet);
+                            outletsData = [{ ...defaultOutlet, id: newId }];
+                        } catch (err) {
+                            console.error("Failed to seed default outlet:", err);
+                            // Fallback to local-only so UI works even if write fails
+                            outletsData = [{ ...defaultOutlet, id: 'temp-default' }];
+                        }
+                    }
+                    store.setOutlets(outletsData as any[]);
+
+                    if (outletsData.length > 0 && !store.activeOutletId) {
+                        store.setActiveOutletId(outletsData[0].id);
+                    }
+                } catch (error: any) {
+                    console.error("Error fetching outlets:", error);
+                    alert("Error cargando cocinas: " + error.message);
+                }
+
+                // 2. Fetch Rest of Data
                 const [
                     ingredientsData,
                     recipesData,
                     menusData,
-                    // eventsData, // Removed: Loaded on demand
+                    // eventsData,
                     staffData,
                     scheduleData,
                     suppliersData,
-                    // ordersData, // Removed: Loaded on demand
+                    // ordersData,
                     wasteData,
                     pccsData,
                     haccpLogsData,
                     haccpTasksData,
                     haccpCompletionsData,
-                    outletsData
                 ] = await Promise.all([
                     getAllDocuments(collections.ingredients),
                     getAllDocuments(collections.recipes),
@@ -51,10 +82,9 @@ export const useFirestoreSync = () => {
                     getAllDocuments(collections.haccpLogs),
                     getAllDocuments(collections.haccpTasks),
                     getAllDocuments(collections.haccpTaskCompletions),
-                    getAllDocuments(collections.outlets),
                 ]);
 
-                // Batch updates to store
+                // Batch updates to store (if successful)
                 store.setIngredients(ingredientsData as Ingredient[]);
                 store.setRecipes(recipesData as Recipe[]);
                 store.setMenus(menusData as Menu[]);
@@ -70,8 +100,7 @@ export const useFirestoreSync = () => {
                 store.setHACCPTasks(haccpTasksData as any[]);
                 store.setHACCPTaskCompletions(haccpCompletionsData as any[]);
 
-                // Outlets
-                store.setOutlets(outletsData as any[]);
+                // Outlets handled separately above
 
                 // Schedule requires special handling (Month ID -> DailySchedule)
                 scheduleData.forEach((doc: any) => {
@@ -80,8 +109,9 @@ export const useFirestoreSync = () => {
 
                 console.log("Firestore Sync Complete");
 
-            } catch (error) {
+            } catch (error: any) {
                 console.error("Error syncing with Firestore:", error);
+                alert("Error de sincronización: " + error.message);
             } finally {
                 setLoading(false);
             }

@@ -4,10 +4,12 @@ import type { Unit, Ingredient } from '../types';
 import { Plus, Sparkles, Loader2 } from 'lucide-react';
 import { enrichIngredientCallable } from '../api/ai';
 import type { IngredientEnrichment } from '../types';
-import { v4 as uuidv4 } from 'uuid';
+import { addDocument, updateDocument } from '../services/firestoreService';
+import { COLLECTIONS, collections } from '../firebase/collections';
 
 export const IngredientForm: React.FC<{ initialData?: Ingredient; onClose?: () => void }> = ({ initialData, onClose }) => {
-    const { addIngredient, updateIngredient, suppliers } = useStore();
+    const { activeOutletId, suppliers } = useStore();
+
     const [formData, setFormData] = useState<Partial<Ingredient>>(
         initialData || {
             name: '',
@@ -18,6 +20,7 @@ export const IngredientForm: React.FC<{ initialData?: Ingredient; onClose?: () =
             stock: 0,
             minStock: 0,
             supplierId: '',
+            category: 'other',
             nutritionalInfo: {
                 calories: 0,
                 protein: 0,
@@ -48,27 +51,42 @@ export const IngredientForm: React.FC<{ initialData?: Ingredient; onClose?: () =
         }
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (initialData) {
-            // Update
-            updateIngredient({ ...initialData, ...formData } as Ingredient);
-            if (onClose) onClose();
-        } else {
-            // Create
-            addIngredient({
-                id: uuidv4(),
-                ...formData
-            } as Ingredient);
-            setFormData({
-                name: '', unit: 'kg', costPerUnit: 0, yield: 1, allergens: [], stock: 0, minStock: 0, supplierId: '', nutritionalInfo: {
-                    calories: 0,
-                    protein: 0,
-                    carbs: 0,
-                    fat: 0
-                }
-            });
-            if (onClose) onClose();
+
+        if (!activeOutletId) {
+            console.error("No active outlet");
+            alert("Por favor selecciona una cocina activa.");
+            return;
+        }
+
+        setIsSubmitting(true);
+        try {
+            if (initialData) {
+                // Update
+                const updateData = { ...formData, outletId: activeOutletId };
+                await updateDocument(COLLECTIONS.INGREDIENTS, initialData.id, updateData);
+                if (onClose) onClose();
+            } else {
+                // Create
+                const newData = {
+                    ...formData,
+                    outletId: activeOutletId,
+                    // Ensure defaults
+                    category: formData.category || 'other'
+                };
+                await addDocument(collections.ingredients, newData);
+
+                // Reset form - simplified
+                if (onClose) onClose();
+            }
+        } catch (error) {
+            console.error("Error saving ingredient:", error);
+            alert("Error al guardar el ingrediente");
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -262,9 +280,18 @@ export const IngredientForm: React.FC<{ initialData?: Ingredient; onClose?: () =
 
             <button
                 type="submit"
-                className="w-full bg-primary hover:bg-blue-600 text-white py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+                disabled={isSubmitting}
+                className="w-full bg-primary hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed text-white py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
             >
-                <Plus className="w-4 h-4" /> {initialData ? 'Guardar Cambios' : 'Añadir Ingrediente'}
+                {isSubmitting ? (
+                    <>
+                        <Loader2 className="w-4 h-4 animate-spin" /> Guardando...
+                    </>
+                ) : (
+                    <>
+                        <Plus className="w-4 h-4" /> {initialData ? 'Guardar Cambios' : 'Añadir Ingrediente'}
+                    </>
+                )}
             </button>
         </form>
     );

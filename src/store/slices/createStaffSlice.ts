@@ -8,18 +8,14 @@ export const createStaffSlice: StateCreator<
     [],
     StaffSlice
 > = (set) => ({
-    staff: [
-        { id: '1', name: 'Israel', role: 'HEAD_CHEF', consecutiveWorkDays: 0, daysOffInLast28Days: 0, vacationDaysTotal: 30, vacationDates: [] },
-        { id: '2', name: 'Ramón', role: 'COOK_MORNING', consecutiveWorkDays: 0, daysOffInLast28Days: 0, vacationDaysTotal: 30, vacationDates: [] },
-        { id: '3', name: 'Cristina', role: 'COOK_ROTATING', consecutiveWorkDays: 0, daysOffInLast28Days: 0, vacationDaysTotal: 30, vacationDates: [] },
-        { id: '4', name: 'Yago', role: 'COOK_ROTATING', consecutiveWorkDays: 0, daysOffInLast28Days: 0, vacationDaysTotal: 30, vacationDates: [] },
-        { id: '5', name: 'Iván', role: 'COOK_ROTATING', consecutiveWorkDays: 0, daysOffInLast28Days: 0, vacationDaysTotal: 30, vacationDates: [] },
-    ],
+    staff: [],
     schedule: {},
     setStaff: (staff) => set({ staff }),
+    addEmployee: (employee) => set((state) => ({ staff: [...state.staff, employee] })),
     updateEmployee: (employee) => set((state) => ({
         staff: state.staff.map(e => e.id === employee.id ? employee : e)
     })),
+    deleteEmployee: (id) => set((state) => ({ staff: state.staff.filter(e => e.id !== id) })),
     updateSchedule: (month, data) => set((state) => ({
         schedule: {
             ...state.schedule,

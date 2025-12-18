@@ -1,16 +1,24 @@
+
 import React, { useState } from 'react';
+import {
+    addDocument,
+    updateDocument,
+    deleteDocument
+} from '../services/firestoreService';
+import { COLLECTIONS, collections } from '../firebase/collections';
 import { useStore } from '../store/useStore';
 import { BookOpen, Plus, Search, Edit2, Trash2, Save, X, Utensils } from 'lucide-react';
 import type { Menu, MenuVariation } from '../types';
 import { useToast, ConfirmModal } from './ui';
 
 export const MenuView: React.FC = () => {
-    const { menus, recipes, addMenu, updateMenu, deleteMenu } = useStore();
+    const { menus, recipes, activeOutletId } = useStore();
     const { addToast } = useToast();
 
     const [isEditing, setIsEditing] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; id: string | null }>({ isOpen: false, id: null });
+    const [isSaving, setIsSaving] = useState(false);
 
     // Form State
     const [formData, setFormData] = useState<Partial<Menu>>({
@@ -36,37 +44,54 @@ export const MenuView: React.FC = () => {
         setDeleteConfirm({ isOpen: true, id });
     };
 
-    const confirmDelete = () => {
+    const confirmDelete = async () => {
         if (deleteConfirm.id) {
-            deleteMenu(deleteConfirm.id);
-            addToast('Menú eliminado', 'success');
+            try {
+                await deleteDocument(COLLECTIONS.MENUS, deleteConfirm.id);
+                addToast('Menú eliminado', 'success');
+            } catch (error) {
+                console.error(error);
+                addToast('Error al eliminar menú', 'error');
+            }
         }
         setDeleteConfirm({ isOpen: false, id: null });
     };
 
-    const handleSave = (e: React.FormEvent) => {
+    const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!formData.name) return;
-
-        const menuData: Menu = {
-            id: formData.id || crypto.randomUUID(),
-            name: formData.name,
-            description: formData.description || '',
-            recipeIds: formData.recipeIds || [],
-            variations: formData.variations || [],
-            sellPrice: Number(formData.sellPrice) || 0,
-            recipes: recipes.filter(r => formData.recipeIds?.includes(r.id))
-        };
-
-        if (formData.id) {
-            updateMenu(menuData);
-            addToast('Menú actualizado', 'success');
-        } else {
-            addMenu(menuData);
-            addToast('Menú creado', 'success');
+        if (!activeOutletId) {
+            addToast('Selecciona una cocina primero', 'error');
+            return;
         }
-        setIsEditing(false);
-        setFormData({ name: '', description: '', recipeIds: [], variations: [], sellPrice: 0 });
+
+        setIsSaving(true);
+        try {
+            const menuData: Partial<Menu> = {
+                name: formData.name,
+                description: formData.description || '',
+                recipeIds: formData.recipeIds || [],
+                variations: formData.variations || [],
+                sellPrice: Number(formData.sellPrice) || 0,
+                outletId: activeOutletId
+                // Note: 'recipes' is hydrated, not saved to DB
+            };
+
+            if (formData.id) {
+                await updateDocument(COLLECTIONS.MENUS, formData.id, menuData);
+                addToast('Menú actualizado', 'success');
+            } else {
+                await addDocument(collections.menus, menuData);
+                addToast('Menú creado', 'success');
+            }
+            setIsEditing(false);
+            setFormData({ name: '', description: '', recipeIds: [], variations: [], sellPrice: 0 });
+        } catch (error) {
+            console.error(error);
+            addToast('Error al guardar menú', 'error');
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     const toggleRecipe = (recipeId: string) => {

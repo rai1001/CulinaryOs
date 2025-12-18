@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useStore } from '../store/useStore';
+import { useNavigate } from 'react-router-dom';
 import { Search, ChefHat, Package, CalendarDays, Truck, X, ArrowRight } from 'lucide-react';
 import Fuse from 'fuse.js';
 
@@ -18,7 +19,8 @@ interface CommandPaletteProps {
 }
 
 export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose }) => {
-    const { recipes, ingredients, events, suppliers, setCurrentView } = useStore();
+    const { recipes, ingredients, events, suppliers } = useStore();
+    const navigate = useNavigate();
     const [query, setQuery] = useState('');
     const [selectedIndex, setSelectedIndex] = useState(0);
     const inputRef = useRef<HTMLInputElement>(null);
@@ -36,7 +38,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
                 type: 'recipe',
                 icon: <ChefHat size={20} className="text-orange-400" />,
                 action: () => {
-                    setCurrentView('recipes');
+                    navigate('/recipes');
                     onClose();
                 }
             });
@@ -51,7 +53,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
                 type: 'ingredient',
                 icon: <Package size={20} className="text-green-400" />,
                 action: () => {
-                    setCurrentView('ingredients');
+                    navigate('/ingredients');
                     onClose();
                 }
             });
@@ -66,7 +68,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
                 type: 'event',
                 icon: <CalendarDays size={20} className="text-blue-400" />,
                 action: () => {
-                    setCurrentView('events');
+                    navigate('/events');
                     onClose();
                 }
             });
@@ -81,14 +83,14 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
                 type: 'supplier',
                 icon: <Truck size={20} className="text-purple-400" />,
                 action: () => {
-                    setCurrentView('suppliers');
+                    navigate('/suppliers');
                     onClose();
                 }
             });
         });
 
         return items;
-    }, [recipes, ingredients, events, suppliers, setCurrentView, onClose]);
+    }, [recipes, ingredients, events, suppliers, navigate, onClose]);
 
     // Fuzzy search with fuse.js
     const fuse = useMemo(() => {

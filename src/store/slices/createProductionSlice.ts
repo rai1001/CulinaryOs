@@ -13,6 +13,8 @@ export const createProductionSlice: StateCreator<
 
     setSelectedProductionEventId: (eventId: string | null) => set({ selectedProductionEventId: eventId }),
 
+    replaceAllProductionTasks: (tasksByEvent: Record<string, import('../../types').KanbanTask[]>) => set({ productionTasks: tasksByEvent }),
+
     generateProductionTasks: (event: import('../../types').Event) => {
         if (!event.menu || !event.menu.recipes) return;
 

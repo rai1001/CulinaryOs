@@ -1,9 +1,11 @@
 import React, { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import { Check, Clock, ChefHat, ArrowLeft } from 'lucide-react';
 
 export const KitchenDisplayView: React.FC = () => {
-    const { setCurrentView, events, recipes, ingredients } = useStore();
+    const { events, recipes, ingredients } = useStore();
+    const navigate = useNavigate();
     const [selectedStation, setSelectedStation] = useState<'all' | 'hot' | 'cold' | 'dessert'>('all');
     const [completedTasks, setCompletedTasks] = useState<string[]>([]);
 
@@ -104,7 +106,7 @@ export const KitchenDisplayView: React.FC = () => {
             <div className="flex items-center justify-between p-6 bg-slate-800 border-b border-white/5">
                 <div className="flex items-center gap-6">
                     <button
-                        onClick={() => setCurrentView('production')}
+                        onClick={() => navigate('/production')}
                         className="p-4 bg-white/5 rounded-xl active:bg-white/10"
                     >
                         <ArrowLeft size={32} />

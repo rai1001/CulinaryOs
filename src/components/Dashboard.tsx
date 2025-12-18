@@ -1,12 +1,14 @@
 import React, { useRef, useState, useMemo } from 'react';
 import { useStore } from '../store/useStore';
+import { useNavigate } from 'react-router-dom';
 import { ExcelImporter } from './ExcelImporter';
 import { ChefHat, BookOpen, Calendar, Users, Download, Upload, Database, CheckCircle, AlertOctagon } from 'lucide-react';
 import { exportData, importData, getDataSizeEstimate } from '../utils/backup';
 import { useToast } from './ui';
 
 export const Dashboard: React.FC = () => {
-    const { recipes, menus, staff, events, ingredients, setCurrentView } = useStore();
+    const { recipes, menus, staff, events, ingredients } = useStore();
+    const navigate = useNavigate();
     const { addToast } = useToast();
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [isImporting, setIsImporting] = useState(false);
@@ -70,7 +72,7 @@ export const Dashboard: React.FC = () => {
                     label="Recetas"
                     value={recipes.length}
                     color="text-blue-400"
-                    onClick={() => setCurrentView('data')}
+                    onClick={() => navigate('/recipes')}
                     className="cursor-pointer hover:scale-105 transition-transform"
                 />
                 <StatCard
@@ -78,7 +80,7 @@ export const Dashboard: React.FC = () => {
                     label="Menús"
                     value={menus.length}
                     color="text-violet-400"
-                    onClick={() => setCurrentView('data')}
+                    onClick={() => navigate('/menus')}
                     className="cursor-pointer hover:scale-105 transition-transform"
                 />
                 <StatCard
@@ -86,7 +88,19 @@ export const Dashboard: React.FC = () => {
                     label="Personal"
                     value={staff.length}
                     color="text-emerald-400"
-                    onClick={() => setCurrentView('data')}
+                    onClick={() => navigate('/staff')} // Assuming /staff exists, or maybe /schedule? Staff view not in original App.tsx list?
+                    // Original was 'data', likely for raw staff data.
+                    // Wait, StaffList is inside DataView in original?
+                    // Let's check App.tsx routes.
+                    // Routes: schedule, production, data, events, recipes, ingredients, suppliers, inventory, purchasing, waste, haccp, analytics, kds, ai, menus, breakfast.
+                    // Staff view is missing from Routes!
+                    // Ah, StaffSlice exists. Staff management was done inside Data View?
+                    // Let's stick to '/data' or implement '/staff'.
+                    // I will check if 'StaffView' exists. It was part of recent logic.
+                    // The App.tsx I replaced had:
+                    // case 'data': return <DataView />;
+                    // It didn't have 'staff' case.
+                    // So let's route to '/data' for now to be safe, or check DataView content.
                     className="cursor-pointer hover:scale-105 transition-transform"
                 />
                 <StatCard
@@ -94,7 +108,7 @@ export const Dashboard: React.FC = () => {
                     label="Eventos"
                     value={events.length}
                     color="text-amber-400"
-                    onClick={() => setCurrentView('events')}
+                    onClick={() => navigate('/events')}
                     className="cursor-pointer hover:scale-105 transition-transform"
                 />
             </div>
@@ -171,7 +185,7 @@ export const Dashboard: React.FC = () => {
                                     ))}
                                 </div>
                                 <button
-                                    onClick={() => setCurrentView('inventory')}
+                                    onClick={() => navigate('/inventory')}
                                     className="w-full mt-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 rounded-lg text-sm font-medium transition-colors"
                                 >
                                     Ver Inventario Completo

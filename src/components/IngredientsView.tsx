@@ -5,14 +5,39 @@ import { Package, Search, Plus, X } from 'lucide-react';
 import { IngredientList } from './lists/IngredientList';
 import { IngredientForm } from './IngredientForm';
 
+import { deleteDocument } from '../services/firestoreService';
+import { COLLECTIONS } from '../firebase/collections';
+import type { Ingredient } from '../types';
+
 export const IngredientsView: React.FC = () => {
     const { ingredients } = useStore();
-    // const { getFilteredIngredients } = useStore(); // TODO: Check if this selector exists in store
-    // const ingredients = getFilteredIngredients(); // For now fallback to simple list until slice is verified
     const [searchTerm, setSearchTerm] = useState('');
     const [showAddModal, setShowAddModal] = useState(false);
+    const [editingIngredient, setEditingIngredient] = useState<Ingredient | undefined>(undefined);
 
     const filteredIngredients = ingredients.filter(i => i.name.toLowerCase().includes(searchTerm.toLowerCase()));
+
+    const handleDelete = async (id: string) => {
+        if (confirm('¿Estás seguro de que quieres eliminar este ingrediente?')) {
+            try {
+                await deleteDocument(COLLECTIONS.INGREDIENTS, id);
+                // Toast success?
+            } catch (error) {
+                console.error("Error deleting ingredient:", error);
+                alert("Error al eliminar");
+            }
+        }
+    };
+
+    const handleEdit = (ingredient: Ingredient) => {
+        setEditingIngredient(ingredient);
+        setShowAddModal(true);
+    };
+
+    const closeModal = () => {
+        setShowAddModal(false);
+        setEditingIngredient(undefined);
+    };
 
     return (
         <div className="p-8 max-w-6xl mx-auto space-y-6 text-slate-200">
@@ -35,7 +60,10 @@ export const IngredientsView: React.FC = () => {
                         />
                     </div>
                     <button
-                        onClick={() => setShowAddModal(true)}
+                        onClick={() => {
+                            setEditingIngredient(undefined);
+                            setShowAddModal(true);
+                        }}
                         className="bg-primary hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 shadow-lg shadow-primary/25"
                     >
                         <Plus className="w-4 h-4" /> Nuevo Ingrediente
@@ -43,19 +71,26 @@ export const IngredientsView: React.FC = () => {
                 </div>
             </header>
 
-            <IngredientList ingredients={filteredIngredients} />
+            <IngredientList
+                ingredients={filteredIngredients}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+            />
 
             {showAddModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
                     <div className="relative w-full max-w-lg">
                         <button
-                            onClick={() => setShowAddModal(false)}
+                            onClick={closeModal}
                             className="absolute top-4 right-4 text-slate-400 hover:text-white z-10"
                         >
                             <X className="w-5 h-5" />
                         </button>
                         <div onClick={e => e.stopPropagation()}>
-                            <IngredientForm onClose={() => setShowAddModal(false)} />
+                            <IngredientForm
+                                onClose={closeModal}
+                                initialData={editingIngredient}
+                            />
                         </div>
                     </div>
                 </div>
