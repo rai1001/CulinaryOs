@@ -13,6 +13,7 @@ import { createAnalyticsSlice } from './slices/createAnalyticsSlice';
 import { createOutletSlice } from './slices/createOutletSlice';
 import { createNotificationSlice } from './slices/createNotificationSlice';
 import { createBreakfastSlice } from './slices/createBreakfastSlice';
+import { createAuthSlice } from './slices/createAuthSlice';
 import type { AppState } from './types';
 
 // Re-export AppState for consumers
@@ -33,11 +34,29 @@ export const useStore = create<AppState>()(
             ...createAnalyticsSlice(...a),
             ...createOutletSlice(...a),
             ...createNotificationSlice(...a),
+            ...createNotificationSlice(...a),
             ...createBreakfastSlice(...a),
+            ...createAuthSlice(...a),
 
             // UI State
             activeOutletId: null,
-            setActiveOutletId: (id) => a[0]({ activeOutletId: id }),
+            setActiveOutletId: (id) => a[0]({
+                activeOutletId: id,
+                // Clear data on switch to prevent leakage
+                ingredients: [],
+                recipes: [],
+                menus: [],
+                events: [],
+                staff: [],
+                suppliers: [],
+                purchaseOrders: [],
+                wasteRecords: [],
+                productionTasks: {},
+                pccs: [],
+                haccpLogs: [],
+                haccpTasks: [],
+                haccpTaskCompletions: []
+            }),
         }),
         {
             name: 'kitchen-manager-storage',

@@ -5,6 +5,8 @@ import type { Supplier } from '../types';
 import { addDocument, updateDocument, deleteDocument } from '../services/firestoreService';
 import { collections } from '../firebase/collections';
 
+import { ExcelImporter } from './common/ExcelImporter';
+
 export const SupplierView: React.FC = () => {
     const { suppliers, addSupplier, updateSupplier, deleteSupplier, ingredients, activeOutletId } = useStore();
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -25,6 +27,40 @@ export const SupplierView: React.FC = () => {
         orderDays: [],
         minimumOrderValue: 0
     });
+
+    const handleImport = async (data: any[]) => {
+        if (!activeOutletId) {
+            alert("No hay cocina activa seleccionada.");
+            return;
+        }
+
+        if (!confirm(`Se importarán ${data.length} proveedores. ¿Continuar?`)) return;
+
+        let successCount = 0;
+        for (const row of data) {
+            try {
+                const name = row['Nombre'] || row['Name'] || row['nombre'];
+                if (!name) continue;
+
+                const supplierData = {
+                    name: String(name),
+                    contactName: row['Contacto'] || row['Contact'] || row['contactName'] || '',
+                    email: row['Email'] || row['Correo'] || '',
+                    phone: String(row['Telefono'] || row['Phone'] || row['phone'] || ''),
+                    leadTime: Number(row['Entrega'] || row['LeadTime'] || 1),
+                    orderDays: [],
+                    minimumOrderValue: Number(row['Minimo'] || 0),
+                    outletId: activeOutletId
+                };
+
+                await addDocument(collections.suppliers, supplierData);
+                successCount++;
+            } catch (error) {
+                console.error("Error importing supplier row", row, error);
+            }
+        }
+        alert(`Importación completada: ${successCount} proveedores añadidos.`);
+    };
 
     const handleOpenModal = (supplier?: Supplier) => {
         if (supplier) {
@@ -139,13 +175,20 @@ export const SupplierView: React.FC = () => {
                     <h2 className="text-2xl font-bold text-gray-800">Proveedores</h2>
                     <p className="text-gray-600">Gestión de proveedores y contactos</p>
                 </div>
-                <button
-                    onClick={() => handleOpenModal()}
-                    className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors"
-                >
-                    <Plus size={20} />
-                    Nuevo Proveedor
-                </button>
+                <div className="flex gap-3">
+                    <ExcelImporter
+                        onImport={handleImport}
+                        buttonLabel="Importar Excel"
+                        template={{ col1: "Nombre", col2: "Contacto", col3: "Email" }}
+                    />
+                    <button
+                        onClick={() => handleOpenModal()}
+                        className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors"
+                    >
+                        <Plus size={20} />
+                        Nuevo Proveedor
+                    </button>
+                </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

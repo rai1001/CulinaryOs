@@ -76,8 +76,8 @@ Current Conversation:
 
     const chat = model.startChat({
         history: chatHistory,
-        generationConfig: {
-            maxOutputTokens: 500,
+        generation_config: {
+            max_output_tokens: 500,
         },
     });
 

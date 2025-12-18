@@ -152,6 +152,15 @@ export interface KanbanTask {
 
 // Staff & Scheduling Types
 
+// Auth Types
+export interface User {
+    id: string;
+    email: string;
+    role: Role;
+    name: string;
+    allowedOutlets?: string[]; // IDs of outlets this user can access
+}
+
 export type Role = 'HEAD_CHEF' | 'COOK_MORNING' | 'COOK_ROTATING';
 
 export interface Employee {

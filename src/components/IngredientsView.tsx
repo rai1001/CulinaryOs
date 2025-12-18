@@ -1,16 +1,15 @@
-
 import React, { useState } from 'react';
 import { useStore } from '../store/useStore';
 import { Package, Search, Plus, X } from 'lucide-react';
 import { IngredientList } from './lists/IngredientList';
 import { IngredientForm } from './IngredientForm';
-
-import { deleteDocument } from '../services/firestoreService';
-import { COLLECTIONS } from '../firebase/collections';
-import type { Ingredient } from '../types';
+import { deleteDocument, addDocument } from '../services/firestoreService';
+import { ExcelImporter } from './common/ExcelImporter';
+import { COLLECTIONS, collections } from '../firebase/collections';
+import type { Ingredient, Unit } from '../types';
 
 export const IngredientsView: React.FC = () => {
-    const { ingredients } = useStore();
+    const { ingredients, activeOutletId } = useStore();
     const [searchTerm, setSearchTerm] = useState('');
     const [showAddModal, setShowAddModal] = useState(false);
     const [editingIngredient, setEditingIngredient] = useState<Ingredient | undefined>(undefined);
@@ -21,12 +20,48 @@ export const IngredientsView: React.FC = () => {
         if (confirm('¿Estás seguro de que quieres eliminar este ingrediente?')) {
             try {
                 await deleteDocument(COLLECTIONS.INGREDIENTS, id);
-                // Toast success?
             } catch (error) {
                 console.error("Error deleting ingredient:", error);
                 alert("Error al eliminar");
             }
         }
+    };
+
+    const handleImport = async (data: any[]) => {
+        if (!activeOutletId) {
+            alert("No hay cocina activa seleccionada.");
+            return;
+        }
+
+        const count = data.length;
+        if (!confirm(`Se importarán ${count} ingredientes. ¿Continuar?`)) return;
+
+        let successCount = 0;
+        for (const row of data) {
+            try {
+                // Map columns - try to be flexible with case
+                const name = row['Nombre'] || row['Name'] || row['nombre'] || row['name'];
+                const unitRaw = row['Unidad'] || row['Unit'] || row['unidad'] || row['unit'];
+                const cost = row['Coste'] || row['Cost'] || row['coste'] || row['cost'] || row['Precio'] || 0;
+
+                if (!name) continue;
+
+                const newIngredient: Partial<Ingredient> = {
+                    name: String(name),
+                    unit: (unitRaw as Unit) || 'kg',
+                    costPerUnit: Number(cost) || 0,
+                    yield: 1, // Default yield
+                    allergens: [],
+                    outletId: activeOutletId
+                };
+
+                await addDocument(collections.ingredients, newIngredient);
+                successCount++;
+            } catch (e) {
+                console.error("Error importing row", row, e);
+            }
+        }
+        alert(`Importación completada: ${successCount}/${count} ingredientes añadidos.`);
     };
 
     const handleEdit = (ingredient: Ingredient) => {
@@ -49,7 +84,12 @@ export const IngredientsView: React.FC = () => {
                     </div>
                     <p className="text-slate-400 mt-1">Base de datos de productos y precios.</p>
                 </div>
-                <div className="flex gap-3">
+                <div className="flex gap-3 items-center">
+                    <ExcelImporter
+                        onImport={handleImport}
+                        buttonLabel="Importar CSV/XLSX"
+                        template={{ col1: "Nombre", col2: "Unidad", col3: "Coste" }}
+                    />
                     <div className="relative">
                         <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-500" />
                         <input

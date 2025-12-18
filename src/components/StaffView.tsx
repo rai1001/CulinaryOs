@@ -5,9 +5,10 @@ import type { Employee, Role } from '../types';
 import { getRoleLabel } from '../utils/labels';
 import { addDocument, updateDocument, deleteDocument } from '../services/firestoreService';
 import { collections } from '../firebase/collections';
+import { ExcelImporter } from './common/ExcelImporter';
 
 export const StaffView: React.FC = () => {
-    const { staff, addEmployee, updateEmployee, deleteEmployee, activeOutletId } = useStore();
+    const { staff, activeOutletId } = useStore();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -21,6 +22,45 @@ export const StaffView: React.FC = () => {
         daysOffInLast28Days: 0,
         vacationDates: []
     });
+
+    const handleImport = async (data: any[]) => {
+        if (!activeOutletId) {
+            alert("No hay cocina activa seleccionada.");
+            return;
+        }
+
+        if (!confirm(`Se importarán ${data.length} empleados. ¿Continuar?`)) return;
+
+        let successCount = 0;
+        for (const row of data) {
+            try {
+                const name = row['Nombre'] || row['Name'] || row['nombre'];
+                const roleRaw = row['Rol'] || row['Role'] || row['rol'] || 'COOK_ROTATING';
+                // Basic mapping, assume default if unknown
+                const role: Role = ['HEAD_CHEF', 'COOK_MORNING', 'COOK_ROTATING'].includes(roleRaw)
+                    ? roleRaw as Role
+                    : 'COOK_ROTATING';
+
+                if (!name) continue;
+
+                const employeeData = {
+                    name: String(name),
+                    role,
+                    vacationDaysTotal: Number(row['Vacaciones'] || 30),
+                    consecutiveWorkDays: 0,
+                    daysOffInLast28Days: 0,
+                    vacationDates: [],
+                    outletId: activeOutletId
+                };
+
+                await addDocument(collections.staff, employeeData);
+                successCount++;
+            } catch (error) {
+                console.error("Error importing staff row", row, error);
+            }
+        }
+        alert(`Importación completada: ${successCount} empleados añadidos.`);
+    };
 
     const handleOpenModal = (employee?: Employee) => {
         if (employee) {
@@ -53,6 +93,8 @@ export const StaffView: React.FC = () => {
             return;
         }
 
+        if (isSubmitting) return; // double check
+
         setIsSubmitting(true);
         try {
             const employeeData = {
@@ -63,15 +105,9 @@ export const StaffView: React.FC = () => {
             if (editingEmployee) {
                 // Update
                 await updateDocument('staff', editingEmployee.id, employeeData);
-                updateEmployee({ ...editingEmployee, ...employeeData } as Employee);
             } else {
                 // Create
-                const newId = await addDocument(collections.staff, employeeData);
-                const newEmployee: Employee = {
-                    id: newId,
-                    ...employeeData as Omit<Employee, 'id'>
-                } as Employee;
-                addEmployee(newEmployee);
+                await addDocument(collections.staff, employeeData);
             }
             handleCloseModal();
         } catch (error) {
@@ -87,7 +123,6 @@ export const StaffView: React.FC = () => {
 
         try {
             await deleteDocument('staff', id);
-            deleteEmployee(id);
         } catch (error) {
             console.error("Error deleting employee:", error);
             alert("Error al eliminar el empleado.");
@@ -98,21 +133,28 @@ export const StaffView: React.FC = () => {
         <div className="p-6">
             <div className="flex justify-between items-center mb-6">
                 <div>
-                    <h2 className="text-2xl font-bold text-gray-800">Personal</h2>
-                    <p className="text-gray-600">Gestión de empleados y roles</p>
+                    <h2 className="text-2xl font-bold text-white">Personal</h2>
+                    <p className="text-slate-400">Gestión de empleados y roles</p>
                 </div>
-                <button
-                    onClick={() => handleOpenModal()}
-                    className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors"
-                >
-                    <Plus size={20} />
-                    Nuevo Empleado
-                </button>
+                <div className="flex gap-3">
+                    <ExcelImporter
+                        onImport={handleImport}
+                        buttonLabel="Importar Excel"
+                        template={{ col1: "Nombre", col2: "Rol" }}
+                    />
+                    <button
+                        onClick={() => handleOpenModal()}
+                        className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors"
+                    >
+                        <Plus size={20} />
+                        Nuevo Empleado
+                    </button>
+                </div>
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="bg-surface rounded-xl shadow-sm border border-white/10 overflow-hidden">
                 <table className="w-full text-left">
-                    <thead className="bg-gray-50 text-gray-500 uppercase text-xs font-semibold">
+                    <thead className="bg-white/5 text-slate-400 uppercase text-xs font-semibold">
                         <tr>
                             <th className="px-6 py-3">Nombre</th>
                             <th className="px-6 py-3">Rol</th>
@@ -120,25 +162,25 @@ export const StaffView: React.FC = () => {
                             <th className="px-6 py-3 text-right">Acciones</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-100">
+                    <tbody className="divide-y divide-white/5">
                         {staff.map(emp => (
-                            <tr key={emp.id} className="hover:bg-gray-50 transition-colors">
-                                <td className="px-6 py-4 font-medium text-gray-800">
+                            <tr key={emp.id} className="hover:bg-white/5 transition-colors text-slate-300">
+                                <td className="px-6 py-4 font-medium text-white">
                                     <div className="flex items-center gap-3">
-                                        <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-xs">
+                                        <div className="w-8 h-8 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold text-xs">
                                             {emp.name[0]}
                                         </div>
                                         {emp.name}
                                     </div>
                                 </td>
                                 <td className="px-6 py-4">
-                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-white/10 text-slate-200">
                                         <Briefcase size={12} />
                                         {getRoleLabel(emp.role)}
                                     </span>
                                 </td>
                                 <td className="px-6 py-4 text-center">
-                                    <span className="text-sm text-gray-600">
+                                    <span className="text-sm text-slate-400">
                                         {emp.vacationDates?.length || 0} / {emp.vacationDaysTotal} días
                                     </span>
                                 </td>
@@ -146,14 +188,14 @@ export const StaffView: React.FC = () => {
                                     <div className="flex justify-end gap-2">
                                         <button
                                             onClick={() => handleOpenModal(emp)}
-                                            className="text-gray-400 hover:text-indigo-600 p-1 rounded hover:bg-indigo-50 transition-colors"
+                                            className="text-slate-400 hover:text-primary p-1 rounded hover:bg-white/10 transition-colors"
                                             title="Editar"
                                         >
                                             <Edit2 size={18} />
                                         </button>
                                         <button
                                             onClick={() => handleDelete(emp.id, emp.name)}
-                                            className="text-gray-400 hover:text-red-600 p-1 rounded hover:bg-red-50 transition-colors"
+                                            className="text-slate-400 hover:text-red-500 p-1 rounded hover:bg-white/10 transition-colors"
                                             title="Eliminar"
                                         >
                                             <Trash2 size={18} />
@@ -164,7 +206,7 @@ export const StaffView: React.FC = () => {
                         ))}
                         {staff.length === 0 && (
                             <tr>
-                                <td colSpan={4} className="px-6 py-8 text-center text-gray-500 italic">
+                                <td colSpan={4} className="px-6 py-8 text-center text-slate-500 italic">
                                     No hay empleados registrados.
                                 </td>
                             </tr>
@@ -175,28 +217,28 @@ export const StaffView: React.FC = () => {
 
             {/* Modal */}
             {isModalOpen && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-xl shadow-xl p-8 max-w-md w-full animate-in fade-in zoom-in duration-200">
-                        <h3 className="text-2xl font-bold text-gray-800 mb-6">
+                <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 backdrop-blur-sm">
+                    <div className="bg-surface rounded-xl shadow-xl p-8 max-w-md w-full animate-in fade-in zoom-in duration-200 border border-white/10">
+                        <h3 className="text-2xl font-bold text-white mb-6">
                             {editingEmployee ? 'Editar Empleado' : 'Nuevo Empleado'}
                         </h3>
 
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
+                                <label className="block text-sm font-medium text-slate-300 mb-1">Nombre</label>
                                 <input
                                     type="text"
                                     required
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+                                    className="w-full px-3 py-2 bg-black/20 border border-white/10 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all text-white placeholder-slate-500"
                                     value={formData.name}
                                     onChange={e => setFormData({ ...formData, name: e.target.value })}
                                 />
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Rol</label>
+                                <label className="block text-sm font-medium text-slate-300 mb-1">Rol</label>
                                 <select
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+                                    className="w-full px-3 py-2 bg-black/20 border border-white/10 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all text-white"
                                     value={formData.role}
                                     onChange={e => setFormData({ ...formData, role: e.target.value as Role })}
                                 >
@@ -207,29 +249,29 @@ export const StaffView: React.FC = () => {
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Días Vacaciones (Anual)</label>
+                                <label className="block text-sm font-medium text-slate-300 mb-1">Días Vacaciones (Anual)</label>
                                 <input
                                     type="number"
                                     min="0"
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+                                    className="w-full px-3 py-2 bg-black/20 border border-white/10 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all text-white"
                                     value={formData.vacationDaysTotal}
                                     onChange={e => setFormData({ ...formData, vacationDaysTotal: parseInt(e.target.value) || 0 })}
                                 />
                             </div>
 
-                            <div className="flex justify-end gap-3 mt-6 pt-4 border-t">
+                            <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-white/10">
                                 <button
                                     type="button"
                                     onClick={handleCloseModal}
                                     disabled={isSubmitting}
-                                    className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                                    className="px-4 py-2 text-slate-300 hover:bg-white/5 rounded-lg transition-colors"
                                 >
                                     Cancelar
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={isSubmitting}
-                                    className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                    className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                                 >
                                     {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
                                     {editingEmployee ? 'Guardar Cambios' : 'Crear Empleado'}

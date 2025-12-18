@@ -118,7 +118,7 @@ export const useFirestoreSync = () => {
         };
 
         syncData();
-    }, []); // Run once on mount
+    }, [useStore((state) => state.activeOutletId)]); // Re-sync when outlet changes
 
     return { loading };
 };

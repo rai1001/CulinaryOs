@@ -147,6 +147,11 @@ export interface OutletSlice {
     toggleOutletActive: (id: string) => void;
     getOutlet: (id: string) => import('../types').Outlet | undefined;
 }
+export interface AuthSlice {
+    currentUser: import('../types').User | null;
+    setCurrentUser: (user: import('../types').User | null) => void;
+}
+
 export interface AppState extends
     IngredientSlice,
     EventSlice,
@@ -160,9 +165,8 @@ export interface AppState extends
     AnalyticsSlice,
     OutletSlice,
     BreakfastSlice,
-    NotificationSlice {
+    NotificationSlice,
+    AuthSlice {
     // activeOutletId is inherited from OutletSlice
-    // setActiveOutletId should optionally match setActiveOutlet or be separate. 
-    // OutletSlice has setActiveOutlet. Let's add alias or stick to what's used.
     setActiveOutletId: (id: string | null) => void;
 }
