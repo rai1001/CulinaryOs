@@ -30,19 +30,22 @@ export const useHaccpSync = () => {
 
         const unsubLogs = onSnapshot(qLogs, (snap) => {
             setHACCPLogs(snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as any)));
-        });
+        }, (error) => console.error("Error syncing haccpLogs:", error));
 
         const unsubTasks = onSnapshot(qTasks, (snap) => {
             setHACCPTasks(snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as any)));
-        });
+        }, (error) => console.error("Error syncing haccpTasks:", error));
 
         const unsubCompletions = onSnapshot(qCompletions, (snap) => {
             setHACCPTaskCompletions(snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as any)));
-        });
+        }, (error) => console.error("Error syncing haccpTaskCompletions:", error));
 
         const unsubPCCs = onSnapshot(qPCCs, (snap) => {
             setPCCs(snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as any)));
             setLoading(false); // Assume loaded when PCCs load (approx)
+        }, (error) => {
+            console.error("Error syncing PCCs:", error);
+            setLoading(false);
         });
 
         return () => {

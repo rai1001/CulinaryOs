@@ -28,6 +28,17 @@ export const SupplierView: React.FC = () => {
         minimumOrderValue: 0
     });
 
+    const parseLeadTime = (value: any): number => {
+        if (!value) return 1;
+        const str = String(value).toUpperCase();
+        if (str.includes('24H')) return 1;
+        if (str.includes('48H')) return 2;
+        if (str.includes('72H')) return 3;
+        // Try parsing number
+        const num = parseFloat(str);
+        return isNaN(num) ? 1 : num;
+    };
+
     const handleImport = async (data: any[]) => {
         if (!activeOutletId) {
             alert("No hay cocina activa seleccionada.");
@@ -39,17 +50,18 @@ export const SupplierView: React.FC = () => {
         let successCount = 0;
         for (const row of data) {
             try {
-                const name = row['Nombre'] || row['Name'] || row['nombre'];
+                // Map common headers + Custom User Template
+                const name = row['Nombre'] || row['Name'] || row['nombre'] || row['Proveedor'] || row['PROVEEDOR'];
                 if (!name) continue;
 
                 const supplierData = {
                     name: String(name),
-                    contactName: row['Contacto'] || row['Contact'] || row['contactName'] || '',
-                    email: row['Email'] || row['Correo'] || '',
-                    phone: String(row['Telefono'] || row['Phone'] || row['phone'] || ''),
-                    leadTime: Number(row['Entrega'] || row['LeadTime'] || 1),
-                    orderDays: [],
-                    minimumOrderValue: Number(row['Minimo'] || 0),
+                    contactName: row['Contacto'] || row['Contact'] || row['contactName'] || row['CONTACTO SEGURA'] || '',
+                    email: row['Email'] || row['Correo'] || row['CONTACTO INCIDENCIAS'] || '',
+                    phone: String(row['Telefono'] || row['Phone'] || row['phone'] || row['TELEFONO'] || ''),
+                    leadTime: parseLeadTime(row['Entrega'] || row['LeadTime'] || row['REPARTO']),
+                    orderDays: [], // Could parse 'LUNES Y VIERNES' later if needed
+                    minimumOrderValue: Number(row['Minimo'] || row['PEDIDO MINIMO'] || 0),
                     outletId: activeOutletId
                 };
 
