@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import * as XLSX from 'xlsx';
-import { Upload, Loader2, FileSpreadsheet } from 'lucide-react';
+import { Loader2, FileSpreadsheet } from 'lucide-react';
 
 interface ExcelImporterProps {
     onImport: (data: any[]) => Promise<void>;

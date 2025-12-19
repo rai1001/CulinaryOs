@@ -26,7 +26,7 @@ export const analyzeImage = async (imageFile: File): Promise<any> => {
     });
 };
 
-export const parseInvoice = async (file: File) => {
+export const parseInvoice = async (_file: File) => {
     // 1. Upload/Send to Deepseek Vision API
     // 2. Parse response
     // 3. Return PurchaseOrder structure
