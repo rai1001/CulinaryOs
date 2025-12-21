@@ -57,8 +57,8 @@ export const InstallPrompt: React.FC = () => {
     if (isInstalled || !showPrompt || !deferredPrompt) return null;
 
     return (
-        <div className="fixed bottom-6 left-6 z-50 animate-in slide-in-from-left fade-in duration-300">
-            <div className="bg-surface border border-white/10 rounded-xl p-4 shadow-2xl max-w-sm">
+        <div className="fixed bottom-6 left-6 z-[100] animate-in slide-in-from-left fade-in duration-300">
+            <div className="bg-slate-900 border border-white/20 rounded-xl p-4 shadow-2xl max-w-sm ring-1 ring-black/50">
                 <div className="flex items-start gap-3">
                     <div className="p-2 rounded-lg bg-primary/20 text-primary">
                         <Download className="w-5 h-5" />
