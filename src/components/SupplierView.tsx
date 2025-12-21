@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useStore } from '../store/useStore';
-import { Plus, Edit2, Phone, Mail, Truck, ChevronDown, ChevronUp, History, Trash2 } from 'lucide-react';
+import { Plus, Edit2, Phone, Mail, Truck, ChevronDown, ChevronUp, History, Trash2, Camera, Loader2 } from 'lucide-react';
 import type { Supplier } from '../types';
 import { addDocument, updateDocument, deleteDocument } from '../services/firestoreService';
 import { collections } from '../firebase/collections';
@@ -65,6 +65,13 @@ export const SupplierView: React.FC = () => {
                     outletId: activeOutletId
                 };
 
+                const normalizedName = String(name).toLowerCase();
+                const existing = suppliers.find(s => s.name.toLowerCase() === normalizedName);
+                if (existing) {
+                    console.log(`Skipping duplicate supplier: ${name}`);
+                    continue;
+                }
+
                 await addDocument(collections.suppliers, supplierData);
                 successCount++;
             } catch (error) {
@@ -98,6 +105,74 @@ export const SupplierView: React.FC = () => {
         setEditingSupplier(null);
         setIsSubmitting(false);
     };
+
+    // OCR / Auto-create for Suppliers
+    // Re-using InvoiceUploader but strictly for extracting Supplier Info would be ideal,
+    // but for now we can use the same generic 'scan' and just pick the supplier part.
+    // Or simpler: Just add a "Scan Business Card" button that mocks or uses geminiService directly.
+
+    // For this quick fix, I will enable the ExcelImporter to be more visible and add a placeholder for Scan,
+    // as the user specifically asked for OCR.
+
+    const [isScanning, setIsScanning] = useState(false);
+    const fileInputRef = React.useRef<HTMLInputElement>(null);
+    const { addToast } = (window as any).toast || { addToast: console.log }; // Fallback if hook not available directly or import needed
+
+    const handleScanUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (!e.target.files?.length) return;
+        const file = e.target.files[0];
+        setIsScanning(true);
+
+        try {
+            // We can reuse the scanInvoiceImage from geminiService as it extracts supplier names well.
+            // Or create a specific scanSupplierCard. For now, use existing infra.
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = async () => {
+                try {
+                    const base64 = (reader.result as string).split(',')[1];
+                    // We'll import scanInvoiceImage dynamically or assume it's available if we import it.
+                    // But let's use a specialized prompt here for better results on just contact cards.
+                    const { analyzeImage } = await import('../services/geminiService');
+
+                    const prompt = `
+                        Analiza esta tarjeta de visita o cabecera de factura. Extrae datos del PROVEEDOR:
+                        {
+                            "name": "Nombre Empresa",
+                            "contactName": "Persona de contacto",
+                            "phone": "Teléfono",
+                            "email": "Email",
+                            "address": "Dirección"
+                        }
+                     `;
+
+                    const result = await analyzeImage(base64, prompt);
+                    if (result.success && result.data) {
+                        const s = result.data;
+                        setFormData({
+                            name: s.name || '',
+                            contactName: s.contactName || '',
+                            email: s.email || '',
+                            phone: s.phone || '',
+                            leadTime: 1,
+                            minimumOrderValue: 0,
+                            orderDays: []
+                        });
+                        setIsModalOpen(true); // Open modal with pre-filled data
+                    }
+                } catch (err) {
+                    console.error(err);
+                    alert('Error al analizar imagen');
+                } finally {
+                    setIsScanning(false);
+                }
+            };
+        } catch (err) {
+            console.error(err);
+            setIsScanning(false);
+        }
+    };
+
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -188,18 +263,31 @@ export const SupplierView: React.FC = () => {
                     <p className="text-gray-600">Gestión de proveedores y contactos</p>
                 </div>
                 <div className="flex gap-3">
-                    <ExcelImporter
-                        onImport={handleImport}
-                        buttonLabel="Importar Excel"
-                        template={{ col1: "Nombre", col2: "Contacto", col3: "Email" }}
-                    />
-                    <button
-                        onClick={() => handleOpenModal()}
-                        className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors"
-                    >
-                        <Plus size={20} />
-                        Nuevo Proveedor
-                    </button>
+                    <div className="flex gap-2">
+                        <button
+                            onClick={() => fileInputRef.current?.click()}
+                            className="flex items-center gap-2 bg-purple-500/20 text-purple-400 border border-purple-500/50 px-4 py-2 rounded-lg hover:bg-purple-500/30 transition-colors"
+                        >
+                            {isScanning ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
+                            <span>{isScanning ? 'Analizando...' : 'Escanear Tarjeta'}</span>
+                        </button>
+                        <input
+                            type="file"
+                            ref={fileInputRef}
+                            onChange={handleScanUpload}
+                            className="hidden"
+                            accept="image/*"
+                        />
+
+                        <ExcelImporter onImport={handleImport} />
+                        <button
+                            onClick={() => handleOpenModal()}
+                            className="flex items-center gap-2 bg-primary hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors"
+                        >
+                            <Plus className="w-4 h-4" />
+                            <span>Nuevo Proveedor</span>
+                        </button>
+                    </div>
                 </div>
             </div>
 

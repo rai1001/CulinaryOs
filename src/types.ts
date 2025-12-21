@@ -55,6 +55,7 @@ export interface Ingredient {
     priceHistory?: PriceHistoryEntry[];
     defaultBarcode?: string;
     category?: InventoryCategory;
+    shelfLife?: number; // Days
     outletId?: string;
 }
 
@@ -66,6 +67,7 @@ export interface PurchaseOrderItem {
     unit: Unit;
     costPerUnit: number;
     receivedQuantity?: number; // For partial/full reception
+    tempDescription?: string; // For items from OCR not yet matched to an ingredient
 }
 
 export interface PurchaseOrder {
@@ -94,6 +96,7 @@ export interface Recipe {
     ingredients: RecipeIngredient[];
     isBase?: boolean; // True if this is a base recipe (e.g., from "Bases" sheet)
     totalCost?: number; // Calculated
+    allergens?: string[]; // Calculated
     nutritionalInfo?: NutritionalInfo; // Calculated
     outletId?: string;
 }

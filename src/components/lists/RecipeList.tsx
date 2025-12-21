@@ -3,6 +3,7 @@ import type { Recipe } from '../../types';
 import { useStore } from '../../store/useStore';
 import { Printer, Edit2, Trash2 } from 'lucide-react';
 import { printLabel, formatLabelData } from '../printing/PrintService';
+import { aggregateAllergens } from '../../utils/allergenUtils';
 
 interface RecipeListProps {
     recipes: Recipe[];
@@ -10,7 +11,7 @@ interface RecipeListProps {
     onDelete: (id: string) => void;
 }
 
-export const RecipeList: React.FC<RecipeListProps> = ({ recipes, onEdit, onDelete }) => {
+export const RecipeList: React.FC<RecipeListProps> = React.memo(({ recipes, onEdit, onDelete }) => {
     const { ingredients } = useStore();
 
     // Optimization: Create a map for O(1) ingredient lookup
@@ -22,6 +23,7 @@ export const RecipeList: React.FC<RecipeListProps> = ({ recipes, onEdit, onDelet
     const calculateStats = useCallback((recipe: Recipe) => {
         let totalCost = 0;
         let totalKcal = 0;
+        const allergens = aggregateAllergens(recipe.ingredients, ingredientMap);
 
         recipe.ingredients.forEach(ri => {
             const ing = ingredientMap.get(ri.ingredientId);
@@ -45,7 +47,7 @@ export const RecipeList: React.FC<RecipeListProps> = ({ recipes, onEdit, onDelet
             }
         });
 
-        return { totalCost, totalKcal };
+        return { totalCost, totalKcal, allergens };
     }, [ingredientMap]);
 
     // Cache recipe stats to avoid recalculating on every render
@@ -108,7 +110,7 @@ export const RecipeList: React.FC<RecipeListProps> = ({ recipes, onEdit, onDelet
                                             <Edit2 size={18} />
                                         </button>
                                         <button
-                                            onClick={() => printLabel(formatLabelData(recipe, 'PREP'))}
+                                            onClick={() => printLabel(formatLabelData({ ...recipe, allergens: stats.allergens }, 'PREP'))}
                                             className="p-2 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-colors"
                                             title="Imprimir Etiqueta"
                                         >
@@ -133,4 +135,4 @@ export const RecipeList: React.FC<RecipeListProps> = ({ recipes, onEdit, onDelet
             </table>
         </div>
     );
-};
+});

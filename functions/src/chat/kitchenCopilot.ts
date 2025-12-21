@@ -3,7 +3,7 @@ import * as admin from "firebase-admin";
 import { VertexAI } from "@google-cloud/vertexai";
 import { generateEmbedding } from "../utils/ai";
 
-export const chatWithCopilot = functions.https.onCall(async (data, context) => {
+export const chatWithCopilot = functions.region("europe-west1", "us-central1").https.onCall(async (data, context) => {
     const { message, history } = data;
 
     if (!message) {
@@ -16,7 +16,7 @@ export const chatWithCopilot = functions.https.onCall(async (data, context) => {
     }
 
     const vertexAI = new VertexAI({ project: projectId, location: "europe-west1" });
-    const model = vertexAI.getGenerativeModel({ model: "gemini-pro" });
+    const model = vertexAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
     // 1. Generate embedding for the user query
     const embedding = await generateEmbedding(message);
@@ -86,8 +86,8 @@ Current Conversation:
         const response = result.response.candidates?.[0].content.parts[0].text;
 
         return { response };
-    } catch (error) {
+    } catch (error: any) {
         console.error("Chat Error:", error);
-        throw new functions.https.HttpsError("internal", "Failed to generate response.", error);
+        throw new functions.https.HttpsError("internal", `Failed to generate response: ${error.message || error}`, error);
     }
 });

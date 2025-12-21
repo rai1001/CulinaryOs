@@ -1,14 +1,19 @@
-import React, { useState, useMemo } from 'react';
-import { Save, AlertTriangle, CheckCircle, Thermometer, Plus } from 'lucide-react';
+import React, { useState, useMemo, useRef } from 'react';
+import { Save, AlertTriangle, CheckCircle, Thermometer, Plus, Camera, Loader2 } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { useToast } from '../ui';
 import type { HACCPLog, PCC } from '../../types';
+import { scanHACCPLog } from '../../services/geminiService';
 
 export const DailyRegisters: React.FC = () => {
     const { pccs, haccpLogs, addHACCPLog } = useStore();
     const { addToast } = useToast();
     const [inputs, setInputs] = useState<Record<string, string>>({});
     const [notes, setNotes] = useState<Record<string, string>>({});
+
+    // OCR State
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [isScanning, setIsScanning] = useState(false);
 
     const activePCCs = useMemo(() => pccs.filter(p => p.isActive), [pccs]);
 
@@ -25,6 +30,59 @@ export const DailyRegisters: React.FC = () => {
 
     const handleNotesChange = (pccId: string, value: string) => {
         setNotes(prev => ({ ...prev, [pccId]: value }));
+    };
+
+    const handleScanClick = () => {
+        fileInputRef.current?.click();
+    };
+
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (!e.target.files?.length) return;
+
+        setIsScanning(true);
+        const file = e.target.files[0];
+
+        try {
+            const base64Data = await new Promise<string>((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => resolve((reader.result as string).split(',')[1]);
+                reader.onerror = reject;
+            });
+
+            const result = await scanHACCPLog(base64Data);
+
+            if (result.success && result.data) {
+                const entries = result.data.entries || [];
+                let matchedCount = 0;
+                const newInputs = { ...inputs };
+
+                entries.forEach((entry: any) => {
+                    // Fuzzy match PCC name
+                    const scannedName = (entry.pccName || '').toLowerCase();
+                    const match = activePCCs.find(p => {
+                        const pName = p.name.toLowerCase();
+                        return pName.includes(scannedName) || scannedName.includes(pName);
+                    });
+
+                    if (match && entry.value) {
+                        newInputs[match.id] = String(entry.value);
+                        matchedCount++;
+                    }
+                });
+
+                setInputs(newInputs);
+                addToast(`Se han autorellenado ${matchedCount} registros`, 'success');
+            } else {
+                addToast('No se pudieron extraer datos del registro', 'error');
+            }
+        } catch (error) {
+            console.error(error);
+            addToast('Error al procesar la imagen', 'error');
+        } finally {
+            setIsScanning(false);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        }
     };
 
     const handleSave = (pcc: PCC) => {
@@ -81,10 +139,27 @@ export const DailyRegisters: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Input Section */}
             <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                    <Thermometer className="w-5 h-5 text-primary" />
-                    Entrada Rápida
-                </h3>
+                <div className="flex justify-between items-center">
+                    <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                        <Thermometer className="w-5 h-5 text-primary" />
+                        Entrada Rápida
+                    </h3>
+                    <button
+                        onClick={handleScanClick}
+                        disabled={isScanning}
+                        className="text-sm bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 px-3 py-1.5 rounded-lg border border-purple-500/50 flex items-center gap-2 transition-colors"
+                    >
+                        {isScanning ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
+                        {isScanning ? 'Escaneando...' : 'Escanear Hoja'}
+                    </button>
+                    <input
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={handleFileChange}
+                        className="hidden"
+                        accept="image/*"
+                    />
+                </div>
 
                 {activePCCs.map(pcc => (
                     <div key={pcc.id} className="bg-surface border border-white/5 p-5 rounded-xl">
