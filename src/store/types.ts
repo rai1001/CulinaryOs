@@ -33,6 +33,7 @@ export interface EventSlice {
     updateEvent: (event: Event) => void;
     getFilteredEvents: () => Event[];
     fetchEventsRange: (start: string, end: string) => Promise<void>;
+    deleteEvent: (id: string) => Promise<void>;
 }
 
 export interface ProductionSlice {

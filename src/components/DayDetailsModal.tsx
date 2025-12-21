@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import type { FC } from 'react';
-import { X, Calendar, Users, Plus, FileText } from 'lucide-react';
+import { X, Calendar, Users, Plus, FileText, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { Event, EventType } from '../types';
@@ -11,6 +12,7 @@ interface DayDetailsModalProps {
     onAddEvent: () => void;
     onEditEvent?: (event: Event) => void;
     onOpenProduction?: (event: Event) => void;
+    onDeleteEvent?: (id: string) => void;
 }
 
 const eventColors: Record<EventType, string> = {
@@ -26,7 +28,28 @@ const eventColors: Record<EventType, string> = {
     'Otros': 'bg-gray-500/20 text-gray-300 border-gray-500/50',
 };
 
-export const DayDetailsModal: FC<DayDetailsModalProps> = ({ date, events, onClose, onAddEvent, onEditEvent, onOpenProduction }) => {
+export const DayDetailsModal: FC<DayDetailsModalProps> = ({
+    date,
+    events,
+    onClose,
+    onAddEvent,
+    onEditEvent,
+    onOpenProduction,
+    onDeleteEvent
+}) => {
+    const [deletingId, setDeletingId] = useState<string | null>(null);
+
+    const handleDeleteClick = (id: string) => {
+        setDeletingId(id);
+    };
+
+    const confirmDelete = () => {
+        if (deletingId && onDeleteEvent) {
+            onDeleteEvent(deletingId);
+            setDeletingId(null);
+        }
+    };
+
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
             <div className="relative w-full max-w-lg bg-surface border border-white/10 rounded-xl shadow-2xl flex flex-col max-h-[85vh]">
@@ -98,7 +121,7 @@ export const DayDetailsModal: FC<DayDetailsModalProps> = ({ date, events, onClos
                                             onClick={() => onOpenProduction(event)}
                                             className="flex-1 bg-white/5 hover:bg-white/10 text-slate-300 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2 border border-white/5"
                                         >
-                                            <Users className="w-4 h-4" /> KDS / Producción
+                                            <Users className="w-4 h-4" /> KDS
                                         </button>
                                     )}
                                     {onEditEvent && (
@@ -109,6 +132,34 @@ export const DayDetailsModal: FC<DayDetailsModalProps> = ({ date, events, onClos
                                         >
                                             <FileText className="w-4 h-4" />
                                         </button>
+                                    )}
+                                    {onDeleteEvent && (
+                                        deletingId === event.id ? (
+                                            <div className="flex items-center gap-2">
+                                                <button
+                                                    onClick={confirmDelete}
+                                                    className="px-3 bg-red-500/20 hover:bg-red-500/30 text-red-300 py-2 rounded-lg text-sm font-medium transition-colors border border-red-500/50"
+                                                    title="Confirmar eliminación"
+                                                >
+                                                    Confirmar
+                                                </button>
+                                                <button
+                                                    onClick={() => setDeletingId(null)}
+                                                    className="px-3 bg-white/5 hover:bg-white/10 text-slate-300 py-2 rounded-lg text-sm font-medium transition-colors border border-white/5"
+                                                    title="Cancelar"
+                                                >
+                                                    <X className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <button
+                                                onClick={() => handleDeleteClick(event.id)}
+                                                className="px-3 bg-white/5 hover:bg-red-500/20 hover:text-red-300 hover:border-red-500/50 text-slate-400 py-2 rounded-lg text-sm font-medium transition-colors border border-white/5"
+                                                title="Eliminar Evento"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        )
                                     )}
                                 </div>
                             </div>

@@ -1,8 +1,8 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import { Calendar, ChevronLeft, ChevronRight, Users, Import, Sparkles } from 'lucide-react';
+import { parseISO } from 'date-fns';
 import { normalizeDate } from '../utils/date';
 import type { EventType, GeneratedMenu, Event, Menu } from '../types';
 import { EventForm } from './EventForm';
@@ -16,7 +16,7 @@ import { addDocument } from '../services/firestoreService';
 import { collections } from '../firebase/collections';
 
 export const EventsView: React.FC = () => {
-    const { getFilteredEvents, fetchEventsRange, eventsLoading, activeOutletId, setSelectedProductionEventId, addMenu } = useStore();
+    const { getFilteredEvents, fetchEventsRange, eventsLoading, activeOutletId, setSelectedProductionEventId, addMenu, deleteEvent } = useStore();
     const navigate = useNavigate();
     const events = getFilteredEvents(); // This returns the currently loaded events (filtered by outlet)
     const [currentDate, setCurrentDate] = useState(new Date());
@@ -38,8 +38,8 @@ export const EventsView: React.FC = () => {
         if (activeOutletId) {
             const year = currentDate.getFullYear();
             const month = currentDate.getMonth();
-            const startStr = `${year}-${String(month + 1).padStart(2, '0')}-01`;
-            const endStr = `${year}-${String(month + 1).padStart(2, '0')}-${new Date(year, month + 1, 0).getDate()}`;
+            const startStr = `${year} -${String(month + 1).padStart(2, '0')}-01`;
+            const endStr = `${year} -${String(month + 1).padStart(2, '0')} -${new Date(year, month + 1, 0).getDate()} `;
             fetchEventsRange(startStr, endStr);
         }
     };
@@ -50,45 +50,24 @@ export const EventsView: React.FC = () => {
         setShowDayDetailsModal(false);
     };
 
-    // ... existing logic ...
-
-
-
-    // ... rest of component ...
-
-    // In Render:
-    // ...
-    {
-        showDayDetailsModal && selectedDate && (
-            <DayDetailsModal
-                date={new Date(selectedDate)}
-                events={events.filter(e => normalizeDate(e.date) === selectedDate)}
-                onClose={() => setShowDayDetailsModal(false)}
-                onAddEvent={() => {
-                    setShowDayDetailsModal(false);
-                    setShowAddModal(true);
-                }}
-                onOpenProduction={handleOpenProduction}
-            />
-        )
-    }
 
     useEffect(() => {
         if (activeOutletId) {
             // Calculate start and end of the month
             const year = currentDate.getFullYear();
-            const month = currentDate.getMonth();
+            const monthVal = currentDate.getMonth();
 
-            // Start: First day of month
-            const start = new Date(year, month, 1);
+            // Start: First day of month (Manual construction)
+            const startMonth = String(monthVal + 1).padStart(2, '0');
+            const startStr = `${year}-${startMonth}-01`;
+
             // End: Last day of month
-            const end = new Date(year, month + 1, 0);
-
-            // Format as YYYY-MM-DD
-            // Note: toISOString uses UTC. We should use local YYYY-MM-DD construction to avoid timezone shifts affecting the "date" string used in queries.
-            // Or use a utility. For now, simple construction:
-            const startStr = normalizeDate(start);
-            const endStr = normalizeDate(end);
+            const lastDay = new Date(year, monthVal + 1, 0).getDate();
+            const endMonth = String(monthVal + 1).padStart(2, '0');
+            const endDay = String(lastDay).padStart(2, '0');
+            // Check if end of month spans into next year (e.g. searching range) - actually here we just want the current month range.
+            // standard Date(year, month + 1, 0) gives correct last day of *this* month.
+            const endStr = `${year}-${endMonth}-${endDay}`;
 
             fetchEventsRange(startStr, endStr);
         }
@@ -143,7 +122,7 @@ export const EventsView: React.FC = () => {
             // 1. Create the menu object
             const menuData: Omit<Menu, 'id'> = {
                 name: menu.name,
-                description: `${menu.description}\n\n${menu.dishes.map(d => `- [${d.category}] ${d.name}: ${d.description}`).join('\n')}`,
+                description: `${menu.description} \n\n${menu.dishes.map(d => `- [${d.category}] ${d.name}: ${d.description}`).join('\n')} `,
                 recipeIds: [],
                 sellPrice: menu.sellPrice,
                 outletId: activeOutletId || undefined
@@ -157,7 +136,7 @@ export const EventsView: React.FC = () => {
 
             // 4. Set prefill data and open event form
             setPrefillEventData({
-                name: `${context.eventType} - ${menu.name}`,
+                name: `${context.eventType} - ${menu.name} `,
                 pax: context.pax,
                 type: context.eventType as EventType,
                 menuId: newMenuId
@@ -239,8 +218,11 @@ export const EventsView: React.FC = () => {
                     {/* Actual Days */}
                     {Array.from({ length: daysInMonth }).map((_, i) => {
                         const dayNum = i + 1;
-                        const dateObj = new Date(currentDate.getFullYear(), currentDate.getMonth(), dayNum);
-                        const dateStr = normalizeDate(dateObj);
+                        // Manual date string construction to avoid timezone shifts from new Date()
+                        const year = currentDate.getFullYear();
+                        const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+                        const day = String(dayNum).padStart(2, '0');
+                        const dateStr = `${year}-${month}-${day}`;
                         const dayEvents = events.filter(e => normalizeDate(e.date) === dateStr);
 
                         return (
@@ -249,7 +231,7 @@ export const EventsView: React.FC = () => {
                                 onClick={() => handleDayClick(dateStr)}
                                 className="bg-slate-800/40 rounded-lg p-2 flex flex-col border border-transparent hover:border-slate-600 transition-colors min-h-[100px] cursor-pointer group"
                             >
-                                <span className={`text-sm font-semibold mb-1 ${dateStr === new Date().toISOString().split('T')[0]
+                                <span className={`text - sm font - semibold mb - 1 ${dateStr === normalizeDate(new Date())
                                     ? 'bg-primary text-white w-6 h-6 rounded-full flex items-center justify-center'
                                     : 'text-slate-400'
                                     } `}>
@@ -260,7 +242,7 @@ export const EventsView: React.FC = () => {
                                     {dayEvents.map(event => (
                                         <div
                                             key={event.id}
-                                            className={`text-xs p-1.5 rounded border ${eventColors[event.type] || 'bg-slate-700 text-slate-300'} cursor-pointer hover:opacity-80 transition-opacity`}
+                                            className={`text - xs p - 1.5 rounded border ${eventColors[event.type] || 'bg-slate-700 text-slate-300'} cursor - pointer hover: opacity - 80 transition - opacity`}
                                         >
                                             <div className="font-semibold truncate">{event.name}</div>
                                             <div className="flex items-center justify-between mt-0.5 opacity-80">
@@ -313,7 +295,7 @@ export const EventsView: React.FC = () => {
 
             {showDayDetailsModal && selectedDate && (
                 <DayDetailsModal
-                    date={new Date(selectedDate)}
+                    date={parseISO(selectedDate)}
                     events={events.filter(e => normalizeDate(e.date) === selectedDate)}
                     onClose={() => setShowDayDetailsModal(false)}
                     onAddEvent={() => {
@@ -327,6 +309,7 @@ export const EventsView: React.FC = () => {
                         setShowAddModal(true);
                     }}
                     onOpenProduction={handleOpenProduction}
+                    onDeleteEvent={deleteEvent}
                 />
             )}
         </div>

@@ -1,7 +1,7 @@
 import type { StateCreator } from 'zustand';
 
 import type { AppState, EventSlice } from '../types';
-import { setDocument, getEventsRange } from '../../services/firestoreService';
+import { setDocument, getEventsRange, deleteDocument } from '../../services/firestoreService';
 
 export const createEventSlice: StateCreator<
     AppState,
@@ -42,6 +42,26 @@ export const createEventSlice: StateCreator<
             }
         } catch (error) {
             console.error("Failed to update event", error);
+        }
+    },
+
+    deleteEvent: async (id) => {
+        const previousEvents = get().events;
+        set((state) => ({
+            events: state.events.filter((e) => e.id !== id),
+        }));
+
+        try {
+            await deleteDocument("events", id);
+            // Optionally reload range, but client-side filter is usually enough for immediate feedback
+            const { eventsRange } = get();
+            if (eventsRange) {
+                get().fetchEventsRange(eventsRange.start, eventsRange.end);
+            }
+        } catch (error) {
+            console.error("Failed to delete event", error);
+            // Rollback on error
+            set({ events: previousEvents });
         }
     },
 

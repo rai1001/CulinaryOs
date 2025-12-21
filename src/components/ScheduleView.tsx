@@ -5,6 +5,7 @@ import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, startOf
 import { es } from 'date-fns/locale';
 import { Calendar as CalendarIcon, Play, RefreshCw, ChevronLeft, ChevronRight, Users, Clock, Printer, Download, Trash2, Sun, Moon, AlertTriangle, CheckCircle } from 'lucide-react';
 import { getRoleLabel } from '../utils/labels';
+import { normalizeDate } from '../utils/date';
 import * as XLSX from 'xlsx';
 
 export const ScheduleView: React.FC = () => {
@@ -97,13 +98,13 @@ export const ScheduleView: React.FC = () => {
     };
 
     const getEventsForDay = (date: Date) => {
-        const dateStr = format(date, 'yyyy-MM-dd');
-        return events.filter(e => e.date === dateStr);
+        const dateStr = normalizeDate(date);
+        return events.filter(e => normalizeDate(e.date) === dateStr);
     };
 
     const onCellClick = (e: React.MouseEvent, day: Date, employeeId: string) => {
         e.stopPropagation();
-        const dateStr = format(day, 'yyyy-MM-dd');
+        const dateStr = normalizeDate(day);
 
         // Calculate position relative to viewport to prevent overflow
         const x = e.clientX;

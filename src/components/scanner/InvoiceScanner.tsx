@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { Camera, Upload, X, Check, Loader2, FileText } from 'lucide-react';
 import { analyzeImage } from '../../services/geminiService';
 
-import { useToast } from '../ui/useToast';
+import { useToast } from '../ui/Toast';
 
 interface InvoiceScannerProps {
     onClose?: () => void;
@@ -16,7 +16,7 @@ export const InvoiceScanner: React.FC<InvoiceScannerProps> = ({ onClose, onScanC
     const [image, setImage] = useState<string | null>(null);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [isCameraActive, setIsCameraActive] = useState(false);
-    const { toast } = useToast();
+    const { addToast } = useToast();
 
 
     const startCamera = async () => {
@@ -29,7 +29,7 @@ export const InvoiceScanner: React.FC<InvoiceScannerProps> = ({ onClose, onScanC
             setIsCameraActive(true);
         } catch (error) {
             console.error("Error accessing camera:", error);
-            toast("No se pudo acceder a la cámara", "destructive");
+            addToast("No se pudo acceder a la cámara", "error");
         }
     };
 
@@ -91,19 +91,19 @@ export const InvoiceScanner: React.FC<InvoiceScannerProps> = ({ onClose, onScanC
 
             if (result.success && result.data) {
                 console.log("Analysis Result:", result.data);
-                toast("Factura analizada correctamente", "success");
+                addToast("Factura analizada correctamente", "success");
 
                 // Create a draft purchase order
                 if (onScanComplete) {
                     onScanComplete(result.data);
                 }
             } else {
-                toast("No se pudieron extraer datos de la imagen", "destructive");
+                addToast("No se pudieron extraer datos de la imagen", "error");
             }
 
         } catch (error) {
             console.error("Analysis failed:", error);
-            toast("Error al analizar la imagen", "destructive");
+            addToast("Error al analizar la imagen", "error");
         } finally {
             setIsAnalyzing(false);
         }

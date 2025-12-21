@@ -1,7 +1,9 @@
 import React, { Suspense } from 'react';
 import { Routes, Route, Navigate, NavLink, useLocation } from 'react-router-dom';
 import { Dashboard } from './components/Dashboard';
-import { LayoutDashboard, Calendar, ShoppingCart, Database, CalendarDays, ChefHat, Package, Truck, ClipboardList, ShoppingBag, Trash2, ShieldCheck, TrendingUp, Search, BookOpen, Sparkles, Coffee, Menu as MenuIcon, X, Briefcase, Settings } from 'lucide-react';
+import { LayoutDashboard, Calendar, ShoppingCart, Database, CalendarDays, ChefHat, Package, Truck, ClipboardList, ShoppingBag, Trash2, ShieldCheck, TrendingUp, Search, BookOpen, Sparkles, Coffee, Menu as MenuIcon, X, Briefcase, Settings, LogOut } from 'lucide-react';
+import { getAuth } from 'firebase/auth';
+import { useStore } from './store/useStore';
 import { OutletSelector } from './components/OutletSelector';
 
 import { PrintManager } from './components/printing/PrintManager';
@@ -49,6 +51,7 @@ const LoadingFallback = () => (
 function App() {
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = React.useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
+  const { currentUser } = useStore();
   const location = useLocation();
 
   // Subscribe to AI Notifications
@@ -151,14 +154,33 @@ function App() {
           </div>
         </nav>
 
-        <div className="p-4 border-t border-white/5 mx-4">
+        <div className="p-4 border-t border-white/5 mx-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-primary to-accent" />
+            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-primary to-accent overflow-hidden">
+              {currentUser?.photoURL ? (
+                <img src={currentUser.photoURL} alt={currentUser.name} className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-xs font-bold text-white">
+                  {currentUser?.name?.charAt(0)}
+                </div>
+              )}
+            </div>
             <div>
-              <p className="text-sm font-medium">Head Chef</p>
-              <p className="text-xs text-slate-500">Israel</p>
+              <p className="text-sm font-medium truncate max-w-[100px]">{currentUser?.name}</p>
+              <p className="text-xs text-slate-500 capitalize">{currentUser?.role}</p>
             </div>
           </div>
+          <button
+            onClick={async () => {
+              const auth = getAuth();
+              await auth.signOut();
+              window.location.href = '/';
+            }}
+            className="p-2 text-slate-500 hover:text-red-400 transition-colors"
+            title="Cerrar Sesión"
+          >
+            <LogOut size={18} />
+          </button>
         </div>
       </aside>
 

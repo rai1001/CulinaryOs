@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { RefreshCw, Wand2, X, Check } from 'lucide-react';
 import type { PendingEvent } from '../../types';
 import { integrationService } from '../../services/integrationService';

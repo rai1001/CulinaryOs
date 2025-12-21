@@ -4,6 +4,8 @@ import { Calendar, Users, Coffee, Upload, Trash2, Search } from 'lucide-react';
 import { read, utils } from 'xlsx';
 import { useToast } from './ui';
 
+import { normalizeDate } from '../utils/date';
+
 export const BreakfastView: React.FC = () => {
     const {
         breakfastServices, updateBreakfastService, importOccupancy,
@@ -12,7 +14,7 @@ export const BreakfastView: React.FC = () => {
     const { addToast } = useToast();
 
     // State
-    const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
+    const [selectedDate, setSelectedDate] = useState<string>(normalizeDate(new Date()));
     const [searchQuery, setSearchQuery] = useState('');
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 

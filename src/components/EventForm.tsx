@@ -6,6 +6,8 @@ import { addDocument, updateDocument } from '../services/firestoreService';
 import { collections } from '../firebase/collections';
 import { COLLECTIONS } from '../firebase/collections';
 
+import { normalizeDate } from '../utils/date';
+
 interface EventFormProps {
     initialDate?: string;
     initialData?: Event;
@@ -23,7 +25,7 @@ export const EventForm: React.FC<EventFormProps> = ({ initialDate, initialData, 
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [formData, setFormData] = useState({
         name: initialData?.name || prefillData?.name || '',
-        date: initialData?.date || initialDate || prefillData?.date || new Date().toISOString().split('T')[0],
+        date: initialData?.date || initialDate || prefillData?.date || normalizeDate(new Date()),
         pax: initialData?.pax || prefillData?.pax || 0,
         type: (initialData?.type || prefillData?.type || 'Comida') as EventType,
         menuId: initialData?.menuId || prefillData?.menuId || ''

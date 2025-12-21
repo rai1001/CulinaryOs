@@ -4,7 +4,7 @@ import { VertexAI } from "@google-cloud/vertexai";
 import { generateEmbedding } from "../utils/ai";
 import { allTools } from "../tools";
 
-export const chatWithCopilot = functions.region("europe-west1").https.onCall(async (data) => {
+export const chatWithCopilot = functions.https.onCall(async (data) => {
     const { message, history } = data;
 
     if (!message) {

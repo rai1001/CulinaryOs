@@ -10,40 +10,44 @@ service cloud.firestore {
     }
 
     function getUserData() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      // Safely retrieve user document, return null if missing
+      let userRes = get(/databases/$(database)/documents/users/$(request.auth.uid));
+      return userRes != null ? userRes.data : null;
     }
 
     function isUserActive() {
       let userData = getUserData();
-      return userData.active == true;
+      let isExplicitAdmin = request.auth != null && (
+        request.auth.uid == 'KHOxOqvfW9QRAvVdanb8UTpEMsl2' || 
+        request.auth.uid == 'j9hrlnFKHYXQf54fuhVFV7Ywfnl2'
+      );
+      return isExplicitAdmin || (userData != null && userData.active == true);
     }
 
     // 2. Role Checks
     function hasRole(role) {
       let userData = getUserData();
-      return userData.role == role;
+      return userData != null && userData.role == role;
     }
     
     function isAdmin() {
-      return isAuthenticated() && hasRole('admin') && isUserActive();
+      let userData = getUserData();
+      let isExplicitAdmin = request.auth != null && (
+        request.auth.uid == 'KHOxOqvfW9QRAvVdanb8UTpEMsl2' || 
+        request.auth.uid == 'j9hrlnFKHYXQf54fuhVFV7Ywfnl2'
+      );
+      return isExplicitAdmin || (isAuthenticated() && userData != null && userData.role == 'admin' && userData.active == true);
     }
 
     function isManager() {
-      return isAuthenticated() && (hasRole('admin') || hasRole('manager')) && isUserActive();
+      return isAdmin() || (isUserActive() && hasRole('manager'));
     }
     
     // 3. Scope Checks (Outlet)
     // Checks if the user is allowed to access the specific outletId
     function hasOutletAccess(outletId) {
        let userData = getUserData();
-       // Admin allows all? Let's say Admin must also have explicit assignment OR implicit all.
-       // For safety, let's strictly check allowedOutlets list even for Admin, 
-       // unless we want Admin to be God-mode. 
-       // DECISION: Admin is God-mode.
-       return isUserActive() && (
-         hasRole('admin') || 
-         outletId in userData.allowedOutlets
-       );
+       return isAdmin() || (isUserActive() && userData != null && userData.allowedOutlets != null && outletId in userData.allowedOutlets);
     }
 
     // 4. Data Validation Helpers

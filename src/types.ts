@@ -192,6 +192,7 @@ export interface User {
     email: string;
     role: Role;
     name: string;
+    photoURL?: string;
     allowedOutlets?: string[]; // IDs of outlets this user can access
 }
 
