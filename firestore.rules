@@ -1,0 +1,208 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // DEVELOPMENT MODE: ALLOW ALL
+    match /{document=**} {
+      allow read, write: if true;
+    }
+
+    // --- HELPER FUNCTIONS ---
+    // (Rest of rules ignored because of the global allow above, effectively)
+
+
+    // 1. Authentication & User Data
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isUserActive() {
+      let userData = getUserData();
+      return userData.active == true;
+    }
+
+    // 2. Role Checks
+    function hasRole(role) {
+      let userData = getUserData();
+      return userData.role == role;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && hasRole('admin') && isUserActive();
+    }
+
+    function isManager() {
+      return isAuthenticated() && (hasRole('admin') || hasRole('manager')) && isUserActive();
+    }
+    
+    // 3. Scope Checks (Outlet)
+    // Checks if the user is allowed to access the specific outletId
+    function hasOutletAccess(outletId) {
+       let userData = getUserData();
+       // Admin allows all? Let's say Admin must also have explicit assignment OR implicit all.
+       // For safety, let's strictly check allowedOutlets list even for Admin, 
+       // unless we want Admin to be God-mode. 
+       // DECISION: Admin is God-mode.
+       return isUserActive() && (
+         hasRole('admin') || 
+         outletId in userData.allowedOutlets
+       );
+    }
+
+    // 4. Data Validation Helpers
+    function isStringsList(list) {
+      return list is list && (list.size() == 0 || list[0] is string);
+    }
+
+    // --- COLLECTION RULES ---
+
+    // 1. Users Collection (Profile)
+    match /users/{uid} {
+      // User can read their own profile
+      allow read: if isAuthenticated() && (request.auth.uid == uid || isAdmin());
+      
+      // Onboarding: User can create ONLY their own doc if it doesn't exist
+      // Must set safe defaults (viewer, active: false)
+      allow create: if isAuthenticated() && request.auth.uid == uid &&
+        request.resource.data.role == 'viewer' &&
+        request.resource.data.active == false &&
+        request.resource.data.allowedOutlets.size() == 0;
+        
+      // Update: User can update non-critical fields (name, email)
+      // CANNOT update: role, active, allowedOutlets, defaultOutletId
+      allow update: if isAuthenticated() && request.auth.uid == uid &&
+        request.resource.data.role == resource.data.role &&
+        request.resource.data.active == resource.data.active &&
+        request.resource.data.allowedOutlets == resource.data.allowedOutlets &&
+        request.resource.data.defaultOutletId == resource.data.defaultOutletId;
+
+      // Admin can do anything
+      allow write: if isAdmin();
+    }
+
+    // 2. Global Collections (No OutletId Scoping)
+    match /suppliers/{supplierId} {
+      allow read: if isAuthenticated() && isUserActive();
+      allow write: if isManager(); // Only Admin/Manager can manage Global Suppliers
+    }
+    
+    match /outlets/{outletId} {
+      allow read: if isAuthenticated() && isUserActive();
+      allow write: if isAdmin(); // Only Admin creates outlets
+    }
+
+    // 3. Scoped Collections (OutletId Mandatory)
+    
+    // Helper for Common Scoped Resource
+    function isScopedWrite(rsrc) {
+       return hasOutletAccess(rsrc.data.outletId);
+    }
+
+    function isScopedDelete() {
+       return hasOutletAccess(resource.data.outletId);
+    }
+
+    // Ingredients (Inventory)
+    match /ingredients/{id} {
+      allow read: if isAuthenticated() && hasOutletAccess(resource.data.outletId);
+      allow create: if isAuthenticated() && isScopedWrite(request.resource) &&
+                    (hasRole('chef') || hasRole('storekeeper') || isManager());
+      allow update: if isAuthenticated() && hasOutletAccess(resource.data.outletId) &&
+                    isScopedWrite(request.resource) &&
+                    request.resource.data.outletId == resource.data.outletId &&
+                    (hasRole('chef') || hasRole('storekeeper') || isManager());
+      allow delete: if isManager() && isScopedDelete();
+    }
+
+    // Recipes & Menus (Chef Domain)
+    match /recipes/{id} {
+      allow read: if isAuthenticated() && hasOutletAccess(resource.data.outletId);
+      allow create: if isAuthenticated() && isScopedWrite(request.resource) &&
+                    (hasRole('chef') || isManager());
+      allow update: if isAuthenticated() && hasOutletAccess(resource.data.outletId) &&
+                    isScopedWrite(request.resource) &&
+                    request.resource.data.outletId == resource.data.outletId &&
+                    (hasRole('chef') || isManager());
+      allow delete: if isAuthenticated() && isScopedDelete() &&
+                    (hasRole('chef') || isManager());
+    }
+
+    match /menus/{id} {
+      allow read: if isAuthenticated() && hasOutletAccess(resource.data.outletId);
+      allow create: if isAuthenticated() && isScopedWrite(request.resource) &&
+                    (hasRole('chef') || isManager());
+      allow update: if isAuthenticated() && hasOutletAccess(resource.data.outletId) &&
+                    isScopedWrite(request.resource) &&
+                    request.resource.data.outletId == resource.data.outletId &&
+                    (hasRole('chef') || isManager());
+      allow delete: if isAuthenticated() && isScopedDelete() &&
+                    (hasRole('chef') || isManager());
+    }
+
+    // Events (Manager/Chef)
+    match /events/{id} {
+      allow read: if isAuthenticated() && hasOutletAccess(resource.data.outletId);
+      allow create: if isAuthenticated() && isScopedWrite(request.resource) &&
+                    (hasRole('chef') || isManager());
+      allow update: if isAuthenticated() && hasOutletAccess(resource.data.outletId) &&
+                    isScopedWrite(request.resource) &&
+                    request.resource.data.outletId == resource.data.outletId &&
+                    (hasRole('chef') || isManager());
+      allow delete: if isAuthenticated() && isScopedDelete() &&
+                    (hasRole('chef') || isManager());
+    }
+
+    // Purchasing (Storekeeper Domain)
+    match /purchaseOrders/{id} {
+      allow read: if isAuthenticated() && hasOutletAccess(resource.data.outletId);
+      allow create: if isAuthenticated() && isScopedWrite(request.resource) &&
+                    (hasRole('storekeeper') || hasRole('chef') || isManager());
+      allow update: if isAuthenticated() && hasOutletAccess(resource.data.outletId) &&
+                    isScopedWrite(request.resource) &&
+                    request.resource.data.outletId == resource.data.outletId &&
+                    (hasRole('storekeeper') || hasRole('chef') || isManager());
+      allow delete: if isManager() && isScopedDelete();
+    }
+
+    // Other Scoped
+    match /wasteRecords/{id} {
+      allow read: if isAuthenticated() && hasOutletAccess(resource.data.outletId);
+      allow create: if isAuthenticated() && isScopedWrite(request.resource) &&
+                    (hasRole('chef') || hasRole('storekeeper') || isManager());
+      allow update: if isAuthenticated() && hasOutletAccess(resource.data.outletId) &&
+                    isScopedWrite(request.resource) &&
+                    request.resource.data.outletId == resource.data.outletId &&
+                    (hasRole('chef') || hasRole('storekeeper') || isManager());
+      allow delete: if isAuthenticated() && isScopedDelete() &&
+                    (hasRole('chef') || hasRole('storekeeper') || isManager());
+    }
+
+    match /staff/{id} {
+       // Staff is usually managed by Admin/Manager
+       allow read: if isAuthenticated() && hasOutletAccess(resource.data.outletId);
+       allow create: if isManager() && isScopedWrite(request.resource);
+       allow update: if isManager() && hasOutletAccess(resource.data.outletId) &&
+                     isScopedWrite(request.resource) &&
+                     request.resource.data.outletId == resource.data.outletId;
+       allow delete: if isManager() && isScopedDelete();
+    }
+
+    match /schedule/{id} {
+       allow read: if isAuthenticated() && hasOutletAccess(resource.data.outletId);
+       allow create: if (isManager() || hasRole('chef')) && isScopedWrite(request.resource);
+       allow update: if (isManager() || hasRole('chef')) && hasOutletAccess(resource.data.outletId) &&
+                     isScopedWrite(request.resource) &&
+                     request.resource.data.outletId == resource.data.outletId;
+       allow delete: if (isManager() || hasRole('chef')) && isScopedDelete();
+    }
+
+    // Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
