@@ -4,22 +4,25 @@ import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import { Calendar, ChevronLeft, ChevronRight, Users, Upload, Sparkles } from 'lucide-react';
 import { normalizeDate } from '../utils/date';
-import type { EventType, GeneratedMenu, Event } from '../types';
+import type { EventType, GeneratedMenu, Event, Menu } from '../types';
 import { EventForm } from './EventForm';
 import { EventImportModal } from './EventImportModal';
 import { MenuGeneratorModal } from './ai/MenuGeneratorModal';
 import { DayDetailsModal } from './DayDetailsModal';
 import { EventsSkeleton } from './ui/Skeletons';
 import { ErrorState } from './ui/ErrorState';
+import { addDocument } from '../services/firestoreService';
+import { collections } from '../firebase/collections';
 
 export const EventsView: React.FC = () => {
-    const { getFilteredEvents, fetchEventsRange, eventsLoading, activeOutletId, setSelectedProductionEventId } = useStore();
+    const { getFilteredEvents, fetchEventsRange, eventsLoading, activeOutletId, setSelectedProductionEventId, addMenu } = useStore();
     const navigate = useNavigate();
     const events = getFilteredEvents(); // This returns the currently loaded events (filtered by outlet)
     const [currentDate, setCurrentDate] = useState(new Date());
     const [selectedDate, setSelectedDate] = useState<string | null>(null);
     const [showAddModal, setShowAddModal] = useState(false);
     const [editingEvent, setEditingEvent] = useState<Event | undefined>(undefined);
+    const [prefillEventData, setPrefillEventData] = useState<Partial<Event> | undefined>(undefined);
     const [showDayDetailsModal, setShowDayDetailsModal] = useState(false);
     const [showImportModal, setShowImportModal] = useState(false);
     const [showMenuGenerator, setShowMenuGenerator] = useState(false);
@@ -141,11 +144,37 @@ export const EventsView: React.FC = () => {
         'Otros': 'bg-gray-500/20 text-gray-300 border-gray-500/50',
     };
 
-    const handleApplyMenu = (menu: GeneratedMenu) => {
-        console.log("Applying menu:", menu);
-        // TODO: Integrate with creating a new Event or filling an existing one
-        // For now just close the modal
-        setShowMenuGenerator(false);
+    const handleApplyMenu = async (menu: GeneratedMenu, context: { eventType: string, pax: number }) => {
+        try {
+            // 1. Create the menu object
+            const menuData: Omit<Menu, 'id'> = {
+                name: menu.name,
+                description: `${menu.description}\n\n${menu.dishes.map(d => `- [${d.category}] ${d.name}: ${d.description}`).join('\n')}`,
+                recipeIds: [],
+                sellPrice: menu.sellPrice,
+                outletId: activeOutletId || undefined
+            };
+
+            // 2. Save to Firestore
+            const newMenuId = await addDocument(collections.menus, menuData);
+
+            // 3. Update local store
+            addMenu({ ...menuData, id: newMenuId });
+
+            // 4. Set prefill data and open event form
+            setPrefillEventData({
+                name: `${context.eventType} - ${menu.name}`,
+                pax: context.pax,
+                type: context.eventType as EventType,
+                menuId: newMenuId
+            });
+
+            setShowMenuGenerator(false);
+            setShowAddModal(true);
+        } catch (error) {
+            console.error("Error creating menu:", error);
+            setError("Error al guardar el menú generado");
+        }
     };
 
     if (!isMounted) return <EventsSkeleton />;
@@ -257,9 +286,11 @@ export const EventsView: React.FC = () => {
                             <EventForm
                                 initialDate={selectedDate || undefined}
                                 initialData={editingEvent}
+                                prefillData={prefillEventData}
                                 onClose={() => {
                                     setShowAddModal(false);
                                     setEditingEvent(undefined);
+                                    setPrefillEventData(undefined);
                                 }}
                                 onSuccess={refreshEvents}
                             />

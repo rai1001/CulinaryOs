@@ -9,6 +9,7 @@ import { COLLECTIONS } from '../firebase/collections';
 interface EventFormProps {
     initialDate?: string;
     initialData?: Event;
+    prefillData?: Partial<Event>;
     onClose: () => void;
     onSuccess?: () => void;
 }
@@ -17,15 +18,15 @@ const EVENT_TYPES: EventType[] = [
     'Comida', 'Cena', 'Empresa', 'Coctel', 'Mediodia', 'Noche', 'Equipo Deportivo', 'Coffee Break'
 ];
 
-export const EventForm: React.FC<EventFormProps> = ({ initialDate, initialData, onClose, onSuccess }) => {
+export const EventForm: React.FC<EventFormProps> = ({ initialDate, initialData, prefillData, onClose, onSuccess }) => {
     const { menus, activeOutletId } = useStore();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [formData, setFormData] = useState({
-        name: initialData?.name || '',
-        date: initialData?.date || initialDate || new Date().toISOString().split('T')[0],
-        pax: initialData?.pax || 0,
-        type: (initialData?.type || 'Comida') as EventType,
-        menuId: initialData?.menuId || ''
+        name: initialData?.name || prefillData?.name || '',
+        date: initialData?.date || initialDate || prefillData?.date || new Date().toISOString().split('T')[0],
+        pax: initialData?.pax || prefillData?.pax || 0,
+        type: (initialData?.type || prefillData?.type || 'Comida') as EventType,
+        menuId: initialData?.menuId || prefillData?.menuId || ''
     });
 
     const handleSubmit = async (e: React.FormEvent) => {
