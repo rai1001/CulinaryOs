@@ -18,6 +18,13 @@ export const printLabel = (data: LabelData) => {
     window.dispatchEvent(event);
 };
 
+export const calculateExpiry = (startDate: Date, days?: number): Date | undefined => {
+    if (!days) return undefined;
+    const expiry = new Date(startDate);
+    expiry.setDate(startDate.getDate() + days);
+    return expiry;
+};
+
 export const formatLabelData = (
     item: Ingredient | Recipe,
     type: LabelData['type'],
@@ -31,7 +38,7 @@ export const formatLabelData = (
         return {
             title: ing.name,
             date: now,
-            // expiryDate: calculateExpiry(now, ing.shelfLife), // Todo: Add shelf life to types
+            expiryDate: calculateExpiry(now, ing.shelfLife),
             allergens: ing.allergens,
             type: 'INGREDIENT',
             quantity: quantity ? `${quantity} ${ing.unit}` : undefined,
