@@ -1,12 +1,7 @@
-
 import React, { useState } from 'react';
-import { scanInvoice } from '../../api/ai';
+import { scanInvoiceImage } from '../../services/geminiService';
 import type { ProcessedInvoice } from '../../types';
-import { Upload, Loader2 } from 'lucide-react';
-import { getStorage, ref, uploadBytes } from 'firebase/storage';
-// No specific app import needed if default app is initialized in main, but good practice to be explicit if issues arise.
-// We'll rely on global default app for now as getStorage() finds it.
-
+import { Upload, Loader2, FileText, CheckCircle } from 'lucide-react';
 
 export const InvoiceUploader: React.FC = () => {
     const [uploading, setUploading] = useState(false);
@@ -17,34 +12,52 @@ export const InvoiceUploader: React.FC = () => {
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!e.target.files?.length) return;
         const file = e.target.files[0];
+
         setUploading(true);
         setError(null);
 
         try {
-            // 1. Upload to Firebase Storage
-            const storage = getStorage();
-            const storageRef = ref(storage, `invoices / ${Date.now()}_${file.name} `);
-            const snapshot = await uploadBytes(storageRef, file);
-            // Document AI usually needs gs:// URI, but for client-side upload & trigger, 
-            // we often pass the gs:// path or trigger via bucket event. 
-            // For this callable function, we need the gs:// URI or accessible public URL if configured.
-            // Assuming the function accepts a GS URI like `gs://bucket/path`
-
-            // Construct GS URI manually or get it from snapshot if available (snapshot.metadata.fullPath is relative)
-            // A common pattern for callable is passing the path.
-            const gcsUri = `gs://${snapshot.metadata.bucket}/${snapshot.metadata.fullPath}`;
+            // Convert to Base64
+            const base64Data = await new Promise<string>((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => {
+                    const res = reader.result as string;
+                    // Remove data url prefix
+                    const base64Content = res.split(',')[1];
+                    resolve(base64Content);
+                };
+                reader.onerror = error => reject(error);
+            });
 
             setUploading(false);
             setProcessing(true);
 
-            // 2. Call Cloud Function
-            const response = await scanInvoice({ gcsUri, fileType: file.type });
-            const data = response.data as ProcessedInvoice;
+            // Call Client-Side Gemini
+            const response = await scanInvoiceImage(base64Data);
 
-            setResult(data);
+            if (response.success && response.data) {
+                // Ensure data matches ProcessedInvoice type or map it
+                const aiData = response.data;
+                const processed: ProcessedInvoice = {
+                    supplierName: aiData.supplierName || 'Desconocido',
+                    date: aiData.date || new Date().toISOString(),
+                    totalCost: Number(aiData.totalCost || aiData.total || 0),
+                    items: Array.isArray(aiData.items) ? aiData.items.map((item: any) => ({
+                        description: item.description || item.name || 'Item',
+                        quantity: Number(item.quantity || 1),
+                        unitPrice: Number(item.unitPrice || item.price || 0),
+                        total: Number(item.total || 0)
+                    })) : []
+                };
+                setResult(processed);
+            } else {
+                throw new Error(response.error || 'No se pudo leer la factura');
+            }
+
         } catch (err: any) {
             console.error(err);
-            setError(err.message || 'Error uploading/processing invoice');
+            setError(err.message || 'Error procesando factura');
         } finally {
             setUploading(false);
             setProcessing(false);
@@ -53,92 +66,105 @@ export const InvoiceUploader: React.FC = () => {
 
     return (
         <div className="p-6 bg-white rounded-xl shadow-sm border border-gray-100">
-            <h2 className="text-lg font-semibold mb-4 text-gray-800">Escáner de Facturas (IA)</h2>
+            <h2 className="text-lg font-semibold mb-4 text-gray-800 flex items-center gap-2">
+                <FileText className="text-emerald-600" />
+                Escáner de Facturas (AI)
+            </h2>
 
-            <div className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-8 cursor-pointer hover:bg-gray-50 transition-colors relative">
+            <div className={`flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-8 cursor-pointer transition-colors relative ${error ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:bg-gray-50'}`}>
                 <input
                     type="file"
                     onChange={handleFileUpload}
-                    accept=".pdf,image/jpeg,image/png"
+                    accept=".jpg,.jpeg,.png,.webp"
                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                     disabled={uploading || processing}
                 />
 
                 {processing ? (
-                    <div className="animate-pulse flex flex-col items-center">
-                        <Loader2 className="w-10 h-10 text-indigo-500 mb-2 animate-spin" />
-                        <span className="text-indigo-600 font-medium">Analizando con Inteligencia Artificial...</span>
+                    <div className="animate-pulse flex flex-col items-center z-10">
+                        <Loader2 className="w-12 h-12 text-emerald-500 mb-3 animate-spin" />
+                        <span className="text-emerald-600 font-medium text-lg">Analizando factura...</span>
+                        <span className="text-emerald-500/80 text-sm mt-1">Extrayendo datos con Gemini AI</span>
                     </div>
                 ) : (
-                    <>
-                        <Upload className="w-10 h-10 text-gray-400 mb-2" />
-                        <span className="text-gray-500">Arrastra tu factura o haz clic para subir</span>
-                        <span className="text-xs text-gray-400 mt-1">PDF, JPG, PNG soportados</span>
-                    </>
+                    <div className="flex flex-col items-center z-10 text-center">
+                        <Upload className={`w-12 h-12 mb-3 ${error ? 'text-red-400' : 'text-gray-400'}`} />
+                        <span className="text-gray-600 font-medium text-lg">Arrastra o haz clic para subir</span>
+                        <span className="text-sm text-gray-400 mt-1">Soporta JPG, PNG (las fotos claras funcionan mejor)</span>
+                    </div>
                 )}
             </div>
 
             {error && (
-                <div className="mt-4 p-3 bg-red-50 text-red-700 rounded-lg text-sm">
+                <div className="mt-4 p-4 bg-red-50 text-red-700 rounded-lg text-sm border border-red-100 flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-red-500" />
                     {error}
                 </div>
             )}
 
             {result && (
-                <div className="mt-6 border-t pt-4">
-                    <div className="flex justify-between items-center mb-4">
-                        <h3 className="font-medium text-gray-900">Resultados del Análisis</h3>
-                        <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">Procesado</span>
+                <div className="mt-8 border rounded-lg overflow-hidden animate-in slide-in-from-bottom-4 duration-500">
+                    {/* Header */}
+                    <div className="bg-emerald-50 p-4 border-b border-emerald-100 flex justify-between items-center">
+                        <div>
+                            <h3 className="font-bold text-emerald-900">{result.supplierName}</h3>
+                            <p className="text-emerald-700 text-sm">{new Date(result.date).toLocaleDateString()}</p>
+                        </div>
+                        <CheckCircle className="text-emerald-500 w-6 h-6" />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
-                        <div className="bg-gray-50 p-3 rounded">
-                            <span className="block text-gray-500 text-xs">Proveedor</span>
-                            <span className="font-medium text-gray-900">{result.supplierName}</span>
+                    {/* Summary Stats */}
+                    <div className="grid grid-cols-2 divide-x border-b">
+                        <div className="p-4 text-center">
+                            <span className="block text-xs uppercase tracking-wider text-gray-500">Items</span>
+                            <span className="text-xl font-bold text-gray-800">{result.items.length}</span>
                         </div>
-                        <div className="bg-gray-50 p-3 rounded">
-                            <span className="block text-gray-500 text-xs">Fecha</span>
-                            <span className="font-medium text-gray-900">{new Date(result.date).toLocaleDateString()}</span>
+                        <div className="p-4 text-center">
+                            <span className="block text-xs uppercase tracking-wider text-gray-500">Total</span>
+                            <span className="text-xl font-bold text-emerald-600">{result.totalCost.toFixed(2)}€</span>
                         </div>
                     </div>
 
-                    <table className="min-w-full text-sm">
-                        <thead>
-                            <tr className="text-left text-gray-500 border-b">
-                                <th className="pb-2 font-normal">Descripción</th>
-                                <th className="pb-2 font-normal text-right">Cant.</th>
-                                <th className="pb-2 font-normal text-right">Precio</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y">
-                            {result.items.map((item, idx) => (
-                                <tr key={idx}>
-                                    <td className="py-2 text-gray-800">{item.description}</td>
-                                    <td className="py-2 text-right text-gray-600">{item.quantity}</td>
-                                    <td className="py-2 text-right text-gray-600">{item.unitPrice.toFixed(2)}€</td>
+                    {/* Items Table */}
+                    <div className="overflow-x-auto max-h-60 overflow-y-auto">
+                        <table className="min-w-full text-sm">
+                            <thead className="bg-gray-50">
+                                <tr className="text-left text-gray-500">
+                                    <th className="px-4 py-2 font-medium">Descripción</th>
+                                    <th className="px-4 py-2 font-medium text-right">Cant.</th>
+                                    <th className="px-4 py-2 font-medium text-right">Precio</th>
+                                    <th className="px-4 py-2 font-medium text-right">Total</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                        <tfoot>
-                            <tr className="font-semibold text-gray-900 border-t">
-                                <td className="pt-3">Total</td>
-                                <td colSpan={2} className="pt-3 text-right">{result.totalCost.toFixed(2)}€</td>
-                            </tr>
-                        </tfoot>
-                    </table>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                                {result.items.map((item, idx) => (
+                                    <tr key={idx} className="hover:bg-gray-50">
+                                        <td className="px-4 py-2 text-gray-800">{item.description}</td>
+                                        <td className="px-4 py-2 text-right text-gray-600">{item.quantity}</td>
+                                        <td className="px-4 py-2 text-right text-gray-600">{item.unitPrice.toFixed(2)}€</td>
+                                        <td className="px-4 py-2 text-right font-medium text-gray-800">{(item.quantity * item.unitPrice).toFixed(2)}€</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
 
-                    <div className="mt-4 flex justify-end gap-2">
+                    <div className="p-4 bg-gray-50 flex justify-end gap-3 border-t">
                         <button
-                            className="btn btn-secondary text-sm"
+                            className="px-4 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-200 rounded-lg transition-colors text-sm font-medium"
                             onClick={() => setResult(null)}
                         >
                             Descartar
                         </button>
                         <button
-                            className="btn btn-primary text-sm"
-                            onClick={() => alert("Función para crear pedido pendiente de implementar")}
+                            className="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 shadow-lg shadow-emerald-500/20 transition-all text-sm font-bold flex items-center gap-2"
+                            onClick={() => {
+                                alert("Pedido listo para guardar (simulado)");
+                                setResult(null);
+                            }}
                         >
-                            Guardar como Pedido
+                            <FileText size={16} />
+                            Crear Pedido
                         </button>
                     </div>
                 </div>

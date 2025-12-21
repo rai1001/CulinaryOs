@@ -10,11 +10,11 @@
 
 @layer utilities {
   .glass {
-    @apply bg-surface/70 backdrop-blur-md border border-white/10;
+    @apply bg-surface/90 backdrop-blur-md border border-white/5;
   }
 
   .glass-card {
-    @apply bg-surface/50 backdrop-blur-lg border border-white/5 rounded-xl;
+    @apply bg-surface/60 backdrop-blur-xl border border-white/5 rounded-xl shadow-lg shadow-black/20;
   }
 }
 

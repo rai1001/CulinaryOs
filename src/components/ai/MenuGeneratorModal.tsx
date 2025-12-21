@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { generateMenu } from '../../api/ai';
+import { generateMenuFromCriteria } from '../../services/geminiService';
 import type { GeneratedMenu } from '../../types';
 import { X, Sparkles, Loader2, Check } from 'lucide-react';
 
@@ -28,14 +28,18 @@ export const MenuGeneratorModal: React.FC<MenuGeneratorModalProps> = ({ isOpen, 
         setResult(null);
 
         try {
-            const response = await generateMenu({
+            const response = await generateMenuFromCriteria({
                 eventType,
                 pax,
                 season,
                 restrictions: restrictions.split(',').map(s => s.trim()).filter(Boolean)
             });
-            const data = response.data as GeneratedMenu;
-            setResult(data);
+
+            if (response.success && response.data) {
+                setResult(response.data as GeneratedMenu);
+            } else {
+                throw new Error(response.error || 'No se pudo generar el menú');
+            }
         } catch (err: any) {
             console.error(err);
             setError('Error generando el menú. Inténtalo de nuevo.');

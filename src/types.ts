@@ -330,6 +330,7 @@ export interface ProcessedInvoice {
         description: string;
         quantity: number;
         unitPrice: number;
+        total?: number;
     }[];
 }
 
@@ -339,9 +340,11 @@ export interface GeneratedMenu {
     dishes: {
         name: string;
         description: string;
-        category: 'Starter' | 'Main' | 'Dessert';
+        category: string;
         allergens: string[];
     }[];
+    estimatedCost?: number;
+    sellPrice?: number;
 }
 
 export interface IngredientEnrichment {

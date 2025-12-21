@@ -1,120 +1,5 @@
-import { createWorker, type Worker, PSM } from 'tesseract.js';
-import { SCANNER } from '../constants/scanner';
+import { analyzeImage } from './geminiService';
 
-let ocrWorker: Worker | null = null;
-
-/**
- * Initialize Tesseract OCR worker
- */
-async function initializeOCR(): Promise<Worker> {
-    if (ocrWorker) return ocrWorker;
-
-    const worker = await createWorker(SCANNER.OCR.LANGUAGE);
-    await worker.setParameters({
-        tessedit_char_whitelist: '0123456789/-. ',
-        tessedit_pageseg_mode: PSM.SINGLE_BLOCK,
-    });
-
-    ocrWorker = worker;
-    return worker;
-}
-
-/**
- * Preprocess image for better OCR results
- */
-function preprocessImage(imageData: ImageData): ImageData {
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-
-    if (!ctx) return imageData;
-
-    // Scale up image
-    canvas.width = imageData.width * SCANNER.OCR.IMAGE_SCALE;
-    canvas.height = imageData.height * SCANNER.OCR.IMAGE_SCALE;
-
-    // Create temporary canvas to draw original image
-    const tempCanvas = document.createElement('canvas');
-    const tempCtx = tempCanvas.getContext('2d');
-
-    if (!tempCtx) return imageData;
-
-    tempCanvas.width = imageData.width;
-    tempCanvas.height = imageData.height;
-    tempCtx.putImageData(imageData, 0, 0);
-
-    // Draw scaled image
-    ctx.drawImage(tempCanvas, 0, 0, canvas.width, canvas.height);
-
-    // Convert to grayscale and increase contrast
-    const scaledImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const data = scaledImageData.data;
-
-    for (let i = 0; i < data.length; i += 4) {
-        // Convert to grayscale
-        const gray = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
-
-        // Increase contrast (simple threshold)
-        const threshold = 128;
-        const value = gray > threshold ? 255 : 0;
-
-        data[i] = value;     // Red
-        data[i + 1] = value; // Green
-        data[i + 2] = value; // Blue
-    }
-
-    return scaledImageData;
-}
-
-/**
- * Parse date from OCR text
- */
-function parseDate(text: string): Date | null {
-    // Clean up the text
-    const cleaned = text.trim().replace(/[^\d\/\-\.\s]/g, '');
-
-    // Try each date pattern
-    for (const pattern of SCANNER.OCR.DATE_PATTERNS) {
-        const match = cleaned.match(pattern);
-        if (match) {
-            let day: number, month: number, year: number;
-
-            // DD/MM/YYYY or DD-MM-YYYY or DD.MM.YYYY format
-            if (pattern.source.startsWith('(\\d{2})')) {
-                day = parseInt(match[1], 10);
-                month = parseInt(match[2], 10);
-                year = parseInt(match[3], 10);
-
-                // Handle 2-digit year
-                if (year < 100) {
-                    year += year < 50 ? 2000 : 1900;
-                }
-            }
-            // YYYY/MM/DD format
-            else if (pattern.source.startsWith('(\\d{4})')) {
-                year = parseInt(match[1], 10);
-                month = parseInt(match[2], 10);
-                day = parseInt(match[3], 10);
-            } else {
-                continue;
-            }
-
-            // Validate date components
-            if (month < 1 || month > 12) continue;
-            if (day < 1 || day > 31) continue;
-            if (year < 2024 || year > 2050) continue;
-
-            const date = new Date(year, month - 1, day);
-
-            // Validate that date is valid and in the future
-            if (isNaN(date.getTime())) continue;
-            if (date < new Date()) continue; // Expiry date should be in the future
-
-            return date;
-        }
-    }
-
-    return null;
-}
 
 export interface OCRResult {
     success: boolean;
@@ -124,86 +9,81 @@ export interface OCRResult {
 }
 
 /**
- * Scan expiration date from image using OCR
+ * Scan expiration date from image using Gemini AI (replaces Tesseract)
  * @param imageElement - Image element or canvas containing the date
  * @returns OCR result with parsed date
  */
 export async function scanExpirationDate(imageElement: HTMLImageElement | HTMLCanvasElement): Promise<OCRResult> {
     try {
-        // Get image data
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
+        // Convert image to Base64
+        let base64Data: string;
+        if (imageElement instanceof HTMLCanvasElement) {
+            base64Data = imageElement.toDataURL('image/jpeg').split(',')[1];
+        } else {
+            const canvas = document.createElement('canvas');
+            canvas.width = imageElement.width;
+            canvas.height = imageElement.height;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) throw new Error('Could not create canvas context');
+            ctx.drawImage(imageElement, 0, 0);
+            base64Data = canvas.toDataURL('image/jpeg').split(',')[1];
+        }
 
-        if (!ctx) {
+        const prompt = `
+            Analyze this product label image.
+            Find the Expiration Date / Best Before date.
+            Return a JSON object:
+            {
+                "date": "YYYY-MM-DD",
+                "text": "The exact text found on the label",
+                "confidence": 0-100
+            }
+            If no date found, return null for date.
+        `;
+
+        const result = await analyzeImage(base64Data, prompt);
+
+        if (result.success && result.data) {
+            const dateStr = result.data.date;
+            const text = result.data.text || '';
+            const confidence = result.data.confidence || 0;
+
+            let dateObj: Date | null = null;
+            if (dateStr) {
+                dateObj = new Date(dateStr);
+                // Basic validation
+                if (isNaN(dateObj.getTime())) dateObj = null;
+            }
+
+            return {
+                success: !!dateObj,
+                text: text,
+                confidence: confidence || 90, // AI is usually confident
+                date: dateObj
+            };
+        } else {
             return {
                 success: false,
                 text: '',
                 confidence: 0,
-                date: null,
+                date: null
             };
         }
 
-        canvas.width = imageElement.width;
-        canvas.height = imageElement.height;
-        ctx.drawImage(imageElement, 0, 0);
-
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-
-        // Preprocess image
-        const processedImageData = preprocessImage(imageData);
-
-        // Put processed image back on canvas
-        const processedCanvas = document.createElement('canvas');
-        const processedCtx = processedCanvas.getContext('2d');
-
-        if (!processedCtx) {
-            return {
-                success: false,
-                text: '',
-                confidence: 0,
-                date: null,
-            };
-        }
-
-        processedCanvas.width = processedImageData.width;
-        processedCanvas.height = processedImageData.height;
-        processedCtx.putImageData(processedImageData, 0, 0);
-
-        // Initialize OCR worker
-        const worker = await initializeOCR();
-
-        // Perform OCR
-        const { data } = await worker.recognize(processedCanvas);
-
-        const confidence = data.confidence;
-        const text = data.text;
-
-        // Try to parse date
-        const date = parseDate(text);
-
-        return {
-            success: confidence >= SCANNER.OCR.CONFIDENCE_THRESHOLD && date !== null,
-            text: text.trim(),
-            confidence,
-            date,
-        };
     } catch (error) {
-        console.error('OCR error:', error);
+        console.error('AI OCR error:', error);
         return {
             success: false,
             text: '',
             confidence: 0,
-            date: null,
+            date: null
         };
     }
 }
 
 /**
- * Cleanup OCR worker
+ * Cleanup OCR worker (No-op now)
  */
 export async function cleanupOCR(): Promise<void> {
-    if (ocrWorker) {
-        await ocrWorker.terminate();
-        ocrWorker = null;
-    }
+    // No worker to terminate
 }

@@ -15,6 +15,8 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ allowedRoles, re
 
     // 1. Check Authentication
     // Note: Use 'currentUser' from store which should be hydrated from Auth listener
+    // 1. Check Authentication
+    // Note: Use 'currentUser' from store which should be hydrated from Auth listener
     if (!currentUser) {
         // Redirect to login, saving the location they were trying to go to
         return <Navigate to={redirectPath} state={{ from: location }} replace />;

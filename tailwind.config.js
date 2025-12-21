@@ -8,12 +8,12 @@ export default {
     theme: {
         extend: {
             colors: {
-                background: '#0f172a', // Slate 900
-                surface: '#1e293b',    // Slate 800
-                primary: '#3b82f6',    // Blue 500
-                secondary: '#64748b',  // Slate 500
-                accent: '#8b5cf6',     // Violet 500
-                success: '#10b981',    // Emerald 500
+                background: '#111315', // Deep dark
+                surface: '#1A1D1F',    // Dark card background
+                primary: '#22c55e',    // Vibrant Green
+                secondary: '#94a3b8',  // Slate 400
+                accent: '#10b981',     // Emerald 500
+                success: '#22c55e',    // Matching primary
                 warning: '#f59e0b',    // Amber 500
                 error: '#ef4444',      // Red 500
             },
