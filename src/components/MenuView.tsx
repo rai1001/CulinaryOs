@@ -10,6 +10,7 @@ import { useStore } from '../store/useStore';
 import { BookOpen, Plus, Search, Edit2, Trash2, Save, X, Utensils } from 'lucide-react';
 import type { Menu, MenuVariation } from '../types';
 import { useToast, ConfirmModal } from './ui';
+import { DataImportModal, type ImportType } from './common/DataImportModal';
 
 export const MenuView: React.FC = () => {
     const { menus, recipes, activeOutletId } = useStore();
@@ -19,6 +20,61 @@ export const MenuView: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; id: string | null }>({ isOpen: false, id: null });
     const [isSaving, setIsSaving] = useState(false);
+    const [importType, setImportType] = useState<ImportType | null>(null);
+
+    const handleImportComplete = async (data: any) => {
+        if (data.menus && Array.isArray(data.menus)) {
+            // Bulk Import (Excel)
+            if (!activeOutletId) {
+                activeOutletId && alert("Selecciona una cocina activa primero."); // Alert only if we have ID but logical check fails? No, if !ID.
+                // If !activeOutletId, we can't save.
+                if (!activeOutletId) {
+                    alert("Selecciona una cocina activa primero.");
+                    return;
+                }
+            }
+
+            let count = 0;
+            for (const m of data.menus) {
+                try {
+                    const newMenu: Partial<Menu> = {
+                        ...m,
+                        outletId: activeOutletId,
+                        updatedAt: new Date().toISOString(),
+                        recipeIds: m.recipeIds || [],
+                        variations: m.variations || [],
+                        sellPrice: Number(m.sellPrice) || 0
+                    };
+                    if (!newMenu.id) delete newMenu.id;
+
+                    await addDocument(collections.menus, newMenu);
+                    count++;
+                } catch (e) {
+                    console.error("Error saving menu:", e);
+                }
+            }
+            if (count > 0) alert(`Importados ${count} menús correctamente.`);
+
+        } else if (data.name) {
+            // OCR Single Import
+            let desc = "";
+            if (data.sections) {
+                desc = data.sections.map((s: any) =>
+                    `## ${s.name}\n${s.items.map((i: any) => `- ${i.name} (${i.price || '?'}€)`).join('\n')}`
+                ).join('\n\n');
+            }
+
+            setFormData({
+                name: data.name,
+                description: desc,
+                recipeIds: [],
+                variations: [],
+                sellPrice: 0
+            });
+            setIsEditing(true);
+        }
+        setImportType(null);
+    };
 
     // Form State
     const [formData, setFormData] = useState<Partial<Menu>>({
@@ -279,6 +335,12 @@ export const MenuView: React.FC = () => {
                     <p className="text-slate-400 mt-1">Crea y organiza tus propuestas gastronómicas</p>
                 </div>
                 <button
+                    onClick={() => setImportType('menu')}
+                    className="bg-surface hover:bg-white/10 text-slate-300 border border-white/10 px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 mr-2"
+                >
+                    <Utensils className="w-4 h-4" /> Importar / Escanear Carta
+                </button>
+                <button
                     onClick={() => {
                         setFormData({ name: '', description: '', recipeIds: [], variations: [], sellPrice: 0 });
                         setIsEditing(true);
@@ -361,6 +423,13 @@ export const MenuView: React.FC = () => {
                 variant="danger"
                 onConfirm={confirmDelete}
                 onCancel={() => setDeleteConfirm({ isOpen: false, id: null })}
+            />
+
+            <DataImportModal
+                isOpen={!!importType}
+                onClose={() => setImportType(null)}
+                type={importType || 'menu'}
+                onImportComplete={handleImportComplete}
             />
         </div>
     );

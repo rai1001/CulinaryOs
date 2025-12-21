@@ -1,9 +1,10 @@
 import React, { useState, useRef } from 'react';
 import * as XLSX from 'xlsx';
-import { Upload, X, Check, FileSpreadsheet, Loader2, AlertCircle } from 'lucide-react';
+import { Upload, X, Check, FileSpreadsheet, Loader2, AlertCircle, Camera, FileText } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { format, parse, isValid } from 'date-fns';
 import type { EventType } from '../types';
+import { scanEventOrder } from '../services/geminiService';
 
 interface ParsedEvent {
     name: string;
@@ -19,9 +20,10 @@ interface EventImportModalProps {
 }
 
 export const EventImportModal: React.FC<EventImportModalProps> = ({ onClose, onSave }) => {
-    const { events, setEvents } = useStore(); // Fallback if addEvent doesn't exist yet
+    const { events, setEvents } = useStore();
     const fileInputRef = useRef<HTMLInputElement>(null);
 
+    const [mode, setMode] = useState<'excel' | 'scan'>('excel');
     const [parsing, setParsing] = useState(false);
     const [parsedData, setParsedData] = useState<ParsedEvent | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -30,6 +32,46 @@ export const EventImportModal: React.FC<EventImportModalProps> = ({ onClose, onS
         if (e.target.files && e.target.files[0]) {
             const selectedFile = e.target.files[0];
             parseExcel(selectedFile);
+        }
+    };
+
+    const handleScanUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (!e.target.files?.length) return;
+        const file = e.target.files[0];
+
+        setParsing(true);
+        setError(null);
+        setParsedData(null);
+
+        try {
+            const base64Data = await new Promise<string>((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => resolve((reader.result as string).split(',')[1]);
+                reader.onerror = reject;
+            });
+
+            const result = await scanEventOrder(base64Data);
+
+            if (result.success && result.data) {
+                const d = result.data;
+                setParsedData({
+                    name: d.eventName || 'Evento Escaneado',
+                    date: d.date || format(new Date(), 'yyyy-MM-dd'),
+                    pax: Number(d.pax) || 0,
+                    menuNotes: (d.menu?.name ? `Menú: ${d.menu.name}\n` : '') +
+                        (d.menu?.items?.join(', ') || '') +
+                        (d.notes ? `\n\nNotas: ${d.notes}` : ''),
+                    type: 'Comida'
+                });
+            } else {
+                throw new Error(result.error || 'No se pudo leer la hoja de evento');
+            }
+        } catch (err: any) {
+            console.error(err);
+            setError(err.message || 'Error al escanear documento');
+        } finally {
+            setParsing(false);
         }
     };
 
@@ -71,26 +113,21 @@ export const EventImportModal: React.FC<EventImportModalProps> = ({ onClose, onS
                 const cell = String(row[c]).toLowerCase().trim();
 
                 // Name / Evento
-                if (cell.includes('evento') && !name.includes('Navidad')) { // Prioritize internal name if found
-                    // Often the cell to the right or below has the value
+                if (cell.includes('evento') && !name.includes('Navidad')) {
                     if (row[c + 1]) name = String(row[c + 1]);
                     else if (data[r + 1] && data[r + 1][c]) name = String(data[r + 1][c]);
                 }
 
                 // Date / Fecha
                 if (cell === ('fecha')) {
-                    // Try right
                     let dateRaw = row[c + 1];
-                    // Try below if right is empty
                     if (!dateRaw && data[r + 1]) dateRaw = data[r + 1][c];
 
                     if (dateRaw) {
-                        // Excel serial date?
                         if (typeof dateRaw === 'number') {
                             const dateObj = new Date(Math.round((dateRaw - 25569) * 86400 * 1000));
                             if (isValid(dateObj)) date = format(dateObj, 'yyyy-MM-dd');
                         } else {
-                            // String DD/MM/YYYY
                             const parsed = parse(String(dateRaw).trim(), 'dd/MM/yyyy', new Date());
                             if (isValid(parsed)) date = format(parsed, 'yyyy-MM-dd');
                         }
@@ -99,8 +136,8 @@ export const EventImportModal: React.FC<EventImportModalProps> = ({ onClose, onS
 
                 // PAX / Personas
                 if (cell === 'pax' || cell === 'no pax' || cell === 'personas' || cell.includes('nº pax')) {
-                    let paxRaw = row[c + 1]; // Right
-                    if (!paxRaw && data[r + 1]) paxRaw = data[r + 1][c]; // Below
+                    let paxRaw = row[c + 1];
+                    if (!paxRaw && data[r + 1]) paxRaw = data[r + 1][c];
 
                     if (paxRaw && !isNaN(Number(paxRaw))) {
                         pax = Number(paxRaw);
@@ -108,19 +145,16 @@ export const EventImportModal: React.FC<EventImportModalProps> = ({ onClose, onS
                 }
 
                 // Menu content
-                // Strategy: Look for "Alimentos y bebidas" header, then read until "Bodega" or "Observaciones"
                 if (cell.includes('alimentos y bebidas')) {
                     let currentRow = r + 1;
                     while (currentRow < data.length) {
                         const nextRow = data[currentRow];
                         const firstCell = String(nextRow[0] || '').toLowerCase();
 
-                        // Stop conditions
                         if (firstCell.includes('bodega') || firstCell.includes('observaciones') || firstCell.includes('horarios')) {
                             break;
                         }
 
-                        // Append non-empty cells
                         const line = nextRow.filter(x => x).join(' ');
                         if (line.trim()) {
                             menuNotes += line + '\n';
@@ -131,7 +165,6 @@ export const EventImportModal: React.FC<EventImportModalProps> = ({ onClose, onS
             }
         }
 
-        // Determine type based on keywords
         const lowerName = name.toLowerCase();
         if (lowerName.includes('boda')) type = 'Boda';
         else if (lowerName.includes('comida')) type = 'Comida';
@@ -153,11 +186,9 @@ export const EventImportModal: React.FC<EventImportModalProps> = ({ onClose, onS
             type: parsedData.type,
             notes: parsedData.menuNotes,
             status: 'confirmed',
-            menuId: undefined // Imported events don't link to structural menus yet
+            menuId: undefined
         };
 
-        // Handle verify addEvent exists in store, else manually append
-        // Using direct array manipulation for safety if addEvent missing in viewed files
         const newEvents = [...events, newEvent];
         setEvents(newEvents);
 
@@ -170,13 +201,30 @@ export const EventImportModal: React.FC<EventImportModalProps> = ({ onClose, onS
             <div className="bg-surface border border-white/10 rounded-xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
                 <div className="p-4 border-b border-white/10 flex items-center justify-between bg-white/5">
                     <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                        <FileSpreadsheet className="text-emerald-400" />
-                        Importar Hoja de Servicio
+                        {mode === 'excel' ? <FileSpreadsheet className="text-emerald-400" /> : <Camera className="text-purple-400" />}
+                        {mode === 'excel' ? 'Importar Hoja de Servicio' : 'Escanear Orden de Evento (BEO)'}
                     </h3>
                     <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors">
                         <X className="w-5 h-5" />
                     </button>
                 </div>
+
+                {!parsedData && (
+                    <div className="flex border-b border-white/10">
+                        <button
+                            onClick={() => setMode('excel')}
+                            className={`flex-1 py-3 text-sm font-medium transition-colors ${mode === 'excel' ? 'bg-white/5 text-emerald-400 border-b-2 border-emerald-400' : 'text-slate-400 hover:text-white'}`}
+                        >
+                            Excel Import
+                        </button>
+                        <button
+                            onClick={() => setMode('scan')}
+                            className={`flex-1 py-3 text-sm font-medium transition-colors ${mode === 'scan' ? 'bg-white/5 text-purple-400 border-b-2 border-purple-400' : 'text-slate-400 hover:text-white'}`}
+                        >
+                            Scanner / OCR
+                        </button>
+                    </div>
+                )}
 
                 <div className="p-6 overflow-y-auto flex-1">
                     {!parsedData ? (
@@ -187,16 +235,18 @@ export const EventImportModal: React.FC<EventImportModalProps> = ({ onClose, onS
                             <input
                                 type="file"
                                 ref={fileInputRef}
-                                onChange={handleFileChange}
+                                onChange={mode === 'excel' ? handleFileChange : handleScanUpload}
                                 className="hidden"
-                                accept=".xlsx, .xls"
+                                accept={mode === 'excel' ? ".xlsx, .xls" : ".jpg, .jpeg, .png, .webp"}
                             />
 
                             {parsing ? (
                                 <>
                                     <Loader2 className="w-10 h-10 text-primary animate-spin mb-4" />
                                     <p className="text-lg font-medium text-white">Analizando archivo...</p>
-                                    <p className="text-sm text-slate-400 mt-2">Buscando fechas, comensales y menús</p>
+                                    <p className="text-sm text-slate-400 mt-2">
+                                        {mode === 'excel' ? 'Buscando fechas, comensales y menús' : 'Extrayendo datos con IA'}
+                                    </p>
                                 </>
                             ) : error ? (
                                 <>
@@ -206,9 +256,17 @@ export const EventImportModal: React.FC<EventImportModalProps> = ({ onClose, onS
                                 </>
                             ) : (
                                 <>
-                                    <Upload className="w-10 h-10 text-slate-400 mb-4" />
-                                    <p className="text-lg font-medium text-white">Click para subir Excel</p>
-                                    <p className="text-sm text-slate-400 mt-2">Soporta .xlsx y .xls (Hojas de Servicio)</p>
+                                    {mode === 'excel' ? (
+                                        <Upload className="w-10 h-10 text-slate-400 mb-4" />
+                                    ) : (
+                                        <FileText className="w-10 h-10 text-purple-400 mb-4" />
+                                    )}
+                                    <p className="text-lg font-medium text-white">
+                                        {mode === 'excel' ? 'Click para subir Excel' : 'Click para subir Imagen BEO'}
+                                    </p>
+                                    <p className="text-sm text-slate-400 mt-2">
+                                        {mode === 'excel' ? 'Soporta .xlsx y .xls' : 'Soporta JPG, PNG (las fotos claras funcionan mejor)'}
+                                    </p>
                                 </>
                             )}
                         </div>
@@ -273,7 +331,7 @@ export const EventImportModal: React.FC<EventImportModalProps> = ({ onClose, onS
                                     onChange={e => setParsedData({ ...parsedData, menuNotes: e.target.value })}
                                     className="w-full bg-black/20 border border-white/10 rounded px-3 py-2 text-white focus:border-primary font-mono text-xs leading-relaxed"
                                 />
-                                <p className="text-[10px] text-slate-500 text-right">Extraído de sección "Alimentos y bebidas"</p>
+                                <p className="text-[10px] text-slate-500 text-right">Extraído {mode === 'excel' ? 'de Excel' : 'con IA'}</p>
                             </div>
                         </div>
                     )}

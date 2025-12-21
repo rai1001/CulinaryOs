@@ -18,7 +18,7 @@ export async function enrichIngredientWithAI(name: string): Promise<EnrichmentRe
     }
 
     const vertexAI = new VertexAI({ project: projectId, location: "europe-west1" });
-    const model = vertexAI.getGenerativeModel({ model: "gemini-pro" });
+    const model = vertexAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
     const prompt = `
       Provide nutritional information and common allergens for the ingredient: "${name}".

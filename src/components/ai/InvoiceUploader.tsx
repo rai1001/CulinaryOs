@@ -3,7 +3,11 @@ import { scanInvoiceImage } from '../../services/geminiService';
 import type { ProcessedInvoice } from '../../types';
 import { Upload, Loader2, FileText, CheckCircle } from 'lucide-react';
 
-export const InvoiceUploader: React.FC = () => {
+interface InvoiceUploaderProps {
+    onScanComplete?: (data: ProcessedInvoice) => void;
+}
+
+export const InvoiceUploader: React.FC<InvoiceUploaderProps> = ({ onScanComplete }) => {
     const [uploading, setUploading] = useState(false);
     const [processing, setProcessing] = useState(false);
     const [result, setResult] = useState<ProcessedInvoice | null>(null);
@@ -159,7 +163,9 @@ export const InvoiceUploader: React.FC = () => {
                         <button
                             className="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 shadow-lg shadow-emerald-500/20 transition-all text-sm font-bold flex items-center gap-2"
                             onClick={() => {
-                                alert("Pedido listo para guardar (simulado)");
+                                if (onScanComplete && result) {
+                                    onScanComplete(result);
+                                }
                                 setResult(null);
                             }}
                         >

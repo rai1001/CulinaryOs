@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { useStore } from '../store/useStore';
-import { Package, Search, Plus, X } from 'lucide-react';
+import { Package, Search, Plus, X, Import } from 'lucide-react';
 import { IngredientList } from './lists/IngredientList';
 import { IngredientForm } from './IngredientForm';
 import { deleteDocument, addDocument } from '../services/firestoreService';
-import { ExcelImporter } from './common/ExcelImporter';
+import { DataImportModal, type ImportType } from './common/DataImportModal';
 import { COLLECTIONS, collections } from '../firebase/collections';
 import type { Ingredient, Unit } from '../types';
 
@@ -13,6 +13,27 @@ export const IngredientsView: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [showAddModal, setShowAddModal] = useState(false);
     const [editingIngredient, setEditingIngredient] = useState<Ingredient | undefined>(undefined);
+    const [importType, setImportType] = useState<ImportType | null>(null);
+
+    const handleImportComplete = async (data: any) => {
+        if (data.ingredients && Array.isArray(data.ingredients)) {
+            // Excel Bulk Import
+            await handleImport(data.ingredients);
+        } else if (data.name) {
+            // OCR Single Import
+            // Pre-fill form
+            setEditingIngredient({
+                ...data,
+                id: crypto.randomUUID(),
+                // Ensure unit/cost exist
+                unit: data.unit || 'kg',
+                costPerUnit: data.costPerUnit || 0,
+                outletId: activeOutletId
+            } as Ingredient);
+            setShowAddModal(true);
+        }
+        setImportType(null);
+    };
 
     const filteredIngredients = ingredients.filter(i => i.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
@@ -85,11 +106,12 @@ export const IngredientsView: React.FC = () => {
                     <p className="text-slate-400 mt-1">Base de datos de productos y precios.</p>
                 </div>
                 <div className="flex gap-3 items-center">
-                    <ExcelImporter
-                        onImport={handleImport}
-                        buttonLabel="Importar CSV/XLSX"
-                        template={{ col1: "Nombre", col2: "Unidad", col3: "Coste" }}
-                    />
+                    <button
+                        onClick={() => setImportType('ingredient')}
+                        className="bg-surface hover:bg-white/10 text-slate-300 border border-white/10 px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                    >
+                        <Import className="w-4 h-4" /> Importar / Escanear
+                    </button>
                     <div className="relative">
                         <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-500" />
                         <input
@@ -135,6 +157,13 @@ export const IngredientsView: React.FC = () => {
                     </div>
                 </div>
             )}
+
+            <DataImportModal
+                isOpen={!!importType}
+                onClose={() => setImportType(null)}
+                type={importType || 'ingredient'}
+                onImportComplete={handleImportComplete}
+            />
         </div>
     );
 };

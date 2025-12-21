@@ -66,6 +66,7 @@ export interface PurchaseOrderItem {
     unit: Unit;
     costPerUnit: number;
     receivedQuantity?: number; // For partial/full reception
+    tempDescription?: string; // For items from OCR not yet matched to an ingredient
 }
 
 export interface PurchaseOrder {

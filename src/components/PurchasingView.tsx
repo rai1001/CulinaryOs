@@ -98,6 +98,56 @@ export const PurchasingView: React.FC = () => {
         setDeleteConfirm({ isOpen: false, orderId: null });
     };
 
+    const handleInvoiceProcessed = (invoice: any) => {
+        setIsScanningModalOpen(false);
+
+        // 1. Try to find supplier
+        let supplierId = 'SIN_ASIGNAR';
+        const normalizedInvoiceSupplier = invoice.supplierName.toLowerCase();
+
+        // Simple fuzzy match
+        const existingSupplier = suppliers.find(s =>
+            s.name.toLowerCase().includes(normalizedInvoiceSupplier) ||
+            normalizedInvoiceSupplier.includes(s.name.toLowerCase())
+        );
+
+        if (existingSupplier) {
+            supplierId = existingSupplier.id;
+        }
+
+        // 2. Map Items (Try to match ingredients)
+        const mappedItems: any[] = invoice.items.map((item: any) => {
+            // Fuzzy match ingredient
+            const match = ingredients.find(ing =>
+                ing.name.toLowerCase() === item.description.toLowerCase() ||
+                item.description.toLowerCase().includes(ing.name.toLowerCase())
+            );
+
+            return {
+                ingredientId: match ? match.id : 'UNKNOWN', // Placeholder logic
+                quantity: item.quantity,
+                unit: match?.unit || 'un',
+                costPerUnit: item.unitPrice,
+                tempDescription: !match ? item.description : undefined // Persist description if not matched
+            };
+        });
+
+        // 3. Create Order
+        const newOrder: PurchaseOrder = {
+            id: `PO-${Date.now()}`,
+            supplierId,
+            date: new Date().toISOString(),
+            status: 'DRAFT',
+            items: mappedItems,
+            totalCost: invoice.totalCost,
+            outletId: activeOutletId || undefined
+        };
+
+        addPurchaseOrder(newOrder);
+        setSelectedOrder(newOrder);
+        addToast('Borrador creado desde factura', 'success');
+    };
+
     return (
         <div className="p-6 md:p-8 space-y-8 animate-in fade-in duration-500">
             {/* Header */}
@@ -135,7 +185,7 @@ export const PurchasingView: React.FC = () => {
                                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                             </button>
                         </div>
-                        <InvoiceUploader />
+                        <InvoiceUploader onScanComplete={handleInvoiceProcessed} />
                     </div>
                 </div>
             )}

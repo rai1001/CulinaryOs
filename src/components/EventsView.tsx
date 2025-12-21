@@ -86,15 +86,8 @@ export const EventsView: React.FC = () => {
             // Format as YYYY-MM-DD
             // Note: toISOString uses UTC. We should use local YYYY-MM-DD construction to avoid timezone shifts affecting the "date" string used in queries.
             // Or use a utility. For now, simple construction:
-            const formatDate = (d: Date) => {
-                const y = d.getFullYear();
-                const m = String(d.getMonth() + 1).padStart(2, '0');
-                const day = String(d.getDate()).padStart(2, '0');
-                return `${y} -${m} -${day} `;
-            };
-
-            const startStr = formatDate(start);
-            const endStr = formatDate(end);
+            const startStr = normalizeDate(start);
+            const endStr = normalizeDate(end);
 
             fetchEventsRange(startStr, endStr);
         }
@@ -242,7 +235,8 @@ export const EventsView: React.FC = () => {
                     {/* Actual Days */}
                     {Array.from({ length: daysInMonth }).map((_, i) => {
                         const dayNum = i + 1;
-                        const dateStr = `${currentDate.getFullYear()} -${String(currentDate.getMonth() + 1).padStart(2, '0')} -${String(dayNum).padStart(2, '0')} `;
+                        const dateObj = new Date(currentDate.getFullYear(), currentDate.getMonth(), dayNum);
+                        const dateStr = normalizeDate(dateObj);
                         const dayEvents = events.filter(e => normalizeDate(e.date) === dateStr);
 
                         return (
@@ -251,7 +245,7 @@ export const EventsView: React.FC = () => {
                                 onClick={() => handleDayClick(dateStr)}
                                 className="bg-slate-800/40 rounded-lg p-2 flex flex-col border border-transparent hover:border-slate-600 transition-colors min-h-[100px] cursor-pointer group"
                             >
-                                <span className={`text - sm font - semibold mb - 1 ${dateStr === new Date().toISOString().split('T')[0]
+                                <span className={`text-sm font-semibold mb-1 ${dateStr === new Date().toISOString().split('T')[0]
                                     ? 'bg-primary text-white w-6 h-6 rounded-full flex items-center justify-center'
                                     : 'text-slate-400'
                                     } `}>
@@ -262,7 +256,7 @@ export const EventsView: React.FC = () => {
                                     {dayEvents.map(event => (
                                         <div
                                             key={event.id}
-                                            className={`text - xs p - 1.5 rounded border ${eventColors[event.type] || 'bg-slate-700 text-slate-300'} cursor - pointer hover: opacity - 80 transition - opacity`}
+                                            className={`text-xs p-1.5 rounded border ${eventColors[event.type] || 'bg-slate-700 text-slate-300'} cursor-pointer hover:opacity-80 transition-opacity`}
                                         >
                                             <div className="font-semibold truncate">{event.name}</div>
                                             <div className="flex items-center justify-between mt-0.5 opacity-80">

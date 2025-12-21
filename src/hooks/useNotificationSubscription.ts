@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { collection, onSnapshot, query, orderBy, limit, where } from 'firebase/firestore';
+import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { useStore } from '../store/useStore';
 import type { Notification } from '../types';
@@ -13,9 +13,8 @@ export const useNotificationSubscription = () => {
         // Subscribe to recent unread notifications
         const q = query(
             collection(db, 'notifications'),
-            where('read', '==', false),
-            orderBy('timestamp', 'desc'),
-            limit(20)
+            where('read', '==', false)
+            // orderBy/limit requires index. We filter client side if needed or just show all unread.
         );
 
         const unsubscribe = onSnapshot(q, (snapshot) => {

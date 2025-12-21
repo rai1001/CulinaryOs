@@ -7,7 +7,7 @@ import firebaseApp from "../firebase/config";
 const vertexAI = getAI(firebaseApp);
 
 // Initialize the generative model with a model that supports multimodal input
-const model = getGenerativeModel(vertexAI, { model: "gemini-1.5-flash-002" });
+const model = getGenerativeModel(vertexAI, { model: "gemini-2.0-flash" });
 
 export interface AIAnalysisResult {
     success: boolean;
@@ -128,6 +128,132 @@ export async function scanInvoiceImage(base64Data: string): Promise<AIAnalysisRe
             ]
         }
         Si no es legible, devuelve null en los campos.
+    `;
+    return analyzeImage(base64Data, prompt);
+}
+
+/**
+ * Scan an Ingredient Label for allergens and nutrition
+ */
+export async function scanIngredientLabel(base64Data: string): Promise<AIAnalysisResult> {
+    const prompt = `
+        Analiza esta etiqueta de producto alimenticio. Extrae en JSON:
+        {
+            "name": "Nombre del producto",
+            "brand": "Marca (si visible)",
+            "allergens": ["Lista", "de", "alergenos", "detectados"],
+            "nutrition": {
+                "calories": 0 (kcal/100g),
+                "protein": 0,
+                "carbs": 0,
+                "fat": 0
+            }
+        }
+    `;
+    return analyzeImage(base64Data, prompt);
+}
+
+/**
+ * Scan a Recipe Card (Handwritten or Printed)
+ */
+export async function scanRecipeFromImage(base64Data: string): Promise<AIAnalysisResult> {
+    const prompt = `
+        Analiza esta receta (foto o texto). Extrae en JSON:
+        {
+            "name": "Nombre Receta",
+            "servings": Number (personas),
+            "prepTime": Number (minutos),
+            "ingredients": [
+                { "name": "Ingrediente", "quantity": Number, "unit": "kg/g/l/unit" }
+            ],
+            "steps": ["Paso 1", "Paso 2"]
+        }
+        Normaliza las unidades a sistema métrico si es posible.
+    `;
+    return analyzeImage(base64Data, prompt);
+}
+
+/**
+ * Scan a Physical Menu to digitalize it
+ */
+export async function scanMenuImage(base64Data: string): Promise<AIAnalysisResult> {
+    const prompt = `
+        Digitaliza esta carta/menú. Extrae en JSON:
+        {
+            "name": "Nombre del Menú (ej. Carta Verano)",
+            "sections": [
+                {
+                    "name": "Entrantes/Principales...",
+                    "items": [
+                        { "name": "Plato", "description": "Desc", "price": 0.00, "allergens": [] }
+                    ]
+                }
+            ]
+        }
+    `;
+    return analyzeImage(base64Data, prompt);
+}
+
+/**
+ * Scan an Event Order (BEO)
+ */
+export async function scanEventOrder(base64Data: string): Promise<AIAnalysisResult> {
+    const prompt = `
+        Analiza esta Hoja de Orden de Evento (BEO). Extrae en JSON:
+        {
+            "eventName": "Nombre Evento",
+            "date": "YYYY-MM-DD",
+            "time": "HH:MM",
+            "pax": Number,
+            "location": "Salón/Ubicación",
+            "menu": {
+                "name": "Nombre Menú",
+                "items": ["Plato 1", "Plato 2"]
+            },
+            "schedule": [
+                { "time": "HH:MM", "activity": "Cóctel/Cena/Barra Libre" }
+            ],
+            "notes": "Notas especiales (dietas, montaje...)"
+        }
+    `;
+    return analyzeImage(base64Data, prompt);
+}
+
+/**
+ * Scan a Handwritten Inventory Count Sheet
+ */
+export async function scanInventorySheet(base64Data: string): Promise<AIAnalysisResult> {
+    const prompt = `
+        Analiza esta hoja de recuento de inventario manuscrita. Extrae en JSON:
+        {
+            "date": "YYYY-MM-DD",
+            "items": [
+                { "name": "Nombre Producto", "quantity": Number, "unit": "kg/l/u" }
+            ]
+        }
+        Trata de interpretar la caligrafía lo mejor posible.
+    `;
+    return analyzeImage(base64Data, prompt);
+}
+
+/**
+ * Scan a Handwritten HACCP Log (Temperatures/Cleaning)
+ */
+export async function scanHACCPLog(base64Data: string): Promise<AIAnalysisResult> {
+    const prompt = `
+        Analiza esta hoja de registro de HACCP/Temperaturas. Extrae en JSON:
+        {
+            "date": "YYYY-MM-DD",
+            "entries": [
+                {
+                    "pccName": "Nombre del equipo/cámara",
+                    "value": Number (temperatura),
+                    "time": "HH:MM",
+                    "status": "CORRECT/WARNING/CRITICAL"
+                }
+            ]
+        }
+        Intenta mapear los nombres de equipos a PCCs genéricos si es posible.
     `;
     return analyzeImage(base64Data, prompt);
 }
