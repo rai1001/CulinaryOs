@@ -6,7 +6,7 @@ import { X, Sparkles, Loader2, Check } from 'lucide-react';
 interface MenuGeneratorModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onApply: (menu: GeneratedMenu) => void;
+    onApply: (menu: GeneratedMenu, context: { eventType: string, pax: number }) => void;
     initialType?: string;
     initialPax?: number;
 }
@@ -159,7 +159,7 @@ export const MenuGeneratorModal: React.FC<MenuGeneratorModalProps> = ({ isOpen, 
                                     Intentar de nuevo
                                 </button>
                                 <button
-                                    onClick={() => onApply(result)}
+                                    onClick={() => onApply(result, { eventType, pax })}
                                     className="flex-2 w-full py-2 bg-green-600 text-white hover:bg-green-700 rounded-lg font-medium flex items-center justify-center gap-2"
                                 >
                                     <Check className="w-5 h-5" />
