@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useState } from 'react';
+import React, { Suspense } from 'react';
 import { Routes, Route, Navigate, NavLink, useLocation } from 'react-router-dom';
 import { Dashboard } from './components/Dashboard';
 import { LayoutDashboard, Calendar, ShoppingCart, Database, CalendarDays, ChefHat, Package, Truck, ClipboardList, ShoppingBag, Trash2, ShieldCheck, TrendingUp, Search, BookOpen, Sparkles, Coffee, Menu as MenuIcon, X, Briefcase, Settings } from 'lucide-react';
@@ -15,28 +15,26 @@ import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import { ChefInsights } from './components/ai/ChefInsights';
 import { GoogleFont } from './components/ui';
 
-
-
 // Lazy load views for better initial load performance
-const ScheduleView = lazy(() => import('./components/ScheduleView').then(m => ({ default: m.ScheduleView })));
-const ProductionView = lazy(() => import('./components/ProductionView').then(m => ({ default: m.ProductionView })));
-const DataView = lazy(() => import('./components/DataView').then(m => ({ default: m.DataView })));
-const EventsView = lazy(() => import('./components/EventsView').then(m => ({ default: m.EventsView })));
-const RecipesView = lazy(() => import('./components/RecipesView').then(m => ({ default: m.RecipesView })));
-const IngredientsView = lazy(() => import('./components/IngredientsView').then(m => ({ default: m.IngredientsView })));
-const SupplierView = lazy(() => import('./components/SupplierView').then(m => ({ default: m.SupplierView })));
-const InventoryView = lazy(() => import('./components/InventoryView').then(m => ({ default: m.InventoryView })));
-const PurchasingView = lazy(() => import('./components/PurchasingView').then(m => ({ default: m.PurchasingView })));
-const WasteView = lazy(() => import('./components/WasteView').then(m => ({ default: m.WasteView })));
-const HACCPView = lazy(() => import('./components/HACCPView').then(m => ({ default: m.HACCPView })));
-const MenuAnalyticsView = lazy(() => import('./components/MenuAnalyticsView').then(m => ({ default: m.MenuAnalyticsView })));
-const KitchenDisplayView = lazy(() => import('./components/KitchenDisplayView').then(m => ({ default: m.KitchenDisplayView })));
-const AIMenuView = lazy(() => import('./components/AIFeatures').then(m => ({ default: m.AIMenuGenerator })));
-const AISearchView = lazy(() => import('./components/AIFeatures').then(m => ({ default: m.AIChefAssistant }))); // Search/Assistant
-const MenuView = lazy(() => import('./components/MenuView').then(m => ({ default: m.MenuView }))); // New Manual Menu View
-const BreakfastView = lazy(() => import('./components/BreakfastView').then(m => ({ default: m.BreakfastView })));
-const StaffView = lazy(() => import('./components/StaffView').then(m => ({ default: m.StaffView })));
-const IntegrationsView = lazy(() => import('./components/IntegrationsView').then(m => ({ default: m.IntegrationsView })));
+const ScheduleView = React.lazy(() => import('./components/ScheduleView').then(m => ({ default: m.ScheduleView })));
+const ProductionView = React.lazy(() => import('./components/ProductionView').then(m => ({ default: m.ProductionView })));
+const DataView = React.lazy(() => import('./components/DataView').then(m => ({ default: m.DataView })));
+const EventsView = React.lazy(() => import('./components/EventsView').then(m => ({ default: m.EventsView })));
+const RecipesView = React.lazy(() => import('./components/RecipesView').then(m => ({ default: m.RecipesView })));
+const IngredientsView = React.lazy(() => import('./components/IngredientsView').then(m => ({ default: m.IngredientsView })));
+const SupplierView = React.lazy(() => import('./components/SupplierView').then(m => ({ default: m.SupplierView })));
+const InventoryView = React.lazy(() => import('./components/InventoryView').then(m => ({ default: m.InventoryView })));
+const PurchasingView = React.lazy(() => import('./components/PurchasingView').then(m => ({ default: m.PurchasingView })));
+const WasteView = React.lazy(() => import('./components/WasteView').then(m => ({ default: m.WasteView })));
+const HACCPView = React.lazy(() => import('./components/HACCPView').then(m => ({ default: m.HACCPView })));
+const MenuAnalyticsView = React.lazy(() => import('./components/MenuAnalyticsView').then(m => ({ default: m.MenuAnalyticsView })));
+const KitchenDisplayView = React.lazy(() => import('./components/KitchenDisplayView').then(m => ({ default: m.KitchenDisplayView })));
+const AIMenuView = React.lazy(() => import('./components/AIFeatures').then(m => ({ default: m.AIMenuGenerator })));
+const AISearchView = React.lazy(() => import('./components/AIFeatures').then(m => ({ default: m.AIChefAssistant }))); // Search/Assistant
+const MenuView = React.lazy(() => import('./components/MenuView').then(m => ({ default: m.MenuView }))); // New Manual Menu View
+const BreakfastView = React.lazy(() => import('./components/BreakfastView').then(m => ({ default: m.BreakfastView })));
+const StaffView = React.lazy(() => import('./components/StaffView').then(m => ({ default: m.StaffView })));
+const IntegrationsView = React.lazy(() => import('./components/IntegrationsView').then(m => ({ default: m.IntegrationsView })));
 
 // Loading fallback component
 const LoadingFallback = () => (
@@ -49,8 +47,8 @@ const LoadingFallback = () => (
 );
 
 function App() {
-  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = React.useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
   const location = useLocation();
 
   // Subscribe to AI Notifications
@@ -146,7 +144,6 @@ function App() {
 
           <NavItem to="/production" icon={<ShoppingCart />} label="Producción" />
           <NavItem to="/kds" icon={<ChefHat />} label="Modo KDS (Tablet)" />
-          <NavItem to="/kds" icon={<ChefHat />} label="Modo KDS (Tablet)" />
           <NavItem to="/data" icon={<Database />} label="Datos" />
 
           <div className="pt-4 pb-2 border-t border-white/5 mt-4">
@@ -201,7 +198,6 @@ function App() {
                 <Route path="/ai-scanner" element={<Navigate to="/purchasing" replace />} />
                 <Route path="/ai-menu" element={<AIMenuView />} />
                 <Route path="/ai-search" element={<AISearchView />} />
-                <Route path="/menus" element={<MenuView />} />
                 <Route path="/menus" element={<MenuView />} />
                 <Route path="/breakfast" element={<BreakfastView />} />
                 <Route path="/integrations" element={<IntegrationsView />} />

@@ -41,7 +41,7 @@ export const DataImportModal: React.FC<DataImportModalProps> = ({ isOpen, onClos
         setError(null);
 
         try {
-            if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+            if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls') || file.name.endsWith('.xlsm')) {
                 // Excel Import
                 const parseResult = await parseWorkbook(file);
                 // Filter result based on type if needed, or just return everything
@@ -174,7 +174,7 @@ export const DataImportModal: React.FC<DataImportModalProps> = ({ isOpen, onClos
                                 >
                                     <FileSpreadsheet className="w-10 h-10 text-slate-400 group-hover:text-green-400 mb-3" />
                                     <span className="font-medium text-white">Subir Excel</span>
-                                    <span className="text-xs text-slate-400 mt-1">.xlsx, .xls</span>
+                                    <span className="text-xs text-slate-400 mt-1">.xlsx, .xls, .xlsm</span>
                                 </button>
 
                                 {/* Camera/Image Option */}
@@ -198,7 +198,7 @@ export const DataImportModal: React.FC<DataImportModalProps> = ({ isOpen, onClos
                         type="file"
                         ref={fileInputRef}
                         className="hidden"
-                        accept=".xlsx, .xls"
+                        accept=".xlsx, .xls, .xlsm"
                         onChange={handleFileChange}
                     />
                     <input

@@ -8,9 +8,11 @@ interface IngredientListProps {
     ingredients: Ingredient[];
     onEdit: (ingredient: Ingredient) => void;
     onDelete: (id: string) => void;
+    sortConfig: { key: keyof Ingredient | 'stock'; direction: 'asc' | 'desc' };
+    onSort: (key: keyof Ingredient | 'stock') => void;
 }
 
-export const IngredientList: React.FC<IngredientListProps> = ({ ingredients, onEdit, onDelete }) => {
+export const IngredientList: React.FC<IngredientListProps> = ({ ingredients, onEdit, onDelete, sortConfig, onSort }) => {
     const { suppliers, ingredients: allIngredients } = useStore();
 
     const getPriceComparison = (ing: Ingredient) => {
@@ -36,11 +38,23 @@ export const IngredientList: React.FC<IngredientListProps> = ({ ingredients, onE
             <table className="w-full text-left text-sm text-slate-300">
                 <thead className="bg-black/20 text-slate-500 uppercase font-medium">
                     <tr>
-                        <th className="p-4">Nombre</th>
+                        <th className="p-4 cursor-pointer hover:text-white transition-colors" onClick={() => onSort('name')}>
+                            <div className="flex items-center gap-2">
+                                Nombre {sortConfig.key === 'name' && (sortConfig.direction === 'asc' ? <TrendingUp size={14} /> : <TrendingDown size={14} />)}
+                            </div>
+                        </th>
                         <th className="p-4">Unidad</th>
-                        <th className="p-4 text-right">Stock</th>
+                        <th className="p-4 text-right cursor-pointer hover:text-white transition-colors" onClick={() => onSort('stock')}>
+                            <div className="flex items-center justify-end gap-2">
+                                Stock {sortConfig.key === 'stock' && (sortConfig.direction === 'asc' ? <TrendingUp size={14} /> : <TrendingDown size={14} />)}
+                            </div>
+                        </th>
                         <th className="p-4 text-right">Mínimo</th>
-                        <th className="p-4 text-right">Coste/Ud.</th>
+                        <th className="p-4 text-right cursor-pointer hover:text-white transition-colors" onClick={() => onSort('costPerUnit')}>
+                            <div className="flex items-center justify-end gap-2">
+                                Coste/Ud. {sortConfig.key === 'costPerUnit' && (sortConfig.direction === 'asc' ? <TrendingUp size={14} /> : <TrendingDown size={14} />)}
+                            </div>
+                        </th>
                         <th className="p-4 text-right">Rendimiento</th>
                         <th className="p-4 text-center">Acciones</th>
                     </tr>

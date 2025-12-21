@@ -15,6 +15,7 @@ export const RecipeForm: React.FC<{ initialData?: Recipe; onClose?: () => void }
         name: initialData?.name || '',
         station: initialData?.station || 'hot',
         isBase: initialData?.isBase || false,
+        category: initialData?.category || 'main' as any,
         yieldPax: initialData?.yieldPax || 1,
         ingredients: initialData?.ingredients || [] as { ingredientId: string; quantity: number }[]
     });
@@ -43,6 +44,7 @@ export const RecipeForm: React.FC<{ initialData?: Recipe; onClose?: () => void }
                 station: formData.station as 'hot' | 'cold' | 'dessert',
                 isBase: formData.isBase,
                 yieldPax: formData.yieldPax,
+                category: formData.category,
                 ingredients: formData.ingredients, // Array of { ingredientId, quantity }
                 outletId: activeOutletId
             };
@@ -110,17 +112,36 @@ export const RecipeForm: React.FC<{ initialData?: Recipe; onClose?: () => void }
                 </div>
             </div>
 
-            <div className="space-y-1">
-                <label htmlFor="recipe-yield" className="text-sm text-slate-400">Raciones / Rendimiento (Pax)</label>
-                <input
-                    id="recipe-yield"
-                    type="number"
-                    min="1"
-                    required
-                    className="w-full bg-black/20 border border-white/10 rounded px-3 py-2 text-white"
-                    value={formData.yieldPax}
-                    onChange={e => setFormData({ ...formData, yieldPax: Number(e.target.value) })}
-                />
+            <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                    <label htmlFor="recipe-yield" className="text-sm text-slate-400">Raciones / Rendimiento (Pax)</label>
+                    <input
+                        id="recipe-yield"
+                        type="number"
+                        min="1"
+                        required
+                        className="w-full bg-black/20 border border-white/10 rounded px-3 py-2 text-white"
+                        value={formData.yieldPax}
+                        onChange={e => setFormData({ ...formData, yieldPax: Number(e.target.value) })}
+                    />
+                </div>
+                <div className="space-y-1">
+                    <label htmlFor="recipe-category" className="text-sm text-slate-400">Categoría</label>
+                    <select
+                        id="recipe-category"
+                        className="w-full bg-black/20 border border-white/10 rounded px-3 py-2 text-white"
+                        value={formData.category}
+                        onChange={e => setFormData({ ...formData, category: e.target.value as any })}
+                    >
+                        <option value="appetizer">Entrante</option>
+                        <option value="main">Principal</option>
+                        <option value="dessert">Postre</option>
+                        <option value="sauce">Salsa / Guarnición</option>
+                        <option value="base">Base</option>
+                        <option value="beverage">Bebida</option>
+                        <option value="other">Otro</option>
+                    </select>
+                </div>
             </div>
 
             {/* Checkbox for isBase */}
@@ -191,6 +212,6 @@ export const RecipeForm: React.FC<{ initialData?: Recipe; onClose?: () => void }
                 {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
                 Guardar Receta
             </button>
-        </form>
+        </form >
     );
 };

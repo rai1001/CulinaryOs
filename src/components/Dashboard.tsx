@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React from 'react';
 import { useStore } from '../store/useStore';
 
 
@@ -16,8 +16,8 @@ import { HACCPWidget } from './dashboard/HACCPWidget';
 export const Dashboard: React.FC = () => {
     const { currentUser } = useStore();
     const { addToast } = useToast();
-    const fileInputRef = useRef<HTMLInputElement>(null);
-    const [isImporting, setIsImporting] = useState(false);
+    const fileInputRef = React.useRef<HTMLInputElement>(null);
+    const [isImporting, setIsImporting] = React.useState(false);
 
     const handleExport = () => {
         try {
@@ -145,4 +145,3 @@ export const Dashboard: React.FC = () => {
         </div>
     );
 };
-

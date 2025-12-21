@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
+import React from 'react';
 import { CheckCircle, AlertCircle, AlertTriangle, Info, X } from 'lucide-react';
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
@@ -16,10 +16,10 @@ interface ToastContextType {
     removeToast: (id: string) => void;
 }
 
-const ToastContext = createContext<ToastContextType | undefined>(undefined);
+const ToastContext = React.createContext<ToastContextType | undefined>(undefined);
 
 export const useToast = () => {
-    const context = useContext(ToastContext);
+    const context = React.useContext(ToastContext);
     if (!context) {
         throw new Error('useToast must be used within a ToastProvider');
     }
@@ -27,13 +27,13 @@ export const useToast = () => {
 };
 
 interface ToastProviderProps {
-    children: ReactNode;
+    children: React.ReactNode;
 }
 
 export const ToastProvider: React.FC<ToastProviderProps> = ({ children }) => {
-    const [toasts, setToasts] = useState<Toast[]>([]);
+    const [toasts, setToasts] = React.useState<Toast[]>([]);
 
-    const addToast = useCallback((message: string, type: ToastType = 'info', duration: number = 4000) => {
+    const addToast = React.useCallback((message: string, type: ToastType = 'info', duration: number = 4000) => {
         const id = crypto.randomUUID();
         const toast: Toast = { id, message, type, duration };
 
@@ -45,7 +45,7 @@ export const ToastProvider: React.FC<ToastProviderProps> = ({ children }) => {
         }, duration);
     }, []);
 
-    const removeToast = useCallback((id: string) => {
+    const removeToast = React.useCallback((id: string) => {
         setToasts(prev => prev.filter(t => t.id !== id));
     }, []);
 

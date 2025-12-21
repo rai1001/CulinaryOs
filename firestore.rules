@@ -2,12 +2,6 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // --- DEVELOPMENT MODE OVERRIDE ---
-    // TODO: Remove before production - enables authenticated access for development
-    match /{document=**} {
-      allow read, write: if true;
-    }
-    
     // --- HELPER FUNCTIONS ---
 
     // 1. Authentication & User Data

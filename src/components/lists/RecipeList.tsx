@@ -9,9 +9,11 @@ interface RecipeListProps {
     recipes: Recipe[];
     onEdit: (recipe: Recipe) => void;
     onDelete: (id: string) => void;
+    sortConfig: { key: string; direction: 'asc' | 'desc' };
+    onSort: (key: string) => void;
 }
 
-export const RecipeList: React.FC<RecipeListProps> = React.memo(({ recipes, onEdit, onDelete }) => {
+export const RecipeList: React.FC<RecipeListProps> = React.memo(({ recipes, onEdit, onDelete, sortConfig, onSort }) => {
     const { ingredients } = useStore();
     const [expandedRecipeId, setExpandedRecipeId] = useState<string | null>(null);
     const [scalePax, setScalePax] = useState<number>(1);
@@ -69,11 +71,23 @@ export const RecipeList: React.FC<RecipeListProps> = React.memo(({ recipes, onEd
             <table className="w-full text-left text-sm text-slate-300">
                 <thead className="bg-black/20 text-slate-500 uppercase font-medium">
                     <tr>
-                        <th className="p-4">Nombre</th>
+                        <th className="p-4 cursor-pointer hover:text-white transition-colors" onClick={() => onSort('name')}>
+                            <div className="flex items-center gap-2">
+                                Nombre {sortConfig.key === 'name' && (sortConfig.direction === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}
+                            </div>
+                        </th>
                         <th className="p-4">Partida</th>
                         <th className="p-4">Ingredientes</th>
-                        <th className="p-4 text-right">Kcal (Total)</th>
-                        <th className="p-4 text-right">Coste</th>
+                        <th className="p-4 text-right cursor-pointer hover:text-white transition-colors" onClick={() => onSort('kcal')}>
+                            <div className="flex items-center justify-end gap-2">
+                                Kcal (Total) {sortConfig.key === 'kcal' && (sortConfig.direction === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}
+                            </div>
+                        </th>
+                        <th className="p-4 text-right cursor-pointer hover:text-white transition-colors" onClick={() => onSort('cost')}>
+                            <div className="flex items-center justify-end gap-2">
+                                Coste {sortConfig.key === 'cost' && (sortConfig.direction === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}
+                            </div>
+                        </th>
                         <th className="p-4 text-center">Acciones</th>
                     </tr>
                 </thead>

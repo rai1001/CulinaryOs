@@ -18,6 +18,22 @@ export const RecipesView: React.FC = () => {
     const [editingRecipe, setEditingRecipe] = useState<Recipe | undefined>(undefined);
     const [activeTab, setActiveTab] = useState<'all' | 'regular' | 'base'>('all');
     const [importType, setImportType] = useState<ImportType | null>(null);
+    const [subCategory, setSubCategory] = useState<string>('all');
+    const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({
+        key: 'name',
+        direction: 'asc'
+    });
+
+    const RECIPE_CATEGORIES = [
+        { id: 'all', label: 'Todos' },
+        { id: 'appetizer', label: 'Entrantes' },
+        { id: 'main', label: 'Principales' },
+        { id: 'dessert', label: 'Postres' },
+        { id: 'sauce', label: 'Salsas/Guarn.' },
+        { id: 'base', label: 'Bases' },
+        { id: 'beverage', label: 'Bebidas' },
+        { id: 'other', label: 'Otros' }
+    ];
 
     // AI Search State
     const [isAiSearch, setIsAiSearch] = useState(false);
@@ -102,6 +118,13 @@ export const RecipesView: React.FC = () => {
         setShowAddModal(true);
     }, []);
 
+    const handleSort = (key: string) => {
+        setSortConfig(prev => ({
+            key,
+            direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
+        }));
+    };
+
     const closeModal = () => {
         setShowAddModal(false);
         setEditingRecipe(undefined);
@@ -120,20 +143,35 @@ export const RecipesView: React.FC = () => {
     }
 
     const filteredRecipes = useMemo(() => {
+        let result = displayRecipes;
+
         if (isAiSearch && aiResultIds) {
-            // Filter store recipes that match the AI result IDs
-            // We maintain the order returned by AI (relevance)
-            const matches = aiResultIds
-                .map(id => displayRecipes.find(r => r.id === id))
-                .filter((r): r is typeof displayRecipes[0] => !!r);
-            return matches;
+            result = aiResultIds
+                .map(id => result.find(r => r.id === id))
+                .filter((r): r is typeof result[0] => !!r);
+        } else {
+            result = result.filter(r =>
+                r.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
+                (subCategory === 'all' || r.category === subCategory)
+            );
         }
 
-        // Standard filter
-        return displayRecipes.filter(r =>
-            r.name.toLowerCase().includes(searchTerm.toLowerCase())
-        );
-    }, [displayRecipes, searchTerm, isAiSearch, aiResultIds]);
+        // Apply Sorting
+        return [...result].sort((a, b) => {
+            let aValue: any = (a as any)[sortConfig.key];
+            let bValue: any = (b as any)[sortConfig.key];
+
+            // Special case for calculated fields if not in object
+            if (sortConfig.key === 'cost') {
+                aValue = a.totalCost || 0;
+                bValue = b.totalCost || 0;
+            }
+
+            if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+            if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+            return 0;
+        });
+    }, [displayRecipes, searchTerm, isAiSearch, aiResultIds, subCategory, sortConfig]);
 
     return (
         <div className="p-8 max-w-6xl mx-auto space-y-6 text-slate-200">
@@ -236,10 +274,30 @@ export const RecipesView: React.FC = () => {
                 </button>
             </div>
 
+            {/* Sub-Category Pills (only if not searching with AI) */}
+            {!isAiSearch && (
+                <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
+                    {RECIPE_CATEGORIES.map(cat => (
+                        <button
+                            key={cat.id}
+                            onClick={() => setSubCategory(cat.id)}
+                            className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all border ${subCategory === cat.id
+                                ? 'bg-primary/20 border-primary text-primary'
+                                : 'bg-surface border-white/5 text-slate-500 hover:border-white/10 hover:text-white'
+                                }`}
+                        >
+                            {cat.label}
+                        </button>
+                    ))}
+                </div>
+            )}
+
             <RecipeList
                 recipes={filteredRecipes}
                 onEdit={handleEdit}
                 onDelete={handleDelete}
+                sortConfig={sortConfig}
+                onSort={handleSort}
             />
 
             {showAddModal && (

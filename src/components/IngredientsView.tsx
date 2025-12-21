@@ -14,6 +14,22 @@ export const IngredientsView: React.FC = () => {
     const [showAddModal, setShowAddModal] = useState(false);
     const [editingIngredient, setEditingIngredient] = useState<Ingredient | undefined>(undefined);
     const [importType, setImportType] = useState<ImportType | null>(null);
+    const [activeCategory, setActiveCategory] = useState<string>('all');
+    const [sortConfig, setSortConfig] = useState<{ key: keyof Ingredient | 'stock'; direction: 'asc' | 'desc' }>({
+        key: 'name',
+        direction: 'asc'
+    });
+
+    const CATEGORIES = [
+        { id: 'all', label: 'Todos', icon: Package },
+        { id: 'meat', label: 'Carne' },
+        { id: 'fish', label: 'Pescado' },
+        { id: 'produce', label: 'Vegetales' },
+        { id: 'dairy', label: 'Lácteos' },
+        { id: 'dry', label: 'Secos' },
+        { id: 'frozen', label: 'Congelados' },
+        { id: 'other', label: 'Otros' }
+    ];
 
     const handleImportComplete = async (data: any) => {
         if (data.ingredients && Array.isArray(data.ingredients)) {
@@ -35,7 +51,28 @@ export const IngredientsView: React.FC = () => {
         setImportType(null);
     };
 
-    const filteredIngredients = ingredients.filter(i => i.name.toLowerCase().includes(searchTerm.toLowerCase()));
+    const handleSort = (key: keyof Ingredient | 'stock') => {
+        setSortConfig(prev => ({
+            key,
+            direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
+        }));
+    };
+
+    const filteredIngredients = React.useMemo(() => {
+        let result = ingredients.filter(i =>
+            i.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
+            (activeCategory === 'all' || i.category === activeCategory)
+        );
+
+        return [...result].sort((a, b) => {
+            const aValue = a[sortConfig.key as keyof Ingredient] ?? 0;
+            const bValue = b[sortConfig.key as keyof Ingredient] ?? 0;
+
+            if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+            if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+            return 0;
+        });
+    }, [ingredients, searchTerm, activeCategory, sortConfig]);
 
     const handleDelete = async (id: string) => {
         if (confirm('¿Estás seguro de que quieres eliminar este ingrediente?')) {
@@ -133,10 +170,28 @@ export const IngredientsView: React.FC = () => {
                 </div>
             </header>
 
+            {/* Category Filter Pills */}
+            <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
+                {CATEGORIES.map(cat => (
+                    <button
+                        key={cat.id}
+                        onClick={() => setActiveCategory(cat.id)}
+                        className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all border ${activeCategory === cat.id
+                            ? 'bg-primary border-primary text-white shadow-lg shadow-primary/20'
+                            : 'bg-surface border-white/5 text-slate-400 hover:border-white/20 hover:text-white'
+                            }`}
+                    >
+                        {cat.label}
+                    </button>
+                ))}
+            </div>
+
             <IngredientList
                 ingredients={filteredIngredients}
                 onEdit={handleEdit}
                 onDelete={handleDelete}
+                sortConfig={sortConfig}
+                onSort={handleSort}
             />
 
             {showAddModal && (

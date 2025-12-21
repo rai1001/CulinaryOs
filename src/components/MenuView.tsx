@@ -8,7 +8,7 @@ import {
 import { COLLECTIONS, collections } from '../firebase/collections';
 import { useStore } from '../store/useStore';
 import { BookOpen, Plus, Search, Edit2, Trash2, Save, X, Utensils } from 'lucide-react';
-import type { Menu, MenuVariation } from '../types';
+import type { Menu, MenuVariation, Recipe, Ingredient } from '../types';
 import { useToast, ConfirmModal } from './ui';
 import { DataImportModal, type ImportType } from './common/DataImportModal';
 
@@ -21,59 +21,135 @@ export const MenuView: React.FC = () => {
     const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; id: string | null }>({ isOpen: false, id: null });
     const [isSaving, setIsSaving] = useState(false);
     const [importType, setImportType] = useState<ImportType | null>(null);
+    const [activeCategory, setActiveCategory] = useState<string>('all');
+    const [activeStatus, setActiveStatus] = useState<string>('all');
+    const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({
+        key: 'name',
+        direction: 'asc'
+    });
+
+    const MENU_CATEGORIES = [
+        { id: 'all', label: 'Todos' },
+        { id: 'daily', label: 'Menú Día' },
+        { id: 'event', label: 'Eventos' },
+        { id: 'tasting', label: 'Degustación' },
+        { id: 'corporate', label: 'Empresa' },
+        { id: 'breakfast', label: 'Desayuno' }
+    ];
 
     const handleImportComplete = async (data: any) => {
-        if (data.menus && Array.isArray(data.menus)) {
-            // Bulk Import (Excel)
-            if (!activeOutletId) {
-                activeOutletId && alert("Selecciona una cocina activa primero."); // Alert only if we have ID but logical check fails? No, if !ID.
-                // If !activeOutletId, we can't save.
-                if (!activeOutletId) {
-                    alert("Selecciona una cocina activa primero.");
-                    return;
-                }
-            }
-
-            let count = 0;
-            for (const m of data.menus) {
-                try {
-                    const newMenu: Partial<Menu> = {
-                        ...m,
-                        outletId: activeOutletId,
-                        updatedAt: new Date().toISOString(),
-                        recipeIds: m.recipeIds || [],
-                        variations: m.variations || [],
-                        sellPrice: Number(m.sellPrice) || 0
-                    };
-                    if (!newMenu.id) delete newMenu.id;
-
-                    await addDocument(collections.menus, newMenu);
-                    count++;
-                } catch (e) {
-                    console.error("Error saving menu:", e);
-                }
-            }
-            if (count > 0) alert(`Importados ${count} menús correctamente.`);
-
-        } else if (data.name) {
-            // OCR Single Import
-            let desc = "";
-            if (data.sections) {
-                desc = data.sections.map((s: any) =>
-                    `## ${s.name}\n${s.items.map((i: any) => `- ${i.name} (${i.price || '?'}€)`).join('\n')}`
-                ).join('\n\n');
-            }
-
-            setFormData({
-                name: data.name,
-                description: desc,
-                recipeIds: [],
-                variations: [],
-                sellPrice: 0
-            });
-            setIsEditing(true);
+        if (!activeOutletId) {
+            alert("Selecciona una cocina activa primero.");
+            setImportType(null);
+            return;
         }
-        setImportType(null);
+
+        let menuCount = 0;
+        let recipeCount = 0;
+        let ingredientCount = 0;
+
+        try {
+            // 1. Ingredients
+            if (data.ingredients && Array.isArray(data.ingredients)) {
+                for (const ing of data.ingredients as Ingredient[]) {
+                    try {
+                        const newIng: any = { ...ing, outletId: activeOutletId };
+                        if (newIng.id || String(newIng.id).length < 20) delete newIng.id;
+                        await addDocument(collections.ingredients, newIng);
+                        ingredientCount++;
+                    } catch (e) { console.error(e); }
+                }
+            }
+
+            // 2. Recipes 
+            const importedRecipeMap = new Map<string, string>(); // temp id -> firestore id
+            if (data.recipes && Array.isArray(data.recipes)) {
+                for (const r of data.recipes as Recipe[]) {
+                    try {
+                        const tempId = r.id;
+                        const newRecipe: Partial<Recipe> = {
+                            ...r,
+                            outletId: activeOutletId,
+                            updatedAt: new Date().toISOString()
+                        };
+                        if (!newRecipe.id || String(newRecipe.id).length < 20) delete newRecipe.id;
+
+                        const resId = await addDocument(collections.recipes, newRecipe);
+                        recipeCount++;
+                        if (tempId) importedRecipeMap.set(tempId, resId);
+
+                        // If NO explicit menus were found, create a placeholder menu for each recipe
+                        if (!data.menus || data.menus.length === 0) {
+                            const newMenu: Partial<Menu> = {
+                                name: r.name,
+                                outletId: activeOutletId,
+                                recipeIds: [resId],
+                                variations: [],
+                                sellPrice: 0
+                            };
+                            await addDocument(collections.menus, newMenu);
+                            menuCount++;
+                        }
+                    } catch (e) { console.error(e); }
+                }
+            }
+
+            // 3. Menus (Explicit)
+            if (data.menus && Array.isArray(data.menus)) {
+                for (const m of data.menus as Menu[]) {
+                    try {
+                        // Map temp recipe IDs to firestore IDs if possible
+                        const recipeIds = (m.recipeIds || []).map((id: string) => importedRecipeMap.get(id) || id);
+
+                        const newMenu: any = {
+                            ...m,
+                            outletId: activeOutletId,
+                            recipeIds: recipeIds,
+                            variations: m.variations || [],
+                            sellPrice: Number(m.sellPrice) || 0,
+                            updatedAt: new Date().toISOString()
+                        };
+                        if (newMenu.id || String(newMenu.id).length < 20) delete newMenu.id;
+
+                        await addDocument(collections.menus, newMenu);
+                        menuCount++;
+                    } catch (e) { console.error(e); }
+                }
+            }
+
+            // Final feedback
+            if (menuCount > 0 || recipeCount > 0 || ingredientCount > 0) {
+                let msg = `Importación completada:`;
+                if (menuCount > 0) msg += `\n- ${menuCount} menús`;
+                if (recipeCount > 0) msg += `\n- ${recipeCount} recetas`;
+                if (ingredientCount > 0) msg += `\n- ${ingredientCount} ingredientes`;
+                alert(msg);
+            } else if (data.name) {
+                // OCR Single Import fallback
+                let desc = "";
+                if (data.sections) {
+                    desc = data.sections.map((s: any) =>
+                        `## ${s.name}\n${s.items.map((i: any) => `- ${i.name} (${i.price || '?'}€)`).join('\n')}`
+                    ).join('\n\n');
+                }
+
+                setFormData({
+                    name: data.name,
+                    description: desc,
+                    recipeIds: [],
+                    variations: [],
+                    sellPrice: 0
+                });
+                setIsEditing(true);
+            } else {
+                alert("No se encontró información válida para importar en el archivo.");
+            }
+        } catch (err) {
+            console.error("Critical import error:", err);
+            alert("Error crítico durante la importación.");
+        } finally {
+            setImportType(null);
+        }
     };
 
     // Form State
@@ -82,14 +158,36 @@ export const MenuView: React.FC = () => {
         description: '',
         recipeIds: [],
         variations: [],
-        sellPrice: 0
+        sellPrice: 0,
+        category: 'daily',
+        status: 'draft'
     });
 
 
 
-    const filteredMenus = menus.filter(m =>
-        m.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const handleSort = (key: string) => {
+        setSortConfig(prev => ({
+            key,
+            direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
+        }));
+    };
+
+    const filteredMenus = React.useMemo(() => {
+        let result = menus.filter(m =>
+            m.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
+            (activeCategory === 'all' || m.category === activeCategory) &&
+            (activeStatus === 'all' || m.status === activeStatus)
+        );
+
+        return [...result].sort((a, b) => {
+            const aValue = (a as any)[sortConfig.key] || 0;
+            const bValue = (b as any)[sortConfig.key] || 0;
+
+            if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+            if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+            return 0;
+        });
+    }, [menus, searchTerm, activeCategory, activeStatus, sortConfig]);
 
     const handleEdit = (menu: Menu) => {
         setFormData({ ...menu });
@@ -129,6 +227,8 @@ export const MenuView: React.FC = () => {
                 recipeIds: formData.recipeIds || [],
                 variations: formData.variations || [],
                 sellPrice: Number(formData.sellPrice) || 0,
+                category: formData.category || 'daily',
+                status: formData.status || 'draft',
                 outletId: activeOutletId
                 // Note: 'recipes' is hydrated, not saved to DB
             };
@@ -141,7 +241,7 @@ export const MenuView: React.FC = () => {
                 addToast('Menú creado', 'success');
             }
             setIsEditing(false);
-            setFormData({ name: '', description: '', recipeIds: [], variations: [], sellPrice: 0 });
+            setFormData({ name: '', description: '', recipeIds: [], variations: [], sellPrice: 0, category: 'daily', status: 'draft' });
         } catch (error) {
             console.error(error);
             addToast('Error al guardar menú', 'error');
@@ -216,6 +316,33 @@ export const MenuView: React.FC = () => {
                                     value={formData.sellPrice}
                                     onChange={e => setFormData({ ...formData, sellPrice: Number(e.target.value) })}
                                 />
+                            </div>
+                            <div>
+                                <label className="block text-sm text-slate-400 mb-1">Categoría</label>
+                                <select
+                                    className="w-full bg-black/20 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-primary outline-none"
+                                    value={formData.category}
+                                    onChange={e => setFormData({ ...formData, category: e.target.value as any })}
+                                >
+                                    <option value="daily">Menú de Día</option>
+                                    <option value="event">Evento / Banquete</option>
+                                    <option value="tasting">Degustación</option>
+                                    <option value="corporate">Empresa</option>
+                                    <option value="breakfast">Desayuno</option>
+                                    <option value="other">Otro</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm text-slate-400 mb-1">Estado</label>
+                                <select
+                                    className="w-full bg-black/20 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-primary outline-none"
+                                    value={formData.status}
+                                    onChange={e => setFormData({ ...formData, status: e.target.value as any })}
+                                >
+                                    <option value="draft">Borrador</option>
+                                    <option value="active">Activo / En Carta</option>
+                                    <option value="archived">Archivado</option>
+                                </select>
                             </div>
                             <div className="col-span-full">
                                 <label className="block text-sm text-slate-400 mb-1">Descripción</label>
@@ -360,6 +487,44 @@ export const MenuView: React.FC = () => {
                     value={searchTerm}
                     onChange={e => setSearchTerm(e.target.value)}
                 />
+            </div>
+
+            {/* Filters */}
+            <div className="flex flex-col md:flex-row gap-4 mb-8 items-start md:items-center justify-between">
+                <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
+                    {MENU_CATEGORIES.map(cat => (
+                        <button
+                            key={cat.id}
+                            onClick={() => setActiveCategory(cat.id)}
+                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${activeCategory === cat.id
+                                ? 'bg-primary text-white'
+                                : 'bg-surface border border-white/5 text-slate-400 hover:text-white'
+                                }`}
+                        >
+                            {cat.label}
+                        </button>
+                    ))}
+                </div>
+
+                <div className="flex items-center gap-4">
+                    <select
+                        className="bg-surface border border-white/5 rounded-lg px-3 py-2 text-sm text-slate-300 focus:border-primary outline-none"
+                        value={activeStatus}
+                        onChange={e => setActiveStatus(e.target.value)}
+                    >
+                        <option value="all">Todos los Estados</option>
+                        <option value="draft">Borradores</option>
+                        <option value="active">Activos</option>
+                        <option value="archived">Archivados</option>
+                    </select>
+
+                    <button
+                        onClick={() => handleSort('sellPrice')}
+                        className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm border transition-colors ${sortConfig.key === 'sellPrice' ? 'border-primary text-primary bg-primary/10' : 'border-white/5 text-slate-400'}`}
+                    >
+                        Precio {sortConfig.key === 'sellPrice' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                    </button>
+                </div>
             </div>
 
             {/* Grid */}

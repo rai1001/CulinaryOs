@@ -40,6 +40,9 @@ export interface PriceHistoryEntry {
 // Inventory Categories
 export type InventoryCategory = 'meat' | 'fish' | 'produce' | 'dairy' | 'dry' | 'frozen' | 'canned' | 'cocktail' | 'sports_menu' | 'corporate_menu' | 'coffee_break' | 'restaurant' | 'other';
 
+export type RecipeCategory = 'appetizer' | 'main' | 'dessert' | 'sauce' | 'base' | 'beverage' | 'other';
+export type MenuCategory = 'tasting' | 'event' | 'daily' | 'corporate' | 'breakfast' | 'other';
+
 export interface Ingredient {
     id: string;
     name: string;
@@ -57,6 +60,8 @@ export interface Ingredient {
     category?: InventoryCategory;
     shelfLife?: number; // Days
     outletId?: string;
+    createdAt?: string;
+    updatedAt?: string;
 }
 
 export type PurchaseStatus = 'DRAFT' | 'ORDERED' | 'RECEIVED' | 'PARTIAL' | 'CANCELLED';
@@ -99,7 +104,10 @@ export interface Recipe {
     yieldPax?: number; // Portions/Yield of the recipe
     allergens?: string[]; // Calculated
     nutritionalInfo?: NutritionalInfo; // Calculated
+    category?: RecipeCategory;
     outletId?: string;
+    createdAt?: string;
+    updatedAt?: string;
 }
 
 export interface MenuVariation {
@@ -116,7 +124,11 @@ export interface Menu {
     recipes?: Recipe[]; // Hydrated
     variations?: MenuVariation[]; // New field for variations
     sellPrice?: number;
+    category?: MenuCategory;
+    status?: 'active' | 'draft' | 'archived';
     outletId?: string;
+    createdAt?: string;
+    updatedAt?: string;
 }
 
 export type EventType = 'Comida' | 'Cena' | 'Empresa' | 'Coctel' | 'Mediodia' | 'Noche' | 'Equipo Deportivo' | 'Coffee Break' | 'Boda' | 'Otros';
@@ -131,6 +143,8 @@ export interface Event {
     menu?: Menu;
     notes?: string;
     outletId?: string;
+    createdAt?: string;
+    updatedAt?: string;
 }
 
 export interface PendingEvent {
