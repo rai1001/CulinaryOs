@@ -96,6 +96,7 @@ export interface Recipe {
     ingredients: RecipeIngredient[];
     isBase?: boolean; // True if this is a base recipe (e.g., from "Bases" sheet)
     totalCost?: number; // Calculated
+    allergens?: string[]; // Calculated
     nutritionalInfo?: NutritionalInfo; // Calculated
     outletId?: string;
 }

@@ -48,7 +48,7 @@ export const formatLabelData = (
         return {
             title: rec.name,
             date: now,
-            // allergens: rec.allergens, // Todo: Add allergens to Recipe type
+            allergens: rec.allergens,
             type: type,
             quantity: quantity ? `${quantity} raciones` : undefined,
         };
