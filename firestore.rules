@@ -2,14 +2,7 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // DEVELOPMENT MODE: ALLOW ALL
-    match /{document=**} {
-      allow read, write: if true;
-    }
-
     // --- HELPER FUNCTIONS ---
-    // (Rest of rules ignored because of the global allow above, effectively)
-
 
     // 1. Authentication & User Data
     function isAuthenticated() {
@@ -198,6 +191,62 @@ service cloud.firestore {
                      isScopedWrite(request.resource) &&
                      request.resource.data.outletId == resource.data.outletId;
        allow delete: if (isManager() || hasRole('chef')) && isScopedDelete();
+    }
+
+    // Production Tasks
+    match /productionTasks/{id} {
+      // Production tasks are scoped by outletId in useProductionSync.ts
+      allow read: if isAuthenticated() && hasOutletAccess(resource.data.outletId);
+      allow create: if isAuthenticated() && isScopedWrite(request.resource) &&
+                   (hasRole('chef') || isManager());
+      allow update: if isAuthenticated() && hasOutletAccess(resource.data.outletId) &&
+                    isScopedWrite(request.resource) &&
+                    request.resource.data.outletId == resource.data.outletId &&
+                    (hasRole('chef') || isManager());
+      allow delete: if isAuthenticated() && isScopedDelete() &&
+                    (hasRole('chef') || isManager());
+    }
+
+    // HACCP & PCCs
+
+    // PCCs seem to be global or unscoped in current code (missing outletId in type)
+    // We'll allow authenticated read, manager write for now.
+    match /pccs/{id} {
+      allow read: if isAuthenticated() && isUserActive();
+      allow write: if isManager();
+    }
+
+    // HACCP Logs
+    // These link to PCC and User. No direct outlet link, but logically part of operations.
+    // Allow any auth user to create logs (staff doing checks).
+    // Allow read for auth users (monitoring).
+    match /haccpLogs/{id} {
+       allow read: if isAuthenticated() && isUserActive();
+       allow create: if isAuthenticated() && isUserActive();
+       allow update: if isManager(); // Only managers should edit logs? Or maybe nobody.
+       allow delete: if isManager();
+    }
+
+    // HACCP Tasks (Definitions)
+    match /haccpTasks/{id} {
+       allow read: if isAuthenticated() && isUserActive();
+       allow write: if isManager();
+    }
+
+    // HACCP Completions
+    match /haccpTaskCompletions/{id} {
+       allow read: if isAuthenticated() && isUserActive();
+       allow create: if isAuthenticated() && isUserActive();
+       allow update: if isManager();
+    }
+
+    // Notifications
+    // Currently used as a broadcast or personal inbox.
+    // Allowing auth users to read/write for now to support the feature.
+    match /notifications/{id} {
+      allow read: if isAuthenticated() && isUserActive();
+      // Allow create/update for system/users marking read
+      allow write: if isAuthenticated() && isUserActive();
     }
 
     // Default Deny
