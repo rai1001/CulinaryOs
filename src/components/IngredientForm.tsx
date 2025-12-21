@@ -16,6 +16,7 @@ export const IngredientForm: React.FC<{ initialData?: Ingredient; onClose?: () =
             unit: 'kg' as Unit,
             costPerUnit: 0,
             yield: 1,
+            shelfLife: 0,
             allergens: [] as string[],
             stock: 0,
             minStock: 0,
@@ -175,6 +176,18 @@ export const IngredientForm: React.FC<{ initialData?: Ingredient; onClose?: () =
                         className="w-full bg-black/20 border border-white/10 rounded px-3 py-2 text-white"
                         value={formData.yield}
                         onChange={e => setFormData({ ...formData, yield: Number(e.target.value) })}
+                    />
+                </div>
+
+                <div className="space-y-1">
+                    <label className="text-sm text-slate-400">Vida útil (días)</label>
+                    <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        className="w-full bg-black/20 border border-white/10 rounded px-3 py-2 text-white"
+                        value={formData.shelfLife || ''}
+                        onChange={e => setFormData({ ...formData, shelfLife: Number(e.target.value) })}
                     />
                 </div>
 

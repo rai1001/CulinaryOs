@@ -55,6 +55,7 @@ export interface Ingredient {
     priceHistory?: PriceHistoryEntry[];
     defaultBarcode?: string;
     category?: InventoryCategory;
+    shelfLife?: number; // Days
     outletId?: string;
 }
 
