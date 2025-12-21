@@ -133,6 +133,22 @@ export interface Event {
     outletId?: string;
 }
 
+export interface PendingEvent {
+    id: string;
+    source: 'EMAIL_GMAIL' | 'EMAIL_OUTLOOK';
+    sender: string;
+    subject: string;
+    receivedAt: string; // ISO Date
+    snippet: string;
+    // AI Extracted Data
+    predictedTitle?: string;
+    predictedDate?: string;
+    predictedPax?: number;
+    predictedMenuType?: EventType;
+    confidenceScore: number;
+    status: 'pending' | 'approved' | 'rejected';
+}
+
 export type KanbanTaskStatus = 'todo' | 'in-progress' | 'done';
 
 export interface KanbanTask {

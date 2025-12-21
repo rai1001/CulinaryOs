@@ -86,8 +86,9 @@ export const RecipeForm: React.FC<{ initialData?: Recipe; onClose?: () => void }
 
             <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                    <label className="text-sm text-slate-400">Nombre</label>
+                    <label htmlFor="recipe-name" className="text-sm text-slate-400">Nombre</label>
                     <input
+                        id="recipe-name"
                         required
                         className="w-full bg-black/20 border border-white/10 rounded px-3 py-2 text-white"
                         value={formData.name}
@@ -95,8 +96,9 @@ export const RecipeForm: React.FC<{ initialData?: Recipe; onClose?: () => void }
                     />
                 </div>
                 <div className="space-y-1">
-                    <label className="text-sm text-slate-400">Partida</label>
+                    <label htmlFor="recipe-station" className="text-sm text-slate-400">Partida</label>
                     <select
+                        id="recipe-station"
                         className="w-full bg-black/20 border border-white/10 rounded px-3 py-2 text-white"
                         value={formData.station}
                         onChange={e => setFormData({ ...formData, station: e.target.value as 'hot' | 'cold' | 'dessert' })}
@@ -109,8 +111,9 @@ export const RecipeForm: React.FC<{ initialData?: Recipe; onClose?: () => void }
             </div>
 
             <div className="space-y-1">
-                <label className="text-sm text-slate-400">Raciones / Rendimiento (Pax)</label>
+                <label htmlFor="recipe-yield" className="text-sm text-slate-400">Raciones / Rendimiento (Pax)</label>
                 <input
+                    id="recipe-yield"
                     type="number"
                     min="1"
                     required
@@ -139,6 +142,7 @@ export const RecipeForm: React.FC<{ initialData?: Recipe; onClose?: () => void }
                 {formData.ingredients.map((item, index) => (
                     <div key={index} className="flex gap-2">
                         <select
+                            aria-label={`Ingrediente ${index + 1}`}
                             required
                             className="flex-1 bg-black/20 border border-white/10 rounded px-3 py-2 text-white"
                             value={item.ingredientId}
@@ -150,6 +154,7 @@ export const RecipeForm: React.FC<{ initialData?: Recipe; onClose?: () => void }
                             ))}
                         </select>
                         <input
+                            aria-label={`Cantidad del ingrediente ${index + 1}`}
                             type="number"
                             min="0"
                             step="0.01"
@@ -163,6 +168,7 @@ export const RecipeForm: React.FC<{ initialData?: Recipe; onClose?: () => void }
                             type="button"
                             onClick={() => removeIngredientRow(index)}
                             className="p-2 hover:bg-red-500/20 text-red-400 rounded transition-colors"
+                            aria-label={`Eliminar ingrediente ${index + 1}`}
                         >
                             <X className="w-4 h-4" />
                         </button>

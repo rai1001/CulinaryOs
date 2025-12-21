@@ -12,6 +12,12 @@ import { lookupProductByBarcode, type ProductLookupResult } from '../services/pr
 type ScanStep = 'idle' | 'scanning-barcode' | 'product-found' | 'scanning-expiry' | 'confirm-batch';
 type FilterTab = 'all' | 'expiring' | 'low-stock' | 'meat' | 'fish' | 'produce' | 'dairy' | 'dry' | 'frozen' | 'canned' | 'cocktail' | 'sports_menu' | 'corporate_menu' | 'coffee_break' | 'restaurant' | 'other';
 
+// ⚡ Bolt: Moved outside to prevent recreation on every render
+const getDaysUntilExpiry = (dateStr: string) => {
+    const diff = new Date(dateStr).getTime() - new Date().getTime();
+    return Math.ceil(diff / (1000 * 3600 * 24));
+};
+
 export const InventoryView: React.FC = () => {
     const { ingredients, addBatch, addIngredient, activeOutletId } = useStore();
     const [searchTerm, setSearchTerm] = useState('');
@@ -33,10 +39,7 @@ export const InventoryView: React.FC = () => {
     });
 
     // Determine alerts
-    const getDaysUntilExpiry = (dateStr: string) => {
-        const diff = new Date(dateStr).getTime() - new Date().getTime();
-        return Math.ceil(diff / (1000 * 3600 * 24));
-    };
+
 
     const toggleExpand = (id: string) => {
         const newSet = new Set(expandedIds);
@@ -249,16 +252,18 @@ export const InventoryView: React.FC = () => {
     }, [ingredients, searchTerm, activeFilter]);
 
     // Count for badges
-    const expiringCount = ingredients.filter(ing => {
+    // Count for badges
+    // ⚡ Bolt: Memoized to prevent unnecessary recalculation on search/typing
+    const expiringCount = React.useMemo(() => ingredients.filter(ing => {
         const nearExpiryBatches = ing.batches?.filter(b => getDaysUntilExpiry(b.expiryDate) <= 7) || [];
         return nearExpiryBatches.length > 0;
-    }).length;
+    }).length, [ingredients]);
 
-    const lowStockCount = ingredients.filter(ing => {
+    const lowStockCount = React.useMemo(() => ingredients.filter(ing => {
         const totalStock = ing.stock || 0;
         const minStock = ing.minStock || 0;
         return totalStock <= minStock;
-    }).length;
+    }).length, [ingredients]);
 
     // Handle Import/OCR
     const handleImportComplete = async (data: any) => {

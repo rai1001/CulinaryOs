@@ -1,7 +1,7 @@
 import React, { lazy, Suspense, useState } from 'react';
 import { Routes, Route, Navigate, NavLink, useLocation } from 'react-router-dom';
 import { Dashboard } from './components/Dashboard';
-import { LayoutDashboard, Calendar, ShoppingCart, Database, CalendarDays, ChefHat, Package, Truck, ClipboardList, ShoppingBag, Trash2, ShieldCheck, TrendingUp, Search, BookOpen, Sparkles, Coffee, Menu as MenuIcon, X, Briefcase } from 'lucide-react';
+import { LayoutDashboard, Calendar, ShoppingCart, Database, CalendarDays, ChefHat, Package, Truck, ClipboardList, ShoppingBag, Trash2, ShieldCheck, TrendingUp, Search, BookOpen, Sparkles, Coffee, Menu as MenuIcon, X, Briefcase, Settings } from 'lucide-react';
 import { OutletSelector } from './components/OutletSelector';
 
 import { PrintManager } from './components/printing/PrintManager';
@@ -36,6 +36,7 @@ const AISearchView = lazy(() => import('./components/AIFeatures').then(m => ({ d
 const MenuView = lazy(() => import('./components/MenuView').then(m => ({ default: m.MenuView }))); // New Manual Menu View
 const BreakfastView = lazy(() => import('./components/BreakfastView').then(m => ({ default: m.BreakfastView })));
 const StaffView = lazy(() => import('./components/StaffView').then(m => ({ default: m.StaffView })));
+const IntegrationsView = lazy(() => import('./components/IntegrationsView').then(m => ({ default: m.IntegrationsView })));
 
 // Loading fallback component
 const LoadingFallback = () => (
@@ -145,7 +146,12 @@ function App() {
 
           <NavItem to="/production" icon={<ShoppingCart />} label="Producción" />
           <NavItem to="/kds" icon={<ChefHat />} label="Modo KDS (Tablet)" />
+          <NavItem to="/kds" icon={<ChefHat />} label="Modo KDS (Tablet)" />
           <NavItem to="/data" icon={<Database />} label="Datos" />
+
+          <div className="pt-4 pb-2 border-t border-white/5 mt-4">
+            <NavItem to="/integrations" icon={<Settings />} label="Integraciones" />
+          </div>
         </nav>
 
         <div className="p-4 border-t border-white/5 mx-4">
@@ -196,7 +202,9 @@ function App() {
                 <Route path="/ai-menu" element={<AIMenuView />} />
                 <Route path="/ai-search" element={<AISearchView />} />
                 <Route path="/menus" element={<MenuView />} />
+                <Route path="/menus" element={<MenuView />} />
                 <Route path="/breakfast" element={<BreakfastView />} />
+                <Route path="/integrations" element={<IntegrationsView />} />
                 {/* Fallback */}
                 <Route path="*" element={<Navigate to="/dashboard" replace />} />
               </Route>

@@ -10,6 +10,7 @@ import { EventImportModal } from './EventImportModal';
 import { MenuGeneratorModal } from './ai/MenuGeneratorModal';
 import { DayDetailsModal } from './DayDetailsModal';
 import { EventsSkeleton } from './ui/Skeletons';
+import { EventInbox } from './events/EventInbox';
 import { ErrorState } from './ui/ErrorState';
 import { addDocument } from '../services/firestoreService';
 import { collections } from '../firebase/collections';
@@ -213,6 +214,9 @@ export const EventsView: React.FC = () => {
                     </button>
                 </div>
             </div>
+
+            {/* Event Inbox (AI Predictions) */}
+            <EventInbox />
 
             {/* Calendar Grid */}
             <div className="flex-1 glass-card p-4 flex flex-col overflow-hidden">
