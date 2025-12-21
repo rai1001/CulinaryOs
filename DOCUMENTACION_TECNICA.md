@@ -1,7 +1,7 @@
 # Documentación Técnica: ChefOS - Kitchen Manager v2
 
-**Fecha:** 20 de Diciembre de 2025
-**Versión:** 2.0.0
+**Fecha:** 21 de Diciembre de 2025
+**Versión:** v0.1.0-alpha
 **Autor:** Antigravity AI
 
 ---
