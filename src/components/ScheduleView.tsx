@@ -313,15 +313,25 @@ export const ScheduleView: React.FC = () => {
                                         <button
                                             key={day.toString()}
                                             onClick={() => setSelectedDate(day)}
+                                            title={hasEvents
+                                                ? `${dayEvents.length} Eventos:\n${dayEvents.map(e => `• ${e.name} (${e.pax} PAX)`).join('\n')}`
+                                                : undefined
+                                            }
                                             className={`w-12 p-2 text-center text-xs border-r border-white/5 transition-colors hover:bg-white/10 relative
-                                                ${[0, 6].includes(day.getDay()) ? 'bg-white/5 text-amber-200' : 'text-slate-400'}
-                                                ${selectedDate && isSameDay(selectedDate, day) ? 'bg-primary/20 text-primary ring-1 ring-inset ring-primary/50' : ''}
+                                                ${selectedDate && isSameDay(selectedDate, day)
+                                                    ? 'bg-primary/20 text-primary ring-1 ring-inset ring-primary/50'
+                                                    : hasEvents
+                                                        ? 'bg-emerald-500/20 text-emerald-300 font-bold'
+                                                        : [0, 6].includes(day.getDay())
+                                                            ? 'bg-white/5 text-amber-200'
+                                                            : 'text-slate-400'
+                                                }
                                             `}>
                                             <div className="font-bold">{format(day, 'd')}</div>
                                             <div className="opacity-50 uppercase text-[10px]">{format(day, 'EEE', { locale: es })}</div>
 
                                             {hasEvents && (
-                                                <div className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_5px_rgba(16,185,129,0.5)]" title={`${dayEvents.length} Eventos`} />
+                                                <div className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_5px_rgba(16,185,129,0.5)]" />
                                             )}
                                         </button>
                                     );
