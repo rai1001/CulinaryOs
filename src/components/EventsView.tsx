@@ -87,7 +87,7 @@ export const EventsView: React.FC = () => {
                 const y = d.getFullYear();
                 const m = String(d.getMonth() + 1).padStart(2, '0');
                 const day = String(d.getDate()).padStart(2, '0');
-                return `${y} -${m} -${day} `;
+                return `${y}-${m}-${day}`;
             };
 
             const startStr = formatDate(start);
@@ -213,7 +213,7 @@ export const EventsView: React.FC = () => {
                     {/* Actual Days */}
                     {Array.from({ length: daysInMonth }).map((_, i) => {
                         const dayNum = i + 1;
-                        const dateStr = `${currentDate.getFullYear()} -${String(currentDate.getMonth() + 1).padStart(2, '0')} -${String(dayNum).padStart(2, '0')} `;
+                        const dateStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
                         const dayEvents = events.filter(e => normalizeDate(e.date) === dateStr);
 
                         return (
