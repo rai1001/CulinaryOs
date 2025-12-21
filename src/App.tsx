@@ -12,6 +12,8 @@ import { useCommandPalette } from './hooks/useCommandPalette';
 import { useNotificationSubscription } from './hooks/useNotificationSubscription';
 import { KitchenCopilot } from './components/ai/KitchenCopilot';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
+import { ChefInsights } from './components/ai/ChefInsights';
+import { GoogleFont } from './components/ui';
 
 
 
@@ -62,7 +64,8 @@ function App() {
   useCommandPalette(() => setIsCommandPaletteOpen(prev => !prev));
 
   return (
-    <div className="flex h-screen bg-background text-slate-100 overflow-hidden selection:bg-primary/30">
+    <div className="flex h-screen bg-background text-slate-100 overflow-hidden selection:bg-primary/30 font-sans">
+      <GoogleFont family="Outfit" />
 
       <PrintManager />
       <ShiftEndReminder />
@@ -95,6 +98,10 @@ function App() {
           <button onClick={() => setIsSidebarOpen(false)} className="md:hidden text-slate-400">
             <X size={24} />
           </button>
+        </div>
+
+        <div className="px-4 mb-4">
+          <ChefInsights />
         </div>
 
         <OutletSelector />

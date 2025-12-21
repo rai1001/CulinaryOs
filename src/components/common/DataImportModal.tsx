@@ -4,7 +4,7 @@ import * as geminiService from '../../services/geminiService';
 import { parseWorkbook } from '../../utils/excelImport';
 import type { AIAnalysisResult } from '../../services/geminiService';
 
-export type ImportType = 'recipe' | 'menu' | 'ingredient' | 'event' | 'inventory' | 'invoice';
+export type ImportType = 'recipe' | 'menu' | 'ingredient' | 'event' | 'inventory' | 'invoice' | 'haccp';
 
 interface DataImportModalProps {
     isOpen: boolean;
@@ -28,6 +28,7 @@ export const DataImportModal: React.FC<DataImportModalProps> = ({ isOpen, onClos
             case 'event': return 'Importar Evento';
             case 'inventory': return 'Importar Inventario';
             case 'invoice': return 'Escanear Factura';
+            case 'haccp': return 'Importar HACCP';
             default: return 'Importar Datos';
         }
     };
@@ -73,6 +74,9 @@ export const DataImportModal: React.FC<DataImportModalProps> = ({ isOpen, onClos
                             break;
                         case 'invoice':
                             aiResult = await geminiService.scanInvoiceImage(base64Clean);
+                            break;
+                        case 'haccp':
+                            aiResult = await geminiService.scanHACCPLog(base64Clean);
                             break;
                     }
 

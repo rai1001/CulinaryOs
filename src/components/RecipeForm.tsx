@@ -15,6 +15,7 @@ export const RecipeForm: React.FC<{ initialData?: Recipe; onClose?: () => void }
         name: initialData?.name || '',
         station: initialData?.station || 'hot',
         isBase: initialData?.isBase || false,
+        yieldPax: initialData?.yieldPax || 1,
         ingredients: initialData?.ingredients || [] as { ingredientId: string; quantity: number }[]
     });
 
@@ -41,6 +42,7 @@ export const RecipeForm: React.FC<{ initialData?: Recipe; onClose?: () => void }
                 name: formData.name,
                 station: formData.station as 'hot' | 'cold' | 'dessert',
                 isBase: formData.isBase,
+                yieldPax: formData.yieldPax,
                 ingredients: formData.ingredients, // Array of { ingredientId, quantity }
                 outletId: activeOutletId
             };
@@ -104,6 +106,18 @@ export const RecipeForm: React.FC<{ initialData?: Recipe; onClose?: () => void }
                         <option value="dessert">Postres</option>
                     </select>
                 </div>
+            </div>
+
+            <div className="space-y-1">
+                <label className="text-sm text-slate-400">Raciones / Rendimiento (Pax)</label>
+                <input
+                    type="number"
+                    min="1"
+                    required
+                    className="w-full bg-black/20 border border-white/10 rounded px-3 py-2 text-white"
+                    value={formData.yieldPax}
+                    onChange={e => setFormData({ ...formData, yieldPax: Number(e.target.value) })}
+                />
             </div>
 
             {/* Checkbox for isBase */}

@@ -10,3 +10,4 @@ export {
     SkeletonListItem
 } from './Skeleton';
 export { EmptyState } from './EmptyState';
+export { GoogleFont } from './GoogleFont';

@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
-import { Calendar, ChevronLeft, ChevronRight, Users, Upload, Sparkles } from 'lucide-react';
+import { Calendar, ChevronLeft, ChevronRight, Users, Import, Sparkles } from 'lucide-react';
 import { normalizeDate } from '../utils/date';
 import type { EventType, GeneratedMenu, Event, Menu } from '../types';
 import { EventForm } from './EventForm';
@@ -196,8 +196,8 @@ export const EventsView: React.FC = () => {
                         onClick={() => setShowImportModal(true)}
                         className="flex items-center gap-2 bg-emerald-500/20 text-emerald-400 border border-emerald-500/50 px-4 py-2 rounded-lg hover:bg-emerald-500/30 transition-colors"
                     >
-                        <Upload className="w-4 h-4" />
-                        <span>Importar Excel</span>
+                        <Import className="w-4 h-4" />
+                        <span>Importar / Escanear</span>
                     </button>
                 </div>
 

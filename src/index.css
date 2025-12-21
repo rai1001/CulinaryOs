@@ -3,18 +3,59 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --primary: 224.3 76.3% 48%; /* Indigo */
+    --primary-foreground: 210 40% 98%;
+    --surface: 222.2 84% 4.9%; /* Deepest Blue/Gray */
+    --accent: 38 92% 50%; /* Banana/Amber */
+    --background: 222.2 84% 3.9%;
+    --card: 222.2 84% 4.9%;
+    --border: 217.2 32.6% 17.5%;
+  }
+
   body {
-    @apply bg-background text-slate-100 font-sans antialiased;
+    @apply bg-background text-slate-100 font-sans antialiased overflow-x-hidden;
+    background-image: 
+      radial-gradient(at 0% 0%, hsla(224, 76%, 15%, 0.15) 0, transparent 50%),
+      radial-gradient(at 100% 0%, hsla(38, 92%, 15%, 0.05) 0, transparent 50%);
+    background-attachment: fixed;
   }
 }
 
 @layer utilities {
   .glass {
-    @apply bg-surface/90 backdrop-blur-md border border-white/5;
+    @apply bg-surface/80 backdrop-blur-xl border border-white/10;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
   }
 
   .glass-card {
-    @apply bg-surface/60 backdrop-blur-xl border border-white/5 rounded-xl shadow-lg shadow-black/20;
+    @apply glass rounded-2xl transition-all duration-300;
+  }
+
+  .glass-card:hover {
+    @apply border-white/20 bg-surface/90 shadow-2xl shadow-primary/10;
+  }
+
+  .text-glow {
+    text-shadow: 0 0 10px hsla(var(--primary), 0.5);
+  }
+
+  .animate-glow {
+    animation: glow-pulse 2s infinite ease-in-out;
+  }
+
+  @keyframes glow-pulse {
+    0%, 100% { opacity: 0.8; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.02); filter: brightness(1.2); }
+  }
+
+  .fade-in-up {
+    animation: fade-in-up 0.5s ease-out forwards;
+  }
+
+  @keyframes fade-in-up {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
   }
 }
 

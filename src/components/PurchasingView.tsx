@@ -4,7 +4,7 @@ import { calculateRequirements, generateDraftOrders } from '../utils/purchasing'
 import { ShoppingCart, RefreshCw, CheckCircle, FileText, Filter } from 'lucide-react';
 import type { PurchaseOrder } from '../types';
 import { useToast, ConfirmModal } from './ui';
-import { InvoiceUploader } from './ai/InvoiceUploader';
+import { DataImportModal } from './common/DataImportModal';
 import { OrderDetailModal } from './purchasing/OrderDetailModal';
 
 interface StatusCardProps {
@@ -167,6 +167,12 @@ export const PurchasingView: React.FC = () => {
                         <FileText size={20} />
                         Escanear Factura
                     </button>
+                    <DataImportModal
+                        isOpen={isScanningModalOpen}
+                        onClose={() => setIsScanningModalOpen(false)}
+                        type="invoice"
+                        onImportComplete={handleInvoiceProcessed}
+                    />
                     <button
                         onClick={handleGenerateOrders}
                         className="flex items-center gap-2 bg-gradient-to-r from-primary to-indigo-600 hover:from-blue-400 hover:to-indigo-500 text-white px-6 py-2.5 rounded-lg font-medium transition-all shadow-lg shadow-primary/25"
@@ -177,18 +183,6 @@ export const PurchasingView: React.FC = () => {
                 </div>
             </div>
 
-            {isScanningModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-                    <div className="relative w-full max-w-2xl bg-white rounded-xl shadow-2xl overflow-hidden">
-                        <div className="flex justify-end p-2 absolute top-2 right-2 z-10">
-                            <button onClick={() => setIsScanningModalOpen(false)} className="bg-white/50 rounded-full p-1 text-gray-500 hover:text-gray-700 hover:bg-white">
-                                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                            </button>
-                        </div>
-                        <InvoiceUploader onScanComplete={handleInvoiceProcessed} />
-                    </div>
-                </div>
-            )}
 
             {/* Dashboard Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
