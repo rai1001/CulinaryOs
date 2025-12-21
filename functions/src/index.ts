@@ -13,4 +13,6 @@ export { enrichIngredientCallable } from "./enrichers/ingredientEnricher";
 export { embedRecipe } from "./triggers/recipeEmbedder";
 export { monitorHACCP } from "./triggers/haccpMonitor";
 export { calculateMenuEngineering } from "./scheduled/analyticsScheduler";
+export { autoPurchaseScheduler } from "./scheduled/autoPurchaseScheduler";
+export { sendPurchaseOrderEmail } from "./triggers/sendPurchaseOrderEmail";
 

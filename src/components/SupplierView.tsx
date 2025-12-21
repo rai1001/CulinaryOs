@@ -1,11 +1,17 @@
 import React, { useState } from 'react';
 import { useStore } from '../store/useStore';
-import { Plus, Edit2, Phone, Mail, Truck, ChevronDown, ChevronUp, History, Trash2, Camera, Loader2 } from 'lucide-react';
-import type { Supplier } from '../types';
-import { addDocument, updateDocument, deleteDocument } from '../services/firestoreService';
-import { collections } from '../firebase/collections';
+import { Plus, Camera, Loader2 } from 'lucide-react';
+import type { Supplier } from '../types/suppliers';
+import { proveedoresService } from '../services/proveedoresService';
 
 import { ExcelImporter } from './common/ExcelImporter';
+import { ProveedoresList } from './proveedores/ProveedoresList';
+import { ProveedorForm } from './proveedores/ProveedorForm';
+// Ingredient Modal Logic remains or can be refactored too. keeping it simple for now, 
+// using the existing logic but maybe moving it later.
+// Actually, Ingredients Modal logic is intertwined. I will keep it here for now or extract if complex.
+// The list component has 'onViewIngredients'.
+import { ChevronDown, ChevronUp } from 'lucide-react';
 
 export const SupplierView: React.FC = () => {
     const { suppliers, addSupplier, updateSupplier, deleteSupplier, ingredients, activeOutletId } = useStore();
@@ -17,27 +23,8 @@ export const SupplierView: React.FC = () => {
     const [viewingIngredientsSupplier, setViewingIngredientsSupplier] = useState<Supplier | null>(null);
     const [expandedIngredientId, setExpandedIngredientId] = useState<string | null>(null);
 
-    // Form State
-    const [formData, setFormData] = useState<Partial<Supplier>>({
-        name: '',
-        contactName: '',
-        email: '',
-        phone: '',
-        leadTime: 1,
-        orderDays: [],
-        minimumOrderValue: 0
-    });
-
-    const parseLeadTime = (value: any): number => {
-        if (!value) return 1;
-        const str = String(value).toUpperCase();
-        if (str.includes('24H')) return 1;
-        if (str.includes('48H')) return 2;
-        if (str.includes('72H')) return 3;
-        // Try parsing number
-        const num = parseFloat(str);
-        return isNaN(num) ? 1 : num;
-    };
+    // Initial Form Data for Scan or New
+    const [initialFormData, setInitialFormData] = useState<Partial<Supplier> | null>(null);
 
     const handleImport = async (data: any[]) => {
         if (!activeOutletId) {
@@ -59,8 +46,8 @@ export const SupplierView: React.FC = () => {
                     contactName: row['Contacto'] || row['Contact'] || row['contactName'] || row['CONTACTO SEGURA'] || '',
                     email: row['Email'] || row['Correo'] || row['CONTACTO INCIDENCIAS'] || '',
                     phone: String(row['Telefono'] || row['Phone'] || row['phone'] || row['TELEFONO'] || ''),
-                    leadTime: parseLeadTime(row['Entrega'] || row['LeadTime'] || row['REPARTO']),
-                    orderDays: [], // Could parse 'LUNES Y VIERNES' later if needed
+                    leadTime: 1, // Default
+                    orderDays: [],
                     minimumOrderValue: Number(row['Minimo'] || row['PEDIDO MINIMO'] || 0),
                     outletId: activeOutletId
                 };
@@ -72,7 +59,8 @@ export const SupplierView: React.FC = () => {
                     continue;
                 }
 
-                await addDocument(collections.suppliers, supplierData);
+                const newId = await proveedoresService.create(supplierData);
+                addSupplier({ id: newId, ...supplierData } as Supplier);
                 successCount++;
             } catch (error) {
                 console.error("Error importing supplier row", row, error);
@@ -84,18 +72,10 @@ export const SupplierView: React.FC = () => {
     const handleOpenModal = (supplier?: Supplier) => {
         if (supplier) {
             setEditingSupplier(supplier);
-            setFormData(supplier);
+            setInitialFormData(supplier);
         } else {
             setEditingSupplier(null);
-            setFormData({
-                name: '',
-                contactName: '',
-                email: '',
-                phone: '',
-                leadTime: 1,
-                orderDays: [],
-                minimumOrderValue: 0
-            });
+            setInitialFormData(null);
         }
         setIsModalOpen(true);
     };
@@ -103,20 +83,12 @@ export const SupplierView: React.FC = () => {
     const handleCloseModal = () => {
         setIsModalOpen(false);
         setEditingSupplier(null);
+        setInitialFormData(null);
         setIsSubmitting(false);
     };
 
-    // OCR / Auto-create for Suppliers
-    // Re-using InvoiceUploader but strictly for extracting Supplier Info would be ideal, 
-    // but for now we can use the same generic 'scan' and just pick the supplier part.
-    // Or simpler: Just add a "Scan Business Card" button that mocks or uses geminiService directly.
-
-    // For this quick fix, I will enable the ExcelImporter to be more visible and add a placeholder for Scan,
-    // as the user specifically asked for OCR.
-
     const [isScanning, setIsScanning] = useState(false);
     const fileInputRef = React.useRef<HTMLInputElement>(null);
-    // const { addToast } = (window as any).toast || { addToast: console.log }; // Removed unused variable
 
     const handleScanUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!e.target.files?.length) return;
@@ -124,15 +96,11 @@ export const SupplierView: React.FC = () => {
         setIsScanning(true);
 
         try {
-            // We can reuse the scanInvoiceImage from geminiService as it extracts supplier names well.
-            // Or create a specific scanSupplierCard. For now, use existing infra.
             const reader = new FileReader();
             reader.readAsDataURL(file);
             reader.onload = async () => {
                 try {
                     const base64 = (reader.result as string).split(',')[1];
-                    // We'll import scanInvoiceImage dynamically or assume it's available if we import it.
-                    // But let's use a specialized prompt here for better results on just contact cards.
                     const { analyzeImage } = await import('../services/geminiService');
 
                     const prompt = `
@@ -149,16 +117,20 @@ export const SupplierView: React.FC = () => {
                     const result = await analyzeImage(base64, prompt);
                     if (result.success && result.data) {
                         const s = result.data;
-                        setFormData({
+                        const scannedData = {
                             name: s.name || '',
                             contactName: s.contactName || '',
                             email: s.email || '',
                             phone: s.phone || '',
+                            address: s.address || '',
                             leadTime: 1,
                             minimumOrderValue: 0,
                             orderDays: []
-                        });
-                        setIsModalOpen(true); // Open modal with pre-filled data
+                        } as Partial<Supplier>;
+
+                        setEditingSupplier(null);
+                        setInitialFormData(scannedData);
+                        setIsModalOpen(true);
                     }
                 } catch (err) {
                     console.error(err);
@@ -174,8 +146,7 @@ export const SupplierView: React.FC = () => {
     };
 
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const handleFormSubmit = async (data: Omit<Supplier, 'id'>) => {
         if (!activeOutletId) {
             alert("Por favor, selecciona una cocina activa.");
             return;
@@ -184,23 +155,16 @@ export const SupplierView: React.FC = () => {
         setIsSubmitting(true);
         try {
             const supplierData = {
-                ...formData,
+                ...data,
                 outletId: activeOutletId
             };
 
             if (editingSupplier) {
-                // Update existing
-                await updateDocument('suppliers', editingSupplier.id, supplierData);
+                await proveedoresService.update(editingSupplier.id, supplierData);
                 updateSupplier({ ...editingSupplier, ...supplierData } as Supplier);
             } else {
-                // Create new
-                // addDocument returns the generated ID (string)
-                const newId = await addDocument(collections.suppliers, supplierData);
-                const newSupplier: Supplier = {
-                    id: newId,
-                    ...supplierData as Omit<Supplier, 'id'>
-                } as Supplier;
-                addSupplier(newSupplier);
+                const newId = await proveedoresService.create(supplierData);
+                addSupplier({ id: newId, ...supplierData } as Supplier);
             }
             handleCloseModal();
         } catch (error) {
@@ -215,7 +179,7 @@ export const SupplierView: React.FC = () => {
         if (!confirm(`¿Estás seguro de eliminar a ${name}?`)) return;
 
         try {
-            await deleteDocument('suppliers', id);
+            await proveedoresService.delete(id);
             deleteSupplier(id);
         } catch (error) {
             console.error("Error deleting supplier:", error);
@@ -223,15 +187,7 @@ export const SupplierView: React.FC = () => {
         }
     };
 
-    const toggleDay = (day: number) => {
-        const currentDays = formData.orderDays || [];
-        if (currentDays.includes(day)) {
-            setFormData({ ...formData, orderDays: currentDays.filter(d => d !== day) });
-        } else {
-            setFormData({ ...formData, orderDays: [...currentDays, day].sort() });
-        }
-    };
-
+    // Ingredients Modal Logic helpers
     const handleViewIngredients = (supplier: Supplier) => {
         setViewingIngredientsSupplier(supplier);
         setExpandedIngredientId(null);
@@ -242,15 +198,10 @@ export const SupplierView: React.FC = () => {
     };
 
     const toggleIngredientHistory = (ingId: string) => {
-        if (expandedIngredientId === ingId) {
-            setExpandedIngredientId(null);
-        } else {
-            setExpandedIngredientId(ingId);
-        }
+        setExpandedIngredientId(prev => prev === ingId ? null : ingId);
     };
 
-    const daysOfWeek = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
-
+    // Derived state for modal
     const supplierIngredients = viewingIngredientsSupplier
         ? ingredients.filter(i => i.supplierId === viewingIngredientsSupplier.id)
         : [];
@@ -291,199 +242,31 @@ export const SupplierView: React.FC = () => {
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {suppliers.map(supplier => (
-                    <div key={supplier.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow relative group">
-                        <div className="flex justify-between items-start mb-4">
-                            <h3 className="text-xl font-semibold text-gray-800">{supplier.name}</h3>
-                            <div className="flex gap-2">
-                                <button
-                                    onClick={() => handleOpenModal(supplier)}
-                                    className="text-gray-400 hover:text-indigo-600 p-1 rounded-md hover:bg-indigo-50 transition-colors"
-                                    title="Editar"
-                                >
-                                    <Edit2 size={18} />
-                                </button>
-                                <button
-                                    onClick={() => handleDelete(supplier.id, supplier.name)}
-                                    className="text-gray-400 hover:text-red-600 p-1 rounded-md hover:bg-red-50 transition-colors"
-                                    title="Eliminar"
-                                >
-                                    <Trash2 size={18} />
-                                </button>
-                            </div>
-                        </div>
-
-                        <div className="space-y-3 text-gray-600">
-                            {supplier.contactName && (
-                                <div className="flex items-center gap-2">
-                                    <span className="font-medium text-gray-700">{supplier.contactName}</span>
-                                </div>
-                            )}
-                            {supplier.phone && (
-                                <div className="flex items-center gap-2">
-                                    <Phone size={16} />
-                                    <span>{supplier.phone}</span>
-                                </div>
-                            )}
-                            {supplier.email && (
-                                <div className="flex items-center gap-2">
-                                    <Mail size={16} />
-                                    <span>{supplier.email}</span>
-                                </div>
-                            )}
-                            <div className="flex items-center gap-2">
-                                <Truck size={16} />
-                                <span>Entrega: {supplier.leadTime} días • Min: {supplier.minimumOrderValue || 0}€</span>
-                            </div>
-
-                            <div className="pt-2 border-t border-gray-100">
-                                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Días de Pedido</span>
-                                <div className="flex gap-1 mt-1">
-                                    {daysOfWeek.map((day, index) => (
-                                        <span
-                                            key={day}
-                                            className={`text - xs px - 2 py - 1 rounded ${supplier.orderDays?.includes(index)
-                                                ? 'bg-green-100 text-green-700 font-medium'
-                                                : 'bg-gray-100 text-gray-400'
-                                                } `}
-                                        >
-                                            {day[0]}
-                                        </span>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Ingredients List Button */}
-                            <div className="pt-4 mt-2 border-t border-gray-100 text-center">
-                                <button
-                                    onClick={() => handleViewIngredients(supplier)}
-                                    className="text-sm font-medium text-indigo-600 hover:text-indigo-800 transition-colors flex items-center justify-center gap-2 mx-auto"
-                                >
-                                    <History size={16} />
-                                    Ver Ingredientes & Histórico
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                ))}
-            </div>
+            <ProveedoresList
+                suppliers={suppliers}
+                onEdit={handleOpenModal}
+                onDelete={handleDelete}
+                onViewIngredients={handleViewIngredients}
+            />
 
             {/* Modal: Edit/Create Supplier */}
             {isModalOpen && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div role="dialog" aria-modal="true" className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                     <div className="bg-white rounded-xl shadow-xl p-8 max-w-md w-full">
                         <h3 className="text-2xl font-bold text-gray-800 mb-6">
                             {editingSupplier ? 'Editar Proveedor' : 'Nuevo Proveedor'}
                         </h3>
-
-                        <form onSubmit={handleSubmit} className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
-                                <input
-                                    type="text"
-                                    required
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                                    value={formData.name}
-                                    onChange={e => setFormData({ ...formData, name: e.target.value })}
-                                />
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Contacto</label>
-                                    <input
-                                        type="text"
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                                        value={formData.contactName}
-                                        onChange={e => setFormData({ ...formData, contactName: e.target.value })}
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
-                                    <input
-                                        type="tel"
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                                        value={formData.phone}
-                                        onChange={e => setFormData({ ...formData, phone: e.target.value })}
-                                    />
-                                </div>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                                <input
-                                    type="email"
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                                    value={formData.email}
-                                    onChange={e => setFormData({ ...formData, email: e.target.value })}
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Días de Entrega (Lead Time)</label>
-                                <input
-                                    type="number"
-                                    min="0"
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                                    value={formData.leadTime}
-                                    onChange={e => setFormData({ ...formData, leadTime: parseInt(e.target.value) })}
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Pedido Mínimo (€)</label>
-                                <input
-                                    type="number"
-                                    min="0"
-                                    step="0.01"
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                                    value={formData.minimumOrderValue || ''}
-                                    onChange={e => setFormData({ ...formData, minimumOrderValue: parseFloat(e.target.value) })}
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Días de Pedido</label>
-                                <div className="flex flex-wrap gap-2">
-                                    {daysOfWeek.map((day, index) => (
-                                        <button
-                                            type="button"
-                                            key={day}
-                                            onClick={() => toggleDay(index)}
-                                            className={`px - 3 py - 1 rounded - full text - xs font - medium transition - colors ${formData.orderDays?.includes(index)
-                                                ? 'bg-indigo-600 text-white'
-                                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                                } `}
-                                        >
-                                            {day}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            <div className="flex justify-end gap-3 mt-6 pt-4 border-t">
-                                <button
-                                    type="button"
-                                    onClick={handleCloseModal}
-                                    className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
-                                >
-                                    Cancelar
-                                </button>
-                                <button
-                                    type="submit"
-                                    disabled={isSubmitting}
-                                    className={`px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                >
-                                    {isSubmitting ? 'Guardando...' : 'Guardar'}
-                                </button>
-                            </div>
-                        </form>
+                        <ProveedorForm
+                            initialData={initialFormData}
+                            onSubmit={handleFormSubmit}
+                            onCancel={handleCloseModal}
+                            isSubmitting={isSubmitting}
+                        />
                     </div>
                 </div>
             )}
 
-            {/* Modal: View Ingredients & History */}
+            {/* Modal: View Ingredients & History (Ideally move to separate component too) */}
             {viewingIngredientsSupplier && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                     <div className="bg-white rounded-xl shadow-xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto">

@@ -1,92 +1,21 @@
-// Domain Types
+import type { Ingredient, NutritionalInfo } from './inventory';
+import type { AutoPurchaseSettings } from './purchases';
 
-export type Unit = 'kg' | 'g' | 'L' | 'ml' | 'un' | 'manojo';
+export * from './inventory';
+export * from './suppliers';
+export * from './purchases';
 
-export interface Supplier {
-    id: string;
-    name: string;
-    contactName?: string;
-    email?: string;
-    phone?: string;
-    leadTime?: number; // Days to deliver
-    orderDays?: number[]; // Days of week (0-6) they accept/deliver orders
-    minimumOrderValue?: number; // Minimum monetary value for an order
-    outletId?: string;
-}
 
-export interface IngredientBatch {
-    id: string;
-    ingredientId: string;
-    barcode?: string;
-    quantity: number;
-    expiryDate: string; // ISO Date
-    receivedDate: string; // ISO Date
-    costPerUnit: number;
-}
 
-export interface NutritionalInfo {
-    calories: number; // kcal per 100g/ml
-    protein: number; // g per 100g/ml
-    carbs: number; // g per 100g/ml
-    fat: number; // g per 100g/ml
-}
 
-export interface PriceHistoryEntry {
-    date: string; // ISO Date
-    price: number;
-    changeReason?: string;
-}
 
-// Inventory Categories
-export type InventoryCategory = 'meat' | 'fish' | 'produce' | 'dairy' | 'dry' | 'frozen' | 'canned' | 'cocktail' | 'sports_menu' | 'corporate_menu' | 'coffee_break' | 'restaurant' | 'other';
 
 export type RecipeCategory = 'appetizer' | 'main' | 'dessert' | 'sauce' | 'base' | 'beverage' | 'other';
 export type MenuCategory = 'tasting' | 'event' | 'daily' | 'corporate' | 'breakfast' | 'other';
 
-export interface Ingredient {
-    id: string;
-    name: string;
-    unit: Unit;
-    costPerUnit: number; // Price per unit (e.g., /kg)
-    yield: number; // Merma (0-1), e.g., 0.9 means 10% loss
-    allergens: string[];
-    nutritionalInfo?: NutritionalInfo;
-    stock?: number; // Calculated total
-    batches?: IngredientBatch[]; // New source of truth
-    minStock?: number; // Safety stock level
-    supplierId?: string;
-    priceHistory?: PriceHistoryEntry[];
-    defaultBarcode?: string;
-    category?: InventoryCategory;
-    shelfLife?: number; // Days
-    outletId?: string;
-    createdAt?: string;
-    updatedAt?: string;
-}
 
-export type PurchaseStatus = 'DRAFT' | 'ORDERED' | 'RECEIVED' | 'PARTIAL' | 'CANCELLED';
 
-export interface PurchaseOrderItem {
-    ingredientId: string;
-    quantity: number;
-    unit: Unit;
-    costPerUnit: number;
-    receivedQuantity?: number; // For partial/full reception
-    tempDescription?: string; // For items from OCR not yet matched to an ingredient
-}
 
-export interface PurchaseOrder {
-    id: string;
-    supplierId: string;
-    date: string; // Creation date
-    deliveryDate?: string;
-    orderDeadline?: string; // Latest date to order by to meet lead time
-    status: PurchaseStatus;
-    items: PurchaseOrderItem[];
-    totalCost: number;
-    outletId?: string;
-    eventId?: string; // Link to an event
-}
 
 export interface RecipeIngredient {
     ingredientId: string;
@@ -228,18 +157,7 @@ export interface DailySchedule {
 
 // Waste Control Types
 
-export type WasteReason = 'CADUCIDAD' | 'ELABORACION' | 'DETERIORO' | 'EXCESO_PRODUCCION' | 'OTROS';
 
-export interface WasteRecord {
-    id: string;
-    date: string; // ISO Date
-    ingredientId: string;
-    quantity: number;
-    unit: Unit; // Inherited from Ingredient
-    costAtTime: number; // Snapshot of costPerUnit when waste happened
-    reason: WasteReason;
-    notes?: string;
-}
 
 // HACCP Types
 
@@ -327,6 +245,7 @@ export interface Outlet {
     isActive: boolean;
     address?: string;
     phone?: string;
+    autoPurchaseSettings?: AutoPurchaseSettings;
 }
 
 // Extended types with Outlet context
@@ -338,10 +257,7 @@ export interface EventWithOutlet extends Event {
     outletId?: string;
 }
 
-export interface PurchaseOrderFilters {
-    status?: string;
-    supplierId?: string | null; // null means "SIN_ASIGNAR"
-}
+
 
 export interface PageCursor {
     lastDate: string; // Using string (ISO) to match types.ts

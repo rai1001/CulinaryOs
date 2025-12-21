@@ -1,0 +1,135 @@
+import type { Recipe, RecipeIngredient } from '../types';
+import type { Ingredient, Batch } from '../types/inventory';
+import { calculateTotalStock } from './inventoryService';
+
+export interface NeedsResult {
+    ingredientId: string;
+    ingredientName: string;
+    currentStock: number;
+    requiredQuantity: number;
+    missingQuantity: number; // = required - stock (if positive)
+    unit: string;
+}
+
+export interface ReorderNeed {
+    ingredientId: string;
+    ingredientName: string;
+    currentStock: number;
+    reorderPoint: number;
+    optimalStock: number;
+    orderQuantity: number; // = optimal - stock
+    unit: string;
+    supplierId?: string;
+}
+
+export const necesidadesService = {
+    /**
+     * Scales a recipe's ingredients to a target yield (PAX).
+     * Assumes recipe.yieldPax is defined; defaults to 1 if not.
+     */
+    scaleRecipe: (recipe: Recipe, targetPax: number): RecipeIngredient[] => {
+        const basePax = recipe.yieldPax || 1;
+        if (basePax <= 0) return recipe.ingredients; // Safety check
+
+        const ratio = targetPax / basePax;
+
+        return recipe.ingredients.map(ing => ({
+            ...ing,
+            quantity: ing.quantity * ratio
+        }));
+    },
+
+    /**
+     * Aggregates total ingredient requirements from a list of production plans.
+     * @param plans List of recipes and their target production yield
+     */
+    aggregateProductionRequirements: (
+        plans: { recipe: Recipe; targetPax: number }[]
+    ): Map<string, number> => {
+        const totals = new Map<string, number>();
+
+        for (const plan of plans) {
+            const scaledIngredients = necesidadesService.scaleRecipe(plan.recipe, plan.targetPax);
+
+            for (const item of scaledIngredients) {
+                const current = totals.get(item.ingredientId) || 0;
+                totals.set(item.ingredientId, current + item.quantity);
+            }
+        }
+
+        return totals;
+    },
+
+    /**
+     * Calculates what needs to be ordered based purely on Reorder Points.
+     * Uses FIFO stock logic (sum of batches).
+     */
+    calculateReorderNeeds: (ingredients: Ingredient[]): ReorderNeed[] => {
+        const needs: ReorderNeed[] = [];
+
+        for (const ing of ingredients) {
+            // calculated stock from batches or fallback to legacy stock field
+            const currentStock = ing.batches && ing.batches.length > 0
+                ? calculateTotalStock(ing.batches)
+                : (ing.stock || 0);
+
+            // Check if we hit the reorder point
+            // Only if reorderPoint is set and > 0
+            if (ing.reorderPoint && ing.reorderPoint > 0) {
+                if (currentStock <= ing.reorderPoint) {
+                    const optimal = ing.optimalStock || ing.reorderPoint * 2; // Default logic if optimal not set
+                    const toOrder = optimal - currentStock;
+
+                    if (toOrder > 0) {
+                        needs.push({
+                            ingredientId: ing.id,
+                            ingredientName: ing.name,
+                            currentStock,
+                            reorderPoint: ing.reorderPoint,
+                            optimalStock: optimal,
+                            orderQuantity: toOrder,
+                            unit: ing.unit,
+                            supplierId: ing.supplierId
+                        });
+                    }
+                }
+            }
+        }
+
+        return needs;
+    },
+
+    /**
+     * Compares Production Requirements vs Current Stock to find "Missing for Production".
+     * useful for "Can I cook this?" checks.
+     */
+    checkProductionAvailability: (
+        productionRequirements: Map<string, number>,
+        ingredients: Ingredient[]
+    ): NeedsResult[] => {
+        const results: NeedsResult[] = [];
+        const ingredientsMap = new Map(ingredients.map(i => [i.id, i]));
+
+        productionRequirements.forEach((requiredQty, ingId) => {
+            const ing = ingredientsMap.get(ingId);
+            if (!ing) return; // Should handle missing ingredient reference
+
+            const currentStock = ing.batches
+                ? calculateTotalStock(ing.batches)
+                : (ing.stock || 0);
+
+            if (currentStock < requiredQty) {
+                results.push({
+                    ingredientId: ingId,
+                    ingredientName: ing.name,
+                    currentStock,
+                    requiredQuantity: requiredQty,
+                    missingQuantity: requiredQty - currentStock,
+                    unit: ing.unit
+                });
+            }
+        });
+
+        return results;
+    }
+};

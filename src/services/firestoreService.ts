@@ -10,7 +10,8 @@ import {
     orderBy,
     limit,
     startAfter,
-    collection
+    collection,
+    getDoc
 } from "firebase/firestore";
 import type {
     CollectionReference,
@@ -42,7 +43,7 @@ export const getCollection = async <T>(collectionName: string): Promise<T[]> => 
 };
 
 // Helper to strip undefined values (Firestore rejects them)
-const sanitizeData = <T extends object>(data: T): T => {
+export const sanitizeData = <T extends object>(data: T): T => {
     const cleanFn = (obj: any): any => {
         if (Array.isArray(obj)) {
             return obj.map(v => cleanFn(v));
@@ -175,4 +176,20 @@ export const getEventsRange = async ({
     const snapshot = await getDocs(q);
 
     return snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Event));
+};
+
+// Helper for getById
+export const getDocumentById = async <T>(collectionName: string, id: string): Promise<T | undefined> => {
+    const d = await getDoc(doc(db, collectionName, id));
+    return d.exists() ? { id: d.id, ...d.data() } as any : undefined;
+};
+
+// Unified Service Export
+export const firestoreService = {
+    getAll: getAllDocuments,
+    getById: getDocumentById,
+    update: updateDocument,
+    create: addDocument,
+    delete: deleteDocument,
+    query: queryDocuments
 };

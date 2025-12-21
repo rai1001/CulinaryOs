@@ -252,5 +252,17 @@ service cloud.firestore {
       // Allow create/update for system/users marking read
       allow write: if isAuthenticated() && isUserActive();
     }
+
+    // Batches (Inventory Lots) - NEW
+    match /batches/{id} {
+      allow read: if isAuthenticated() && hasOutletAccess(resource.data.outletId);
+      allow create: if isAuthenticated() && isScopedWrite(request.resource) &&
+                    (hasRole('storekeeper') || hasRole('chef') || isManager());
+      allow update: if isAuthenticated() && hasOutletAccess(resource.data.outletId) &&
+                    isScopedWrite(request.resource) &&
+                    request.resource.data.outletId == resource.data.outletId &&
+                    (hasRole('storekeeper') || hasRole('chef') || isManager());
+      allow delete: if isManager() && isScopedDelete();
+    }
   }
 }
