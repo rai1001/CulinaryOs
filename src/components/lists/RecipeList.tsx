@@ -11,7 +11,7 @@ interface RecipeListProps {
     onDelete: (id: string) => void;
 }
 
-export const RecipeList: React.FC<RecipeListProps> = ({ recipes, onEdit, onDelete }) => {
+export const RecipeList: React.FC<RecipeListProps> = React.memo(({ recipes, onEdit, onDelete }) => {
     const { ingredients } = useStore();
 
     // Optimization: Create a map for O(1) ingredient lookup
@@ -135,4 +135,4 @@ export const RecipeList: React.FC<RecipeListProps> = ({ recipes, onEdit, onDelet
             </table>
         </div>
     );
-};
+});

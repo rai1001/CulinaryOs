@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { useStore } from '../store/useStore';
 import { ChefHat, Search, Plus, X, Layers, Sparkles, Loader2, Import } from 'lucide-react';
 import { RecipeList } from './lists/RecipeList';
@@ -86,7 +86,7 @@ export const RecipesView: React.FC = () => {
         }
     };
 
-    const handleDelete = async (id: string) => {
+    const handleDelete = useCallback(async (id: string) => {
         if (confirm('¿Estás seguro de que quieres eliminar esta receta?')) {
             try {
                 await deleteDocument(COLLECTIONS.RECIPES, id);
@@ -95,12 +95,12 @@ export const RecipesView: React.FC = () => {
                 alert("Error al eliminar la receta");
             }
         }
-    };
+    }, []);
 
-    const handleEdit = (recipe: Recipe) => {
+    const handleEdit = useCallback((recipe: Recipe) => {
         setEditingRecipe(recipe);
         setShowAddModal(true);
-    };
+    }, []);
 
     const closeModal = () => {
         setShowAddModal(false);
