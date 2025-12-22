@@ -192,7 +192,6 @@ export const IngredientsView: React.FC = () => {
                 ))}
             </div>
 
-        </div>
 
             {
         !isValidOutlet ? (
