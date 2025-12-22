@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useStore } from '../store/useStore';
-import { Calendar, Users, Coffee, Upload, Trash2, Search, CheckCircle } from 'lucide-react';
+import { useOutletScoping } from '../hooks/useOutletScoping';
+import { Calendar, Users, Coffee, Upload, Trash2, Search, CheckCircle, Store } from 'lucide-react';
 import { read, utils } from 'xlsx';
 import { useToast } from './ui';
 
@@ -11,6 +12,7 @@ export const BreakfastView: React.FC = () => {
         breakfastServices, updateBreakfastService, importOccupancy,
         ingredients, fetchBreakfastServices, commitBreakfastConsumption
     } = useStore();
+    const { isValidOutlet } = useOutletScoping();
     const { addToast } = useToast();
 
     // State
@@ -123,6 +125,20 @@ export const BreakfastView: React.FC = () => {
         i.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
         !currentService.consumption?.[i.id]
     ).slice(0, 10);
+
+    if (!isValidOutlet) {
+        return (
+            <div className="p-8 flex flex-col items-center justify-center min-h-[400px] text-center space-y-4">
+                <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mb-2">
+                    <Store className="w-8 h-8 text-slate-500" />
+                </div>
+                <h2 className="text-2xl font-bold text-white">Selecciona una Cocina</h2>
+                <p className="text-slate-400 max-w-md">
+                    Para gestionar los desayunos y consumos, primero debes seleccionar una cocina activa desde el menú lateral.
+                </p>
+            </div>
+        );
+    }
 
     return (
         <div className="p-6 space-y-8 animate-in fade-in duration-500">

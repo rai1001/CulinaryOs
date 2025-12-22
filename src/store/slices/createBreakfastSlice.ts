@@ -1,6 +1,8 @@
 import type { StateCreator } from 'zustand';
 import type { AppState, BreakfastSlice } from '../types';
-import { setDocument, getCollection } from '../../services/firestoreService';
+import { setDocument } from '../../services/firestoreService';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { db } from '../../firebase/config';
 import type { BreakfastService, OccupancyData } from '../../types';
 
 export const createBreakfastSlice: StateCreator<
@@ -28,7 +30,12 @@ export const createBreakfastSlice: StateCreator<
 
         // Persist
         try {
-            await setDocument('breakfastServices', service.id, service);
+            const activeOutletId = get().activeOutletId;
+            const docData = {
+                ...service,
+                outletId: service.outletId || activeOutletId
+            };
+            await setDocument('breakfastServices', service.id, docData);
         } catch (error) {
             console.error("Failed to persist breakfast service", error);
             // Revert? For now, we assume success or user sees error if refresh.
@@ -53,7 +60,8 @@ export const createBreakfastSlice: StateCreator<
                     date: item.date,
                     forecastPax: item.pax,
                     realPax: 0,
-                    consumption: {}
+                    consumption: {},
+                    outletId: state.activeOutletId || undefined
                 };
 
             // Update local array
@@ -74,10 +82,19 @@ export const createBreakfastSlice: StateCreator<
     },
 
     fetchBreakfastServices: async () => {
+        const activeOutletId = get().activeOutletId;
+        if (!activeOutletId) {
+            set({ breakfastServices: [] });
+            return;
+        }
+
         try {
-            // Fetch all or range? For now, simple fetch all
-            const services = await getCollection<BreakfastService>('breakfastServices');
-            set({ breakfastServices: services });
+            const colRef = collection(db, 'breakfastServices');
+            const q = query(colRef, where('outletId', '==', activeOutletId));
+            const snapshot = await getDocs(q);
+            const items = snapshot.docs.map(doc => ({ ...doc.data() as object, id: doc.id } as BreakfastService));
+
+            set({ breakfastServices: items });
         } catch (error) {
             console.error("Failed to fetch breakfast services", error);
         }

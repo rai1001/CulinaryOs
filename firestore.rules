@@ -284,5 +284,23 @@ service cloud.firestore {
       allow update: if false; // Versions are immutable snapshots
       allow delete: if isManager() && isScopedDelete();
     }
+
+    // --- BREAKFAST & OCCUPANCY ---
+
+    match /breakfastServices/{id} {
+      allow read: if isAuthenticated() && hasOutletAccess(resource.data.outletId);
+      allow create: if isAuthenticated() && isScopedWrite(request.resource) &&
+                    (hasRole('chef') || isManager());
+      allow update: if isAuthenticated() && hasOutletAccess(resource.data.outletId) &&
+                    isScopedWrite(request.resource) &&
+                    request.resource.data.outletId == resource.data.outletId &&
+                    (hasRole('chef') || isManager());
+      allow delete: if isManager() && isScopedDelete();
+    }
+
+    match /occupancy/{id} {
+      allow read: if isAuthenticated() && isUserActive();
+      allow write: if isManager();
+    }
   }
 }

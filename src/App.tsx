@@ -38,7 +38,7 @@ const BreakfastView = React.lazy(() => import('./components/BreakfastView').then
 const StaffView = React.lazy(() => import('./components/StaffView').then(m => ({ default: m.StaffView })));
 const IntegrationsView = React.lazy(() => import('./components/IntegrationsView').then(m => ({ default: m.IntegrationsView })));
 const FichasTecnicasDashboard = React.lazy(() => import('./pages/FichasTecnicasDashboard').then(m => ({ default: m.FichasTecnicasDashboard })));
-const FichasTecnicasDashboard = React.lazy(() => import('./pages/FichasTecnicasDashboard').then(m => ({ default: m.FichasTecnicasDashboard })));
+
 const AnalisisRentabilidad = React.lazy(() => import('./pages/AnalisisRentabilidad').then(m => ({ default: m.AnalisisRentabilidad })));
 const HospitalityDashboard = React.lazy(() => import('./pages/HospitalityDashboard').then(m => ({ default: m.HospitalityDashboard })));
 

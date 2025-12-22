@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { IngredientSupplierConfig, SupplierOption } from '../../types/suppliers';
+import type { IngredientSupplierConfig, SupplierOption } from '../../types/suppliers';
 import { Truck, Star, Clock, DollarSign, Shield, Save, Plus } from 'lucide-react';
 
 interface SupplierManagerProps {

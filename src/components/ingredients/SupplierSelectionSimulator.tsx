@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { IngredientSupplierConfig, SupplierOption } from '../../types/suppliers';
-import { supplierSelectionService } from '../../services/supplierSelectionService';
+import type { IngredientSupplierConfig, SupplierOption } from '../../types/suppliers';
 import { Play, AlertCircle, Trophy } from 'lucide-react';
 
 interface SimulatorProps {

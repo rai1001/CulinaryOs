@@ -192,55 +192,53 @@ export const IngredientsView: React.FC = () => {
                 ))}
             </div>
 
-        </div>
+            {
+                !isValidOutlet ? (
+                    <div className="flex flex-col items-center justify-center p-12 border-2 border-dashed border-white/10 rounded-xl bg-white/5">
+                        <Store className="w-12 h-12 text-slate-500 mb-4" />
+                        <h3 className="text-xl font-bold text-white mb-2">Selecciona una Cocina</h3>
+                        <p className="text-slate-400 text-center max-w-md">
+                            Para gestionar el inventario, primero debes seleccionar una cocina o punto de venta activo desde el menú lateral.
+                        </p>
+                    </div>
+                ) : (
+                    <IngredientList
+                        ingredients={filteredIngredients}
+                        onEdit={handleEdit}
+                        onDelete={handleDelete}
+                        sortConfig={sortConfig}
+                        onSort={handleSort}
+                    />
+                )
+            }
 
             {
-        !isValidOutlet ? (
-            <div className="flex flex-col items-center justify-center p-12 border-2 border-dashed border-white/10 rounded-xl bg-white/5">
-                <Store className="w-12 h-12 text-slate-500 mb-4" />
-                <h3 className="text-xl font-bold text-white mb-2">Selecciona una Cocina</h3>
-                <p className="text-slate-400 text-center max-w-md">
-                    Para gestionar el inventario, primero debes seleccionar una cocina o punto de venta activo desde el menú lateral.
-                </p>
-            </div>
-        ) : (
-            <IngredientList
-                ingredients={filteredIngredients}
-                onEdit={handleEdit}
-                onDelete={handleDelete}
-                sortConfig={sortConfig}
-                onSort={handleSort}
-            />
-        )
-    }
-
-    {
-        showAddModal && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-                <div className="relative w-full max-w-lg">
-                    <button
-                        onClick={closeModal}
-                        className="absolute top-4 right-4 text-slate-400 hover:text-white z-10"
-                    >
-                        <X className="w-5 h-5" />
-                    </button>
-                    <div onClick={e => e.stopPropagation()}>
-                        <IngredientForm
-                            onClose={closeModal}
-                            initialData={editingIngredient}
-                        />
+                showAddModal && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                        <div className="relative w-full max-w-lg">
+                            <button
+                                onClick={closeModal}
+                                className="absolute top-4 right-4 text-slate-400 hover:text-white z-10"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                            <div onClick={e => e.stopPropagation()}>
+                                <IngredientForm
+                                    onClose={closeModal}
+                                    initialData={editingIngredient}
+                                />
+                            </div>
+                        </div>
                     </div>
-                </div>
-            </div>
-        )
-    }
+                )
+            }
 
-    <DataImportModal
-        isOpen={!!importType}
-        onClose={() => setImportType(null)}
-        type={importType || 'ingredient'}
-        onImportComplete={handleImportComplete}
-    />
-        </div >
+            <DataImportModal
+                isOpen={!!importType}
+                onClose={() => setImportType(null)}
+                type={importType || 'ingredient'}
+                onImportComplete={handleImportComplete}
+            />
+        </div>
     );
 };
