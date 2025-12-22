@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { onSnapshot, query, where, orderBy, Timestamp } from 'firebase/firestore';
+import { onSnapshot, query, where, orderBy } from 'firebase/firestore';
 import { collections } from '../../firebase/collections';
 import { useStore } from '../../store/useStore';
 import type { KanbanTask } from '../../types';
