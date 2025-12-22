@@ -1,51 +1,21 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Mail, Calendar, CheckCircle, XCircle, ExternalLink, Shield } from 'lucide-react';
-
-interface Integration {
-    id: string;
-    name: string;
-    provider: 'google' | 'microsoft';
-    status: 'connected' | 'disconnected' | 'error';
-    description: string;
-    features: string[];
-    icon: React.ElementType;
-}
+import { useStore } from '../store/useStore';
 
 export const IntegrationsView = () => {
-    const [integrations, setIntegrations] = useState<Integration[]>([
-        {
-            id: 'google-workspace',
-            name: 'Google Workspace',
-            provider: 'google',
-            status: 'disconnected',
-            description: 'Conecta tu cuenta de Google para sincronizar eventos con Calendar y escanear correos de Gmail.',
-            features: ['Google Calendar Sync', 'Gmail Event Scan', 'Drive Access'],
-            icon: Mail,
-        },
-        {
-            id: 'outlook-365',
-            name: 'Microsoft Outlook',
-            provider: 'microsoft',
-            status: 'disconnected',
-            description: 'Conecta tu cuenta de Outlook para escanear correos en busca de eventos de catering.',
-            features: ['Outlook Email Scan', 'Outlook Calendar Sync'],
-            icon: Calendar,
-        }
-    ]);
+    const { integrations, connectIntegration, disconnectIntegration } = useStore();
 
-    const handleConnect = (id: string) => {
-        // TODO: Implement actual OAuth flow
-        console.log(`Connecting to ${id}...`);
-        // Mock connection for now
-        setIntegrations(prev => prev.map(int =>
-            int.id === id ? { ...int, status: 'connected' } : int
-        ));
+    const providerIcons = {
+        google: Mail,
+        microsoft: Calendar
     };
 
-    const handleDisconnect = (id: string) => {
-        setIntegrations(prev => prev.map(int =>
-            int.id === id ? { ...int, status: 'disconnected' } : int
-        ));
+    const handleConnect = async (id: string) => {
+        await connectIntegration(id);
+    };
+
+    const handleDisconnect = async (id: string) => {
+        await disconnectIntegration(id);
     };
 
     return (
@@ -93,7 +63,7 @@ export const IntegrationsView = () => {
                             {/* Icon & Title */}
                             <div className="flex items-center gap-4 mb-4">
                                 <div className={`p-3 rounded-xl ${integration.provider === 'google' ? 'bg-blue-500/10 text-blue-400' : 'bg-indigo-500/10 text-indigo-400'}`}>
-                                    <integration.icon size={28} />
+                                    {React.createElement(providerIcons[integration.provider] || Mail, { size: 28 })}
                                 </div>
                                 <div>
                                     <h3 className="text-xl font-bold text-white">{integration.name}</h3>

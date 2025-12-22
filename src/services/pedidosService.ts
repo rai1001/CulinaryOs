@@ -3,8 +3,10 @@ import { firestoreService } from './firestoreService';
 import { COLLECTIONS } from '../firebase/collections';
 import type { ReorderNeed } from './necesidadesService';
 import type { PurchaseOrder, PurchaseOrderItem, PurchaseStatus } from '../types/purchases';
-import { collection, where, CollectionReference } from 'firebase/firestore';
+import { collection, where, arrayUnion } from 'firebase/firestore';
+import type { CollectionReference, UpdateData } from 'firebase/firestore';
 import { db } from '../firebase/config';
+import type { Unit } from '../types/inventory';
 
 export const pedidosService = {
     groupNeedsBySupplier: (needs: ReorderNeed[]): Map<string, ReorderNeed[]> => {
@@ -32,7 +34,7 @@ export const pedidosService = {
         const items: PurchaseOrderItem[] = needs.map(need => ({
             ingredientId: need.ingredientId,
             quantity: need.orderQuantity,
-            unit: need.unit as any,
+            unit: need.unit as Unit,
             costPerUnit: need.costPerUnit || 0,
             tempDescription: need.ingredientName
         }));
@@ -53,7 +55,7 @@ export const pedidosService = {
         };
 
         // Save to Firestore
-        await firestoreService.create(collection(db, COLLECTIONS.PURCHASE_ORDERS) as any, order);
+        await firestoreService.create<PurchaseOrder>(collection(db, COLLECTIONS.PURCHASE_ORDERS) as CollectionReference<PurchaseOrder>, order);
 
         return order;
     },
@@ -82,7 +84,7 @@ export const pedidosService = {
         if (mockDB) {
             try {
                 const db = JSON.parse(mockDB);
-                const orders = (db.purchaseOrders || []).filter((o: any) => o.outletId === outletId);
+                const orders = (db.purchaseOrders || []).filter((o: PurchaseOrder) => o.outletId === outletId);
                 return orders;
             } catch (e) {
                 console.error("E2E Mock Read Error", e);
@@ -103,15 +105,14 @@ export const pedidosService = {
             const orders = (db.purchaseOrders || []) as PurchaseOrder[];
             const idx = orders.findIndex(o => o.id === orderId);
             if (idx >= 0) {
-                orders[idx].status = status;
-                orders[idx].updatedAt = new Date().toISOString();
-                if (status === 'ORDERED') orders[idx].sentAt = new Date().toISOString();
-                if (status === 'APPROVED' && userId) orders[idx].approvedBy = userId;
-
-                // Apply extra data to mock
-                if (extraData) {
-                    Object.assign(orders[idx], extraData);
-                }
+                // History tracking for mock
+                const historyEntry = {
+                    date: new Date().toISOString(),
+                    status,
+                    userId: userId || 'system',
+                    notes: extraData?.notes || ''
+                };
+                orders[idx].history = [...(orders[idx].history || []), historyEntry];
 
                 db.purchaseOrders = orders;
                 localStorage.setItem('E2E_MOCK_DB', JSON.stringify(db));
@@ -120,10 +121,16 @@ export const pedidosService = {
             }
         }
 
-        const updateData: Partial<PurchaseOrder> = {
+        const updateData: UpdateData<PurchaseOrder> = {
             ...extraData,
             status,
-            updatedAt: new Date().toISOString()
+            updatedAt: new Date().toISOString(),
+            history: arrayUnion({
+                date: new Date().toISOString(),
+                status,
+                userId: userId || 'system',
+                notes: extraData?.notes || ''
+            })
         };
         if (status === 'ORDERED') {
             updateData.sentAt = new Date().toISOString();

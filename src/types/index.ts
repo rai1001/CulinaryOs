@@ -232,6 +232,7 @@ export interface BreakfastService {
     consumption: Record<string, number>; // ingredientId -> quantity
     notes?: string;
     outletId?: string;
+    isCommitted?: boolean;
 }
 
 export interface OccupancyData {
@@ -306,6 +307,21 @@ export interface GeneratedMenu {
 export interface IngredientEnrichment {
     nutritionalInfo: NutritionalInfo;
     allergens: string[];
+}
+
+// Integrations Framework Types
+export type IntegrationStatus = 'connected' | 'disconnected' | 'error';
+export type IntegrationProvider = 'google' | 'microsoft';
+
+export interface Integration {
+    id: string;
+    name: string;
+    provider: IntegrationProvider;
+    status: IntegrationStatus;
+    description: string;
+    features: string[];
+    connectedAt?: string;
+    lastSyncAt?: string;
 }
 
 export interface DemandPrediction {

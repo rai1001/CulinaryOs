@@ -1,6 +1,6 @@
 import type { Unit, NutritionalInfo } from './inventory';
 
-export type FichaCategoria = 'entrada' | 'plato_principal' | 'postre' | 'bebida' | 'guarnicion' | 'base';
+export type FichaCategoria = 'comida' | 'bebida' | 'postre' | 'ingrediente-preparado';
 export type FichaDificultad = 'baja' | 'media' | 'alta';
 
 export interface PasoPreparacion {

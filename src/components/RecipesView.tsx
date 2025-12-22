@@ -1,5 +1,6 @@
 
 import React, { useState, useMemo, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import { ChefHat, Search, Plus, X, Layers, Sparkles, Loader2, Import } from 'lucide-react';
 import { RecipeList } from './lists/RecipeList';
@@ -9,10 +10,12 @@ import { DataImportModal, type ImportType } from './common/DataImportModal';
 
 import { deleteDocument, addDocument } from '../services/firestoreService';
 import { COLLECTIONS, collections } from '../firebase/collections';
+import { convertirRecetaAFicha } from '../services/fichasTecnicasService';
 import type { Recipe } from '../types';
 
 export const RecipesView: React.FC = () => {
-    const { recipes, activeOutletId } = useStore();
+    const { recipes, activeOutletId, currentUser } = useStore();
+    const navigate = useNavigate();
     const [searchTerm, setSearchTerm] = useState('');
     const [showAddModal, setShowAddModal] = useState(false);
     const [editingRecipe, setEditingRecipe] = useState<Recipe | undefined>(undefined);
@@ -112,6 +115,25 @@ export const RecipesView: React.FC = () => {
             }
         }
     }, []);
+
+    const handleConvertToFicha = async (recipeId: string) => {
+        if (!activeOutletId || !currentUser) {
+            alert("No hay sesión activa");
+            return;
+        }
+
+        if (confirm('¿Quieres generar un Análisis Pro (Ficha Técnica) de esta receta?')) {
+            try {
+                await convertirRecetaAFicha(recipeId, activeOutletId, currentUser.id);
+                if (confirm('Ficha Técnica generada con éxito. ¿Quieres verla ahora?')) {
+                    navigate('/fichas-tecnicas');
+                }
+            } catch (error) {
+                console.error("Error converting to ficha:", error);
+                alert("Error al generar la ficha técnica");
+            }
+        }
+    };
 
     const handleEdit = useCallback((recipe: Recipe) => {
         setEditingRecipe(recipe);
@@ -296,6 +318,7 @@ export const RecipesView: React.FC = () => {
                 recipes={filteredRecipes}
                 onEdit={handleEdit}
                 onDelete={handleDelete}
+                onConvertToFicha={handleConvertToFicha}
                 sortConfig={sortConfig}
                 onSort={handleSort}
             />

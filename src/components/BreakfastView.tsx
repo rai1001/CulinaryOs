@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useStore } from '../store/useStore';
-import { Calendar, Users, Coffee, Upload, Trash2, Search } from 'lucide-react';
+import { Calendar, Users, Coffee, Upload, Trash2, Search, CheckCircle } from 'lucide-react';
 import { read, utils } from 'xlsx';
 import { useToast } from './ui';
 
@@ -9,7 +9,7 @@ import { normalizeDate } from '../utils/date';
 export const BreakfastView: React.FC = () => {
     const {
         breakfastServices, updateBreakfastService, importOccupancy,
-        ingredients, fetchBreakfastServices
+        ingredients, fetchBreakfastServices, commitBreakfastConsumption
     } = useStore();
     const { addToast } = useToast();
 
@@ -82,15 +82,16 @@ export const BreakfastView: React.FC = () => {
             const data = await file.arrayBuffer();
             const workbook = read(data);
             const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-            const jsonData = utils.sheet_to_json<any[]>(worksheet, { header: 1 });
+            const jsonData = utils.sheet_to_json<unknown[][]>(worksheet, { header: 1 });
 
             // Expected format: Date (YYYY-MM-DD), Pax
             // Skip header if present (heuristic)
             const occupancyData = [];
             for (const row of jsonData) {
+                const rowAny = row as unknown[];
                 // Simple validation: row[0] looks like date?
-                const dateRaw = row[0];
-                const paxRaw = row[1];
+                const dateRaw = rowAny[0];
+                const paxRaw = rowAny[1];
                 if (dateRaw && paxRaw) {
                     // Normalize date
                     let dateStr = dateRaw;
@@ -213,33 +214,55 @@ export const BreakfastView: React.FC = () => {
                             <h3 className="text-lg font-bold text-white flex items-center gap-2">
                                 <Coffee size={20} className="text-orange-400" />
                                 Diario de Consumos
-                            </h3>
-                            <div className="relative w-64">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                                <input
-                                    type="text"
-                                    placeholder="Buscar ingrediente..."
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="w-full bg-black/20 border border-white/10 rounded-lg pl-9 pr-4 py-2 text-sm text-white focus:border-orange-500 outline-none"
-                                />
-                                {searchQuery && (
-                                    <div className="absolute top-full left-0 right-0 mt-2 bg-gray-900 border border-white/10 rounded-lg shadow-xl overflow-hidden z-10">
-                                        {filteredIngredients.map(ing => (
-                                            <button
-                                                key={ing.id}
-                                                onClick={() => {
-                                                    handleAddConsumption(ing.id);
-                                                    setSearchQuery('');
-                                                }}
-                                                className="w-full text-left px-4 py-2 hover:bg-white/5 text-slate-300 text-sm flex justify-between group"
-                                            >
-                                                <span>{ing.name}</span>
-                                                <span className="text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity">Añadir</span>
-                                            </button>
-                                        ))}
-                                    </div>
+                                {currentService.isCommitted && (
+                                    <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-[10px] font-bold uppercase border border-emerald-500/20 ml-2">
+                                        <CheckCircle size={10} />
+                                        Stock Descontado
+                                    </span>
                                 )}
+                            </h3>
+                            <div className="flex items-center gap-3">
+                                {!currentService.isCommitted && consumedIngredients.length > 0 && (
+                                    <button
+                                        onClick={async () => {
+                                            if (confirm('¿Confirmas el descuento de stock para estos consumos? Esta acción no se puede deshacer.')) {
+                                                await commitBreakfastConsumption(currentService.id);
+                                                addToast('Stock descontado correctamente', 'success');
+                                            }
+                                        }}
+                                        className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-lg shadow-emerald-500/20"
+                                    >
+                                        <CheckCircle size={14} />
+                                        Confirmar Stock
+                                    </button>
+                                )}
+                                <div className="relative w-64">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                                    <input
+                                        type="text"
+                                        placeholder="Buscar ingrediente..."
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        className="w-full bg-black/20 border border-white/10 rounded-lg pl-9 pr-4 py-2 text-sm text-white focus:border-orange-500 outline-none"
+                                    />
+                                    {searchQuery && (
+                                        <div className="absolute top-full left-0 right-0 mt-2 bg-gray-900 border border-white/10 rounded-lg shadow-xl overflow-hidden z-10">
+                                            {filteredIngredients.map(ing => (
+                                                <button
+                                                    key={ing.id}
+                                                    onClick={() => {
+                                                        handleAddConsumption(ing.id);
+                                                        setSearchQuery('');
+                                                    }}
+                                                    className="w-full text-left px-4 py-2 hover:bg-white/5 text-slate-300 text-sm flex justify-between group"
+                                                >
+                                                    <span>{ing.name}</span>
+                                                    <span className="text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity">Añadir</span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         </div>
 

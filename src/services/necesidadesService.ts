@@ -1,4 +1,4 @@
-import type { Recipe, RecipeIngredient } from '../types';
+import type { Recipe, RecipeIngredient, AutoPurchaseSettings } from '../types';
 import type { Ingredient } from '../types/inventory';
 import { calculateTotalStock } from './inventoryService';
 
@@ -65,8 +65,9 @@ export const necesidadesService = {
      * Calculates what needs to be ordered based purely on Reorder Points.
      * Uses FIFO stock logic (sum of batches).
      */
-    calculateReorderNeeds: (ingredients: Ingredient[]): ReorderNeed[] => {
+    calculateReorderNeeds: (ingredients: Ingredient[], settings?: Partial<AutoPurchaseSettings>): ReorderNeed[] => {
         const needs: ReorderNeed[] = [];
+        const strategy = settings?.supplierSelectionStrategy || 'CHEAPEST';
 
         for (const ing of ingredients) {
             // calculated stock from batches or fallback to legacy stock field
@@ -82,14 +83,29 @@ export const necesidadesService = {
                     const toOrder = optimal - currentStock;
 
                     if (toOrder > 0) {
-                        // Task 3.4: Best-Option Supplier Selection
+                        // Task 6.2: Strategy-Based Supplier Selection
                         let selectedSupplierId = ing.supplierId;
                         let selectedCost = ing.costPerUnit || 0;
 
                         if (ing.supplierInfo && ing.supplierInfo.length > 0) {
-                            const cheapest = [...ing.supplierInfo].sort((a, b) => a.costPerUnit - b.costPerUnit)[0];
-                            selectedSupplierId = cheapest.supplierId;
-                            selectedCost = cheapest.costPerUnit;
+                            const candidates = [...ing.supplierInfo];
+
+                            if (strategy === 'FASTEST') {
+                                // Sort by leadTimeDays (ASC), then price (ASC)
+                                candidates.sort((a, b) => {
+                                    const leadA = a.leadTimeDays || 999;
+                                    const leadB = b.leadTimeDays || 999;
+                                    if (leadA !== leadB) return leadA - leadB;
+                                    return a.costPerUnit - b.costPerUnit;
+                                });
+                            } else {
+                                // Default: CHEAPEST
+                                candidates.sort((a, b) => a.costPerUnit - b.costPerUnit);
+                            }
+
+                            const best = candidates[0];
+                            selectedSupplierId = best.supplierId;
+                            selectedCost = best.costPerUnit;
                         }
 
                         needs.push({

@@ -14,6 +14,7 @@ import { createOutletSlice } from './slices/createOutletSlice';
 import { createNotificationSlice } from './slices/createNotificationSlice';
 import { createBreakfastSlice } from './slices/createBreakfastSlice';
 import { createAuthSlice } from './slices/createAuthSlice';
+import { createIntegrationSlice } from './slices/createIntegrationSlice';
 import type { AppState } from './types';
 
 // Re-export AppState for consumers
@@ -37,6 +38,7 @@ export const useStore = create<AppState>()(
             ...createNotificationSlice(...a),
             ...createBreakfastSlice(...a),
             ...createAuthSlice(...a),
+            ...createIntegrationSlice(...a),
 
             // UI State
             activeOutletId: null,

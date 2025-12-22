@@ -81,5 +81,20 @@ export const createBreakfastSlice: StateCreator<
         } catch (error) {
             console.error("Failed to fetch breakfast services", error);
         }
+    },
+
+    commitBreakfastConsumption: async (serviceId) => {
+        const state = get();
+        const service = state.breakfastServices.find(s => s.id === serviceId);
+        if (!service || service.isCommitted) return;
+
+        // 1. Deduct stock for each item in consumption
+        Object.entries(service.consumption).forEach(([ingredientId, quantity]) => {
+            state.consumeStock(ingredientId, quantity);
+        });
+
+        // 2. Mark as committed and persist
+        const updatedService = { ...service, isCommitted: true };
+        await get().updateBreakfastService(updatedService);
     }
 });

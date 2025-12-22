@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Check, X, Send, FileText, ShoppingCart } from 'lucide-react';
 import { pedidosService } from '../../services/pedidosService';
 import { aprobacionService } from '../../services/aprobacionService';
@@ -27,7 +27,7 @@ export const AprobacionPedido: React.FC<AprobacionPedidoProps> = ({ outletId }) 
     // Filter states
     const [filterStatus, setFilterStatus] = useState<string>('DRAFT');
 
-    const fetchOrders = async () => {
+    const fetchOrders = useCallback(async () => {
         setLoading(true);
         try {
             const allOrders = await pedidosService.getAll(outletId);
@@ -40,13 +40,13 @@ export const AprobacionPedido: React.FC<AprobacionPedidoProps> = ({ outletId }) 
         } finally {
             setLoading(false);
         }
-    };
+    }, [outletId, filterStatus]);
 
     useEffect(() => {
         if (outletId) {
             fetchOrders();
         }
-    }, [outletId, filterStatus]);
+    }, [outletId, filterStatus, fetchOrders]);
 
     const handleApprove = async (order: PurchaseOrder) => {
         if (!currentUser) return;
@@ -313,6 +313,39 @@ export const AprobacionPedido: React.FC<AprobacionPedidoProps> = ({ outletId }) 
                                         </table>
                                     </div>
                                 </div>
+
+                                {/* Audit History */}
+                                {selectedOrder.history && selectedOrder.history.length > 0 && (
+                                    <div className="space-y-4 pt-6 border-t border-white/5">
+                                        <h4 className="text-sm font-bold text-white uppercase tracking-widest flex items-center gap-2">
+                                            <div className="w-1 h-3 bg-indigo-500 rounded-full" />
+                                            Historial y Auditoría
+                                        </h4>
+                                        <div className="space-y-3">
+                                            {selectedOrder.history.map((entry, idx) => (
+                                                <div key={idx} className="flex gap-4 items-start p-3 bg-white/2 rounded-xl border border-white/5">
+                                                    <div className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${entry.status === 'APPROVED' ? 'bg-emerald-500' :
+                                                        entry.status === 'REJECTED' ? 'bg-rose-500' :
+                                                            entry.status === 'ORDERED' ? 'bg-blue-500' :
+                                                                'bg-slate-500'
+                                                        }`} />
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex justify-between items-center mb-1">
+                                                            <span className="text-xs font-bold text-white uppercase">{entry.status}</span>
+                                                            <span className="text-[10px] text-slate-500">{new Date(entry.date).toLocaleString()}</span>
+                                                        </div>
+                                                        <p className="text-xs text-slate-400">
+                                                            Por: <span className="text-indigo-400 font-medium">{entry.userId}</span>
+                                                        </p>
+                                                        {entry.notes && (
+                                                            <p className="mt-1 text-xs text-slate-500 italic">"{entry.notes}"</p>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     ) : (

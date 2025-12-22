@@ -37,7 +37,8 @@ const MenuView = React.lazy(() => import('./components/MenuView').then(m => ({ d
 const BreakfastView = React.lazy(() => import('./components/BreakfastView').then(m => ({ default: m.BreakfastView })));
 const StaffView = React.lazy(() => import('./components/StaffView').then(m => ({ default: m.StaffView })));
 const IntegrationsView = React.lazy(() => import('./components/IntegrationsView').then(m => ({ default: m.IntegrationsView })));
-const FichasTecnicasView = React.lazy(() => import('./components/FichasTecnicasView').then(m => ({ default: m.FichasTecnicasView })));
+const FichasTecnicasDashboard = React.lazy(() => import('./pages/FichasTecnicasDashboard').then(m => ({ default: m.FichasTecnicasDashboard })));
+const AnalisisRentabilidad = React.lazy(() => import('./pages/AnalisisRentabilidad').then(m => ({ default: m.AnalisisRentabilidad })));
 
 // Loading fallback component
 const LoadingFallback = () => (
@@ -223,7 +224,8 @@ function App() {
                 <Route path="/ai-menu" element={<AIMenuView />} />
                 <Route path="/ai-search" element={<AISearchView />} />
                 <Route path="/menus" element={<MenuView />} />
-                <Route path="/fichas-tecnicas" element={<FichasTecnicasView />} />
+                <Route path="/fichas-tecnicas" element={<FichasTecnicasDashboard />} />
+                <Route path="/analytics/fichas" element={<AnalisisRentabilidad />} />
                 <Route path="/breakfast" element={<BreakfastView />} />
                 <Route path="/integrations" element={<IntegrationsView />} />
                 {/* Fallback */}

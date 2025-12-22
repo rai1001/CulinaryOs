@@ -114,11 +114,12 @@ export const FichasTecnicasView: React.FC = () => {
                         <div key={ficha.id} className="bg-surface border border-white/5 rounded-2xl p-6 hover:border-white/20 transition-all group">
                             <div className="flex justify-between items-start mb-4">
                                 <div>
-                                    <span className={`text-[10px] uppercase tracking-widest font-bold px-2 py-0.5 rounded ${ficha.categoria === 'plato_principal' ? 'bg-orange-500/10 text-orange-400' :
+                                    <span className={`text-[10px] uppercase tracking-widest font-bold px-2 py-0.5 rounded ${ficha.categoria === 'comida' ? 'bg-orange-500/10 text-orange-400' :
                                             ficha.categoria === 'bebida' ? 'bg-blue-500/10 text-blue-400' :
-                                                'bg-purple-500/10 text-purple-400'
+                                                ficha.categoria === 'postre' ? 'bg-purple-500/10 text-purple-400' :
+                                                    'bg-slate-500/10 text-slate-400'
                                         }`}>
-                                        {ficha.categoria.replace('_', ' ')}
+                                        {ficha.categoria.replace('-', ' ')}
                                     </span>
                                     <h3 className="text-xl font-bold text-white mt-2 group-hover:text-primary transition-colors">{ficha.nombre}</h3>
                                 </div>

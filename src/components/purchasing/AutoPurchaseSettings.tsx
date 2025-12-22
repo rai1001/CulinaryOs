@@ -31,6 +31,7 @@ export const AutoPurchaseSettingsModal: React.FC<AutoPurchaseSettingsProps> = ({
         runDay: 1, // Monday
         runTime: '23:00',
         generateDraftsOnly: true,
+        supplierSelectionStrategy: 'CHEAPEST',
         outletId: activeOutletId || ''
     });
 
@@ -175,6 +176,37 @@ export const AutoPurchaseSettingsModal: React.FC<AutoPurchaseSettingsProps> = ({
                         <div className="flex items-center gap-2 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg text-xs text-blue-200">
                             <Clock size={14} />
                             <span>El sistema generará borradores automáticamente a esta hora.</span>
+                        </div>
+
+                        <div className="pt-4 border-t border-white/5">
+                            <label className="block text-sm font-medium text-slate-300 mb-2">Estrategia de Proveedor</label>
+                            <div className="grid grid-cols-2 gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setSettings(s => ({ ...s, supplierSelectionStrategy: 'CHEAPEST' }))}
+                                    className={`px-4 py-3 rounded-lg border text-xs font-medium transition-all text-center ${settings.supplierSelectionStrategy === 'CHEAPEST'
+                                        ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300'
+                                        : 'bg-white/5 border-transparent text-slate-400 hover:bg-white/10'
+                                        }`}
+                                >
+                                    El más Barato
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setSettings(s => ({ ...s, supplierSelectionStrategy: 'FASTEST' }))}
+                                    className={`px-4 py-3 rounded-lg border text-xs font-medium transition-all text-center ${settings.supplierSelectionStrategy === 'FASTEST'
+                                        ? 'bg-orange-500/20 border-orange-500 text-orange-300'
+                                        : 'bg-white/5 border-transparent text-slate-400 hover:bg-white/10'
+                                        }`}
+                                >
+                                    El más Rápido
+                                </button>
+                            </div>
+                            <p className="mt-2 text-[10px] text-slate-500 italic px-1">
+                                {settings.supplierSelectionStrategy === 'CHEAPEST'
+                                    ? 'Prioriza el precio más bajo entre todos los proveedores conocidos.'
+                                    : 'Prioriza el menor tiempo de entrega (Lead Time).'}
+                            </p>
                         </div>
                     </div>
                 </div>

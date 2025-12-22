@@ -1,139 +1,219 @@
-import type {
-    Event, Menu, Recipe, Ingredient,
-    MenuItemAnalytics, DishClassification
-} from '../types';
-
 /**
- * Helper function to classify dishes using Boston Matrix
+ * @file src/services/analyticsService.ts
+ * @description Service for analyzing Ficha Técnica profitability and calculating metrics.
  */
-function classifyDish(
-    popularityScore: number,
-    profitabilityScore: number
-): DishClassification {
-    // Thresholds: >50% for "high"
-    const POPULARITY_THRESHOLD = 0.15; // 15% of total orders
-    const PROFITABILITY_THRESHOLD = 0.40; // 40% profit margin
 
-    const isPopular = popularityScore >= POPULARITY_THRESHOLD;
-    const isProfitable = profitabilityScore >= PROFITABILITY_THRESHOLD;
+import type { FichaTecnica, Event, Menu, Recipe, Ingredient, MenuItemAnalytics, DishClassification } from '../types';
 
-    if (isPopular && isProfitable) return 'star';
-    if (isPopular && !isProfitable) return 'puzzle';
-    if (!isPopular && isProfitable) return 'cash-cow';
-    return 'dog';
+export interface Optimizacion {
+    tipo: 'ingrediente_caro' | 'margen_bajo' | 'porcion_grande' | 'desperdicio_alto';
+    descripcion: string;
+    impactoEstimado: number;
+    sugerencia: string;
+    prioridad: 'high' | 'medium' | 'low';
+}
+
+export interface AnalisisPlato {
+    fichaId: string;
+    nombre: string;
+    costoIngredientes: number;
+    costoPorcentajeIngredientes: number;
+    ingredienteMasCaro: {
+        nombre: string;
+        costo: number;
+        porcentaje: number;
+    };
+    costoPromedioCategoria: number;
+    posicionEnCategoria: number;
+    totalEnCategoria: number;
+    margen: number;
+    margenVsPromedio: number;
+    optimizaciones: Optimizacion[];
+}
+
+export interface GlobalMetrics {
+    totalFichas: number;
+    costoPromedio: number;
+    margenPromedio: number;
+    masRentable: FichaTecnica | null;
 }
 
 /**
- * Optimized calculation of menu analytics using Maps for O(1) lookups
+ * Calculates global metrics for a list of technical sheets.
  */
-export const calculateIngredientUsage = (
+export function calculateGlobalMetrics(fichas: FichaTecnica[]): GlobalMetrics {
+    if (fichas.length === 0) {
+        return { totalFichas: 0, costoPromedio: 0, margenPromedio: 0, masRentable: null };
+    }
+
+    const total = fichas.length;
+    const avgCost = fichas.reduce((acc, f) => acc + f.costos.porPorcion, 0) / total;
+    const avgMargin = fichas.reduce((acc, f) => acc + (f.pricing.margenBruto || 0), 0) / total;
+
+    const masRentable = [...fichas].sort((a, b) =>
+        (b.pricing.margenBruto || 0) - (a.pricing.margenBruto || 0)
+    )[0];
+
+    return {
+        totalFichas: total,
+        costoPromedio: avgCost,
+        margenPromedio: avgMargin,
+        masRentable
+    };
+}
+
+/**
+ * Detects potential optimizations for a given recipe.
+ */
+export function detectarOptimizaciones(
+    ficha: FichaTecnica,
+    fichasCategoria: FichaTecnica[]
+): Optimizacion[] {
+    const optimizaciones: Optimizacion[] = [];
+
+    // 1. Ingrediente muy caro (>60% of cost)
+    const ingredienteMasCaro = ficha.ingredientes.reduce((max, ing) =>
+        ing.costoTotal > max.costoTotal ? ing : max
+        , ficha.ingredientes[0]);
+
+    if (ingredienteMasCaro && (ingredienteMasCaro.costoTotal / ficha.costos.ingredientes > 0.6)) {
+        optimizaciones.push({
+            tipo: 'ingrediente_caro',
+            descripcion: `${ingredienteMasCaro.nombre} representa ${((ingredienteMasCaro.costoTotal / ficha.costos.ingredientes) * 100).toFixed(0)}% del costo total`,
+            impactoEstimado: ingredienteMasCaro.costoTotal * 0.2,
+            sugerencia: `Considera reducir la cantidad de ${ingredienteMasCaro.nombre} o buscar alternativa más económica`,
+            prioridad: 'high'
+        });
+    }
+
+    // 2. Margen bajo comparado con categoría
+    const margenPromedio = fichasCategoria.length > 0
+        ? fichasCategoria.reduce((acc, f) => acc + (f.pricing.margenBruto || 0), 0) / fichasCategoria.length
+        : 0;
+
+    if ((ficha.pricing.margenBruto || 0) < margenPromedio - 10) {
+        optimizaciones.push({
+            tipo: 'margen_bajo',
+            descripcion: `Margen ${ficha.pricing.margenBruto}% está ${(margenPromedio - (ficha.pricing.margenBruto || 0)).toFixed(0)}% por debajo del promedio de la categoría`,
+            impactoEstimado: (margenPromedio - (ficha.pricing.margenBruto || 0)) * (ficha.pricing.precioVentaSugerido || 0) / 100,
+            sugerencia: `Considera aumentar precio de venta o reducir costos`,
+            prioridad: 'medium'
+        });
+    }
+
+    return optimizaciones;
+}
+
+/**
+ * Detailed analytics for a single sheet.
+ */
+export function analizarFicha(
+    ficha: FichaTecnica,
+    fichasCategoria: FichaTecnica[]
+): AnalisisPlato {
+    const ingredienteMasCaro = ficha.ingredientes.reduce((max, ing) =>
+        ing.costoTotal > max.costoTotal ? ing : max
+        , ficha.ingredientes[0]);
+
+    const costoPromedioCategoria = fichasCategoria.length > 0
+        ? fichasCategoria.reduce((acc, f) => acc + f.costos.porPorcion, 0) / fichasCategoria.length
+        : 0;
+
+    const fichasOrdenadas = [...fichasCategoria].sort((a, b) => a.costos.porPorcion - b.costos.porPorcion);
+    const posicion = fichasOrdenadas.findIndex(f => f.id === ficha.id) + 1;
+
+    return {
+        fichaId: ficha.id,
+        nombre: ficha.nombre,
+        costoIngredientes: ficha.costos.ingredientes,
+        costoPorcentajeIngredientes: (ficha.costos.ingredientes / (ficha.costos.total || 1)) * 100,
+        ingredienteMasCaro: {
+            nombre: ingredienteMasCaro?.nombre || 'N/A',
+            costo: ingredienteMasCaro?.costoTotal || 0,
+            porcentaje: ingredienteMasCaro ? (ingredienteMasCaro.costoTotal / (ficha.costos.ingredientes || 1)) * 100 : 0
+        },
+        costoPromedioCategoria,
+        posicionEnCategoria: posicion,
+        totalEnCategoria: fichasCategoria.length,
+        margen: ficha.pricing.margenBruto || 0,
+        margenVsPromedio: (ficha.pricing.margenBruto || 0) - (fichasCategoria.reduce((acc, f) => acc + (f.pricing.margenBruto || 0), 0) / (fichasCategoria.length || 1)),
+        optimizaciones: detectarOptimizaciones(ficha, fichasCategoria)
+    };
+}
+
+/**
+ * Calculates menu engineering analytics based on events and dishes.
+ */
+export function calculateIngredientUsage(
     events: Event[],
     menus: Menu[],
     recipes: Recipe[],
-    ingredients: Ingredient[],
+    _ingredients: Ingredient[],
     startDate: string,
     endDate: string
-): MenuItemAnalytics[] => {
-    // 1. Pre-index data for O(1) access
-    const ingredientMap = new Map(ingredients.map(i => [i.id, i]));
-    const recipeMap = new Map(recipes.map(r => [r.id, r]));
-    const menuMap = new Map(menus.map(m => [m.id, m]));
+): MenuItemAnalytics[] {
+    const rangeEvents = events.filter(e => e.date >= startDate && e.date <= endDate);
+    const statsMap = new Map<string, { totalOrders: number; totalRevenue: number; totalProfit: number; lastOrdered: string }>();
 
-    // 2. Filter events
-    const start = new Date(startDate).getTime();
-    const end = new Date(endDate).getTime();
+    rangeEvents.forEach(event => {
+        const menu = menus.find(m => m.id === event.menuId);
+        if (!menu) return;
 
-    const filteredEvents = events.filter(event => {
-        const eventTime = new Date(event.date).getTime();
-        return eventTime >= start && eventTime <= end;
-    });
+        const recipesInMenu = recipes.filter(r => menu.recipeIds.includes(r.id));
+        const pricePerDish = (menu.sellPrice || 0) / (recipesInMenu.length || 1);
 
-    if (filteredEvents.length === 0) {
-        return [];
-    }
+        recipesInMenu.forEach(recipe => {
+            const current = statsMap.get(recipe.id) || { totalOrders: 0, totalRevenue: 0, totalProfit: 0, lastOrdered: event.date };
+            const costPerServing = recipe.totalCost || 0;
+            const profitPerServing = pricePerDish - costPerServing;
 
-    // 3. Calculate stats
-    const recipeStats = new Map<string, {
-        totalOrders: number;
-        totalRevenue: number;
-        totalCost: number;
-        lastOrdered: string;
-        recipeName: string;
-    }>();
-
-    filteredEvents.forEach(event => {
-        if (!event.menuId) return;
-
-        const menu = menuMap.get(event.menuId);
-        if (!menu || !menu.recipeIds || menu.recipeIds.length === 0) return;
-
-        // Revenue per serving (menu price divided by number of recipes in menu)
-        const revenuePerServing = (menu.sellPrice || 0) / menu.recipeIds.length;
-
-        menu.recipeIds.forEach(recipeId => {
-            const recipe = recipeMap.get(recipeId);
-            if (!recipe) return;
-
-            // Calculate recipe cost efficiently
-            let recipeCost = 0;
-            recipe.ingredients.forEach(ri => {
-                const ing = ingredientMap.get(ri.ingredientId);
-                if (ing) {
-                    const netQuantity = ri.quantity * ing.yield;
-                    recipeCost += netQuantity * ing.costPerUnit;
-                }
-            });
-
-            const existing = recipeStats.get(recipeId) || {
-                totalOrders: 0,
-                totalRevenue: 0,
-                totalCost: 0,
-                lastOrdered: event.date,
-                recipeName: recipe.name
-            };
-
-            recipeStats.set(recipeId, {
-                totalOrders: existing.totalOrders + event.pax,
-                totalRevenue: existing.totalRevenue + (revenuePerServing * event.pax),
-                totalCost: existing.totalCost + (recipeCost * event.pax),
-                lastOrdered: event.date > existing.lastOrdered ? event.date : existing.lastOrdered,
-                recipeName: recipe.name
+            statsMap.set(recipe.id, {
+                totalOrders: current.totalOrders + event.pax,
+                totalRevenue: current.totalRevenue + (pricePerDish * event.pax),
+                totalProfit: current.totalProfit + (profitPerServing * event.pax),
+                lastOrdered: event.date > current.lastOrdered ? event.date : current.lastOrdered
             });
         });
     });
 
-    // 4. Totals for scoring
-    let totalOrdersAll = 0;
-    for (const stat of recipeStats.values()) {
-        totalOrdersAll += stat.totalOrders;
-    }
+    const results: MenuItemAnalytics[] = Array.from(statsMap.entries()).map(([recipeId, stats]) => {
+        const recipe = recipes.find(r => r.id === recipeId);
+        const avgProfit = stats.totalOrders > 0 ? stats.totalProfit / stats.totalOrders : 0;
 
-    // 5. Transform to Analytics array
-    const analytics: MenuItemAnalytics[] = [];
-    for (const [recipeId, stats] of recipeStats.entries()) {
-        const totalProfit = stats.totalRevenue - stats.totalCost;
-        const avgProfitPerServing = stats.totalOrders > 0
-            ? totalProfit / stats.totalOrders
-            : 0;
-
-        const popularityScore = totalOrdersAll > 0 ? stats.totalOrders / totalOrdersAll : 0;
-        const profitabilityScore = stats.totalRevenue > 0
-            ? (totalProfit / stats.totalRevenue)
-            : 0;
-
-        analytics.push({
+        return {
             recipeId,
-            recipeName: stats.recipeName,
+            recipeName: recipe?.name || 'Receta Desconocida',
             totalRevenue: stats.totalRevenue,
             totalOrders: stats.totalOrders,
-            avgProfitPerServing,
-            totalProfit,
-            popularityScore,
-            profitabilityScore,
-            classification: classifyDish(popularityScore, profitabilityScore),
+            avgProfitPerServing: avgProfit,
+            totalProfit: stats.totalProfit,
+            popularityScore: 0, // Calculated below
+            profitabilityScore: 0, // Calculated below
+            classification: 'dog' as DishClassification, // Calculated below
             lastOrdered: stats.lastOrdered
-        });
-    }
+        };
+    });
 
-    return analytics.sort((a, b) => b.totalRevenue - a.totalRevenue);
-};
+    if (results.length === 0) return [];
+
+    // Calculate Scores and Classification
+    const maxOrders = Math.max(...results.map(r => r.totalOrders));
+    const avgProfit = results.reduce((acc, r) => acc + r.avgProfitPerServing, 0) / results.length;
+
+    return results.map(r => {
+        const popularity = r.totalOrders / (maxOrders || 1);
+        const profitability = r.avgProfitPerServing >= avgProfit ? 1 : 0.4; // Binary high/low for simplicity base
+
+        let classification: DishClassification = 'dog';
+        if (popularity >= 0.7 && profitability === 1) classification = 'star';
+        else if (popularity >= 0.7 && profitability < 1) classification = 'cash-cow';
+        else if (popularity < 0.7 && profitability === 1) classification = 'puzzle';
+
+        return {
+            ...r,
+            popularityScore: popularity,
+            profitabilityScore: profitability,
+            classification
+        };
+    });
+}

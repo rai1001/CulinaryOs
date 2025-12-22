@@ -1,6 +1,6 @@
 import type { Unit } from './inventory';
 
-export type PurchaseStatus = 'DRAFT' | 'APPROVED' | 'ORDERED' | 'RECEIVED' | 'PARTIAL' | 'CANCELLED';
+export type PurchaseStatus = 'DRAFT' | 'APPROVED' | 'ORDERED' | 'RECEIVED' | 'PARTIAL' | 'CANCELLED' | 'REJECTED';
 
 export interface PurchaseOrderItem {
     ingredientId: string;
@@ -12,6 +12,13 @@ export interface PurchaseOrderItem {
 }
 
 export type PurchaseOrderType = 'AUTOMATIC' | 'MANUAL';
+
+export interface PurchaseOrderHistoryEntry {
+    date: string;
+    status: PurchaseStatus;
+    userId: string;
+    notes?: string;
+}
 
 export interface PurchaseOrder {
     id: string;
@@ -36,6 +43,7 @@ export interface PurchaseOrder {
     sentAt?: string;
     deliveryNotes?: string;
     actualDeliveryDate?: string;
+    history?: PurchaseOrderHistoryEntry[];
 }
 
 export interface PurchaseOrderFilters {
@@ -43,11 +51,14 @@ export interface PurchaseOrderFilters {
     supplierId?: string | null; // null means "SIN_ASIGNAR"
 }
 
+export type SupplierSelectionStrategy = 'CHEAPEST' | 'FASTEST';
+
 export interface AutoPurchaseSettings {
     enabled: boolean;
     runFrequency: 'DAILY' | 'WEEKLY';
     runDay?: number; // 0-6
     runTime?: string; // "23:00"
     generateDraftsOnly: boolean; // If true, creates DRAFT. If false, could auto-send (future)
+    supplierSelectionStrategy: SupplierSelectionStrategy;
     outletId?: string;
 }

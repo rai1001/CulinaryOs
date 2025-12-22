@@ -8,8 +8,10 @@ import { Save, FileText, ChevronLeft, ChevronRight, Check, Trash2, Plus } from '
 import { useFichaTecnicaForm } from '../../hooks/useFichaTecnicaForm';
 import { IngredientesSelector } from './IngredientesSelector';
 import { CostosPreview } from './CostosPreview';
+import { HistorialVersiones } from './HistorialVersiones';
+import { ComparadorVersiones } from './ComparadorVersiones';
 import { generarPDFFicha } from '../../services/pdfService';
-import type { FichaTecnica } from '../../types';
+import type { FichaTecnica, VersionFicha } from '../../types';
 
 interface Props {
     initialData?: Partial<FichaTecnica>;
@@ -18,7 +20,7 @@ interface Props {
     onSaved: () => void;
 }
 
-type TabType = 'general' | 'ingredientes' | 'pasos' | 'analisis';
+type TabType = 'general' | 'ingredientes' | 'pasos' | 'analisis' | 'historial';
 
 export const FichaTecnicaForm: React.FC<Props> = ({
     initialData,
@@ -41,6 +43,7 @@ export const FichaTecnicaForm: React.FC<Props> = ({
 
     const [activeTab, setActiveTab] = useState<TabType>('general');
     const [newStep, setNewStep] = useState('');
+    const [selectedVersion, setSelectedVersion] = useState<VersionFicha | null>(null);
 
     const handleSave = async () => {
         const success = await save();
@@ -53,7 +56,8 @@ export const FichaTecnicaForm: React.FC<Props> = ({
         { id: 'general', label: '1. General' },
         { id: 'ingredientes', label: '2. Ingredientes' },
         { id: 'pasos', label: '3. Preparación' },
-        { id: 'analisis', label: '4. Análisis' }
+        { id: 'analisis', label: '4. Análisis' },
+        ...(initialData?.id ? [{ id: 'historial', label: 'Historial' }] : [])
     ];
 
     return (
@@ -222,7 +226,28 @@ export const FichaTecnicaForm: React.FC<Props> = ({
                         </div>
                     </div>
                 )}
+
+                {activeTab === 'historial' && initialData?.id && (
+                    <HistorialVersiones
+                        fichaId={initialData.id}
+                        currentFicha={{ ...formData, id: initialData.id } as FichaTecnica}
+                        onSelectVersion={setSelectedVersion}
+                    />
+                )}
             </div>
+
+            {/* Comparison Modal Overlay */}
+            {selectedVersion && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-8 bg-black/90 backdrop-blur-xl">
+                    <div className="w-full max-w-4xl" onClick={e => e.stopPropagation()}>
+                        <ComparadorVersiones
+                            v1={selectedVersion.snapshot}
+                            v2={{ ...formData, id: initialData?.id } as FichaTecnica}
+                            onClose={() => setSelectedVersion(null)}
+                        />
+                    </div>
+                </div>
+            )}
 
             {/* Footer Navigation */}
             <footer className="px-6 py-4 bg-surface border-t border-white/10 flex justify-between">
@@ -233,7 +258,7 @@ export const FichaTecnicaForm: React.FC<Props> = ({
                 >
                     <ChevronLeft className="w-4 h-4" /> Anterior
                 </button>
-                {activeTab !== 'analisis' ? (
+                {activeTab !== 'analisis' && activeTab !== 'historial' ? (
                     <button
                         onClick={() => setActiveTab(TABS[TABS.findIndex(t => t.id === activeTab) + 1].id as TabType)}
                         className="flex items-center gap-2 text-sm text-primary hover:text-blue-400 font-medium transition-colors"
@@ -242,7 +267,7 @@ export const FichaTecnicaForm: React.FC<Props> = ({
                     </button>
                 ) : (
                     <span className="text-sm text-green-500 flex items-center gap-2 font-medium">
-                        <Check className="w-4 h-4" /> Análisis Completo
+                        <Check className="w-4 h-4" /> Sección Finalizada
                     </span>
                 )}
             </footer>

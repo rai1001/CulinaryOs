@@ -2,7 +2,7 @@ import type {
     Ingredient, IngredientBatch, Event, Employee, DailySchedule,
     Recipe, Menu, Supplier, PurchaseOrder, WasteRecord,
     PCC, HACCPLog, HACCPTask, HACCPTaskCompletion, MenuItemAnalytics,
-    KanbanTask, KanbanTaskStatus, BreakfastService, OccupancyData
+    KanbanTask, KanbanTaskStatus, BreakfastService, OccupancyData, Integration
 } from '../types';
 import type { NotificationSlice } from './slices/createNotificationSlice';
 
@@ -12,6 +12,7 @@ export interface BreakfastSlice {
     updateBreakfastService: (service: BreakfastService) => Promise<void>;
     importOccupancy: (data: OccupancyData[]) => Promise<void>;
     fetchBreakfastServices: () => Promise<void>;
+    commitBreakfastConsumption: (serviceId: string) => Promise<void>;
 }
 
 export interface IngredientSlice {
@@ -141,6 +142,13 @@ export interface AnalyticsSlice {
     calculateMenuAnalytics: (startDate: string, endDate: string) => MenuItemAnalytics[];
 }
 
+export interface IntegrationSlice {
+    integrations: Integration[];
+    setIntegrations: (integrations: Integration[]) => void;
+    connectIntegration: (id: string) => Promise<void>;
+    disconnectIntegration: (id: string) => Promise<void>;
+}
+
 export interface OutletSlice {
     outlets: import('../types').Outlet[];
     activeOutletId: string | null;
@@ -171,6 +179,7 @@ export interface AppState extends
     OutletSlice,
     BreakfastSlice,
     NotificationSlice,
+    IntegrationSlice,
     AuthSlice {
     // activeOutletId is inherited from OutletSlice
     setActiveOutletId: (id: string | null) => void;

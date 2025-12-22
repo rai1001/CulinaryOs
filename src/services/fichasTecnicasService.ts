@@ -11,7 +11,10 @@ import type {
     FichaTecnica,
     CreateFichaDTO,
     UpdateFichaDTO,
-    VersionFicha
+    VersionFicha,
+    Recipe,
+    Ingredient,
+    IngredienteFicha
 } from '../types';
 import { where, orderBy } from 'firebase/firestore';
 
@@ -52,6 +55,15 @@ export async function crearFichaTecnica(
  * Gets the active version of a Ficha Técnica.
  */
 export async function obtenerFichaTecnica(id: string): Promise<FichaTecnica | null> {
+    // E2E Mock Bypass
+    const mockDB = localStorage.getItem('E2E_MOCK_DB');
+    if (mockDB) {
+        try {
+            const db = JSON.parse(mockDB);
+            return db.fichasTecnicas?.find((f: any) => f.id === id) || null;
+        } catch (e) { console.error(e); }
+    }
+
     const ficha = await firestoreService.getById<FichaTecnica>(COLLECTIONS.FICHAS_TECNICAS, id);
     return ficha || null;
 }
@@ -112,6 +124,17 @@ export async function actualizarFichaTecnica(
  * Lists Fichas Técnicas for an outlet.
  */
 export async function listarFichas(outletId: string): Promise<FichaTecnica[]> {
+    // E2E Mock Bypass
+    const mockDBStr = localStorage.getItem('E2E_MOCK_DB');
+    if (mockDBStr) {
+        try {
+            const db = JSON.parse(mockDBStr);
+            return (db.fichasTecnicas || []).filter((f: any) => f.outletId === outletId && f.activa !== false);
+        } catch (e) {
+            console.error("E2E Mock Read Error", e);
+        }
+    }
+
     return firestoreService.query<FichaTecnica>(
         collections.fichasTecnicas as any,
         where('outletId', '==', outletId),
@@ -144,4 +167,80 @@ export async function duplicarFicha(
         nombre: nuevoNombre,
         notas: `Duplicado de: ${original.nombre}`
     } as any, userId);
+}
+
+/**
+ * Converts a regular Recipe into a Ficha Técnica.
+ */
+export async function convertirRecetaAFicha(recipeId: string, outletId: string, userId: string): Promise<string> {
+    const recipe = await firestoreService.getById<Recipe>(COLLECTIONS.RECIPES, recipeId);
+    if (!recipe) throw new Error('Receta no encontrada');
+
+    // Fetch ingredients to get current costs
+    const inventory = await firestoreService.getAll<Ingredient>(collections.ingredients as any);
+    const ingredientMap = new Map<string, Ingredient>(inventory.map(i => [i.id, i]));
+
+    const ingredientesFicha: IngredienteFicha[] = recipe.ingredients.map(ri => {
+        const inv = ingredientMap.get(ri.ingredientId);
+        const costoUnitario = inv?.costPerUnit || 0;
+        return {
+            ingredienteId: ri.ingredientId,
+            nombre: inv?.name || 'Ingrediente Desconocido',
+            cantidad: ri.quantity,
+            unidad: (inv?.unit || 'u') as any,
+            costoUnitario,
+            costoTotal: ri.quantity * costoUnitario,
+            esOpcional: false
+        };
+    });
+
+    const costoTotal = ingredientesFicha.reduce((acc, i) => acc + i.costoTotal, 0);
+    const yieldPax = recipe.yieldPax || 1;
+
+    const dto: CreateFichaDTO = {
+        nombre: recipe.name,
+        categoria: 'comida',
+        descripcion: `Ficha técnica generada automáticamente desde la receta: ${recipe.name}`,
+        porciones: yieldPax,
+        ingredientes: ingredientesFicha,
+        pasos: [],
+        tiempoPreparacion: 30,
+        tiempoCoccion: 0,
+        dificultad: 'media',
+        costos: {
+            ingredientes: costoTotal,
+            total: costoTotal,
+            porPorcion: costoTotal / yieldPax
+        },
+        pricing: {
+            precioVentaSugerido: (costoTotal / yieldPax) * 3,
+            margenBruto: 66,
+            margenObjetivo: 70
+        },
+        creadoPor: userId,
+        outletId,
+        notas: `Diferencial de costo respecto a receta base: 0`
+    };
+
+    const fichaId = await crearFichaTecnica(dto as any, userId);
+    return typeof fichaId === 'string' ? fichaId : (fichaId as any).id;
+}
+
+/**
+ * Lists all versions (snapshots) for a specific Ficha Técnica.
+ */
+export async function listarVersionesFicha(fichaId: string): Promise<VersionFicha[]> {
+    return firestoreService.query<VersionFicha>(
+        collections.versionesFichas as any,
+        where('fichaId', '==', fichaId),
+        orderBy('version', 'desc')
+    );
+}
+
+/**
+ * Gets a specific version snapshot.
+ */
+export async function obtenerVersionSnapshot(versionId: string): Promise<VersionFicha | null> {
+    const version = await firestoreService.getById<VersionFicha>(COLLECTIONS.VERSIONES_FICHAS, versionId);
+    return version || null;
 }

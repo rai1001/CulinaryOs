@@ -1,7 +1,7 @@
 import React, { useMemo, useCallback, useState } from 'react';
 import type { Recipe, Ingredient } from '../../types';
 import { useStore } from '../../store/useStore';
-import { Printer, Edit2, Trash2, ChevronDown, ChevronUp, Scale } from 'lucide-react';
+import { Printer, Edit2, Trash2, ChevronDown, ChevronUp, Scale, TrendingUp } from 'lucide-react';
 import { printLabel, formatLabelData } from '../printing/PrintService';
 import { aggregateAllergens } from '../../utils/allergenUtils';
 
@@ -9,11 +9,12 @@ interface RecipeListProps {
     recipes: Recipe[];
     onEdit: (recipe: Recipe) => void;
     onDelete: (id: string) => void;
+    onConvertToFicha: (recipeId: string) => void;
     sortConfig: { key: string; direction: 'asc' | 'desc' };
     onSort: (key: string) => void;
 }
 
-export const RecipeList: React.FC<RecipeListProps> = React.memo(({ recipes, onEdit, onDelete, sortConfig, onSort }) => {
+export const RecipeList: React.FC<RecipeListProps> = React.memo(({ recipes, onEdit, onDelete, onConvertToFicha, sortConfig, onSort }) => {
     const { ingredients } = useStore();
     const [expandedRecipeId, setExpandedRecipeId] = useState<string | null>(null);
     const [scalePax, setScalePax] = useState<number>(1);
@@ -148,6 +149,13 @@ export const RecipeList: React.FC<RecipeListProps> = React.memo(({ recipes, onEd
                                                 title="Imprimir Etiqueta"
                                             >
                                                 <Printer size={18} />
+                                            </button>
+                                            <button
+                                                onClick={() => onConvertToFicha(recipe.id)}
+                                                className="p-2 hover:bg-green-500/20 rounded-lg text-slate-400 hover:text-green-400 transition-colors"
+                                                title="Análisis Pro (Ficha Técnica)"
+                                            >
+                                                <TrendingUp size={18} />
                                             </button>
                                             <button
                                                 onClick={() => onDelete(recipe.id)}
