@@ -78,19 +78,6 @@ export const pedidosService = {
     },
 
     getAll: async (outletId: string): Promise<PurchaseOrder[]> => {
-        // ... (mock bypass) ...
-        // E2E Mock Bypass
-        const mockDB = localStorage.getItem('E2E_MOCK_DB');
-        if (mockDB) {
-            try {
-                const db = JSON.parse(mockDB);
-                const orders = (db.purchaseOrders || []).filter((o: PurchaseOrder) => o.outletId === outletId);
-                return orders;
-            } catch (e) {
-                console.error("E2E Mock Read Error", e);
-            }
-        }
-
         return firestoreService.query<PurchaseOrder>(
             collection(db, COLLECTIONS.PURCHASE_ORDERS) as CollectionReference<PurchaseOrder>,
             where('outletId', '==', outletId)
@@ -98,19 +85,6 @@ export const pedidosService = {
     },
 
     getOrdersByStatus: async (outletId: string, statuses: PurchaseStatus[]): Promise<PurchaseOrder[]> => {
-        // E2E Mock Bypass
-        const mockDB = localStorage.getItem('E2E_MOCK_DB');
-        if (mockDB) {
-            try {
-                const db = JSON.parse(mockDB);
-                return (db.purchaseOrders || []).filter((o: PurchaseOrder) =>
-                    o.outletId === outletId && statuses.includes(o.status)
-                );
-            } catch (e) {
-                console.error("E2E Mock Read Error", e);
-            }
-        }
-
         return firestoreService.query<PurchaseOrder>(
             collection(db, COLLECTIONS.PURCHASE_ORDERS) as CollectionReference<PurchaseOrder>,
             where('outletId', '==', outletId),
@@ -119,36 +93,6 @@ export const pedidosService = {
     },
 
     updateStatus: async (orderId: string, status: PurchaseStatus, userId?: string, extraData?: Partial<PurchaseOrder>) => {
-        // E2E Mock Bypass
-        const mockDBStr = localStorage.getItem('E2E_MOCK_DB');
-        if (mockDBStr) {
-            const db = JSON.parse(mockDBStr);
-            const orders = (db.purchaseOrders || []) as PurchaseOrder[];
-            const idx = orders.findIndex(o => o.id === orderId);
-            if (idx >= 0) {
-                // History tracking for mock
-                const historyEntry = {
-                    date: new Date().toISOString(),
-                    status,
-                    userId: userId || 'system',
-                    notes: extraData?.notes || ''
-                };
-                // Update Status
-                orders[idx].status = status;
-                // Merge extra data
-                if (extraData) {
-                    Object.assign(orders[idx], extraData);
-                }
-
-                orders[idx].history = [...(orders[idx].history || []), historyEntry];
-
-                db.purchaseOrders = orders;
-                localStorage.setItem('E2E_MOCK_DB', JSON.stringify(db));
-                console.log(`[E2E] Order ${orderId} updated to ${status}`);
-                return;
-            }
-        }
-
         const updateData: UpdateData<PurchaseOrder> = {
             ...extraData,
             status,

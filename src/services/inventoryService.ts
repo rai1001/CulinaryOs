@@ -8,13 +8,14 @@ import { COLLECTIONS } from '../firebase/collections';
  * Consume stock using FIFO (First In, First Out) method based on expiry dates
  * @param batches - Current ingredient batches
  * @param quantity - Quantity to consume
- * @returns Updated batches after consumption
+ * @returns Object containing updated batches and total consumed amount
  */
 export const consumeStockFIFO = (
     batches: IngredientBatch[],
     quantity: number
-): IngredientBatch[] => {
+): { newBatches: IngredientBatch[]; consumed: number } => {
     let remainingQtyToConsume = quantity;
+    let totalConsumed = 0;
 
     // Sort batches by expiry date ASC (FIFO - consume oldest first)
     const sortedBatches = [...batches].sort((a, b) =>
@@ -32,18 +33,22 @@ export const consumeStockFIFO = (
 
         if (batch.currentQuantity > remainingQtyToConsume) {
             // Partial consumption of this batch
+            const consumedFromBatch = remainingQtyToConsume;
             newBatches.push({
                 ...batch,
-                currentQuantity: batch.currentQuantity - remainingQtyToConsume
+                currentQuantity: batch.currentQuantity - consumedFromBatch
             });
+            totalConsumed += consumedFromBatch;
             remainingQtyToConsume = 0;
         } else {
             // Fully consume this batch (don't push to newBatches)
-            remainingQtyToConsume -= batch.currentQuantity;
+            const consumedFromBatch = batch.currentQuantity;
+            totalConsumed += consumedFromBatch;
+            remainingQtyToConsume -= consumedFromBatch;
         }
     }
 
-    return newBatches;
+    return { newBatches, consumed: totalConsumed };
 };
 
 /**
@@ -63,6 +68,29 @@ export const createDefaultBatch = (ingredient: Ingredient): IngredientBatch => {
         receivedAt: new Date().toISOString(),
         costPerUnit: ingredient.costPerUnit,
         outletId: ingredient.outletId || 'unknown',
+        status: 'ACTIVE'
+    };
+};
+
+/**
+ * Use createDefaultBatch instead (Alias for compatibility if needed)
+ */
+export const createMigrationBatch = (
+    ingredientId: string,
+    currentStock: number,
+    costPerUnit: number
+): IngredientBatch => {
+    return {
+        id: crypto.randomUUID(),
+        ingredientId,
+        initialQuantity: currentStock,
+        currentQuantity: currentStock,
+        unit: 'un',
+        batchNumber: `LOT-MIG-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}`,
+        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        receivedAt: new Date().toISOString(),
+        costPerUnit: costPerUnit,
+        outletId: 'unknown',
         status: 'ACTIVE'
     };
 };
@@ -117,9 +145,6 @@ export const getBatchesExpiringSoon = (
     );
 };
 
-// Imports needed for deduction logic
-// Imports needed for deduction logic (Moved to top)
-
 /**
  * Deducts stock for a completed event based on its menu and PAX.
  * @param eventId - ID of the event
@@ -135,7 +160,6 @@ export const deductStockForEvent = async (eventId: string, _userId?: string): Pr
     if (!menu || !menu.recipeIds || menu.recipeIds.length === 0) return;
 
     // 3. Fetch Recipes
-    // Optimization: potentially fetch all recipes in one go if "in" query supported or fetch parallel
     const recipes: Recipe[] = [];
     for (const recipeId of menu.recipeIds) {
         const recipe = await firestoreService.getById<Recipe>(COLLECTIONS.RECIPES, recipeId);
@@ -169,11 +193,10 @@ export const deductStockForEvent = async (eventId: string, _userId?: string): Pr
         const batches = ingWithBatches.batches || [];
 
         // Consume
-        const newBatches = consumeStockFIFO(batches, qtyNeeded);
+        const { newBatches } = consumeStockFIFO(batches, qtyNeeded);
         const newStock = calculateTotalStock(newBatches);
 
         // Update Ingredient
-        // We only update batches and stock. (Cost might change if we tracked FIFO cost, but keeping simple for now)
         await firestoreService.update(COLLECTIONS.INGREDIENTS, ingId, {
             batches: newBatches,
             stock: newStock

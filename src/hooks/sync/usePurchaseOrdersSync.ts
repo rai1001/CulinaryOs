@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { onSnapshot, query, where } from 'firebase/firestore';
+import { onSnapshot, query, where, orderBy } from 'firebase/firestore';
 import { collections } from '../../firebase/collections';
 import { useStore } from '../../store/useStore';
 import type { PurchaseOrder } from '../../types';
@@ -15,9 +15,16 @@ export const usePurchaseOrdersSync = () => {
             return;
         }
 
+        // Optimization: Only sync orders from the last 30 days
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        const dateLimit = thirtyDaysAgo.toISOString();
+
         const q = query(
             collections.purchaseOrders,
-            where('outletId', '==', activeOutletId)
+            where('outletId', '==', activeOutletId),
+            where('date', '>=', dateLimit),
+            orderBy('date', 'desc')
         );
 
         const unsubscribe = onSnapshot(q, (snapshot) => {

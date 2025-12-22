@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { onSnapshot, query, where } from 'firebase/firestore';
+import { onSnapshot, query, where, orderBy, Timestamp } from 'firebase/firestore';
 import { collections } from '../../firebase/collections';
 import { useStore } from '../../store/useStore';
 import type { KanbanTask } from '../../types';
@@ -17,9 +17,25 @@ export const useProductionSync = () => {
         }
 
         setLoading(true);
+
+        // Optimization: Only fetch tasks updated in the last 7 days or incomplete
+        // Ideally, we would split active vs archived.
+        // For now, we filter by 'date' (assuming task has a date field relating to production date)
+        // or we can fetch everything but verify if we need a limit.
+        // Let's implement a "Recent & Active" strategy:
+        // Tasks that are NOT 'COMPLETED' OR Tasks that were completed recently.
+        // Firestore OR queries are limited.
+        // Strategy: Query items for this outlet where 'date' >= 7 days ago.
+
+        const daysAgo = new Date();
+        daysAgo.setDate(daysAgo.getDate() - 7);
+        const dateStr = daysAgo.toISOString(); // Assuming 'date' stored as ISO string in tasks
+
         const q = query(
             collections.productionTasks,
-            where('outletId', '==', activeOutletId)
+            where('outletId', '==', activeOutletId),
+            where('date', '>=', dateStr),
+            orderBy('date', 'asc')
         );
 
         const unsubscribe = onSnapshot(q, (snapshot) => {
