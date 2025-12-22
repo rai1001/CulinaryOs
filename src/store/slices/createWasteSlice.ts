@@ -1,6 +1,6 @@
 import type { StateCreator } from 'zustand';
 import type { WasteRecord, Ingredient } from '../../types';
-import { consumeStockFIFO, createMigrationBatch } from '../../utils/inventory';
+import { consumeStockFIFO, createMigrationBatch } from '../../services/inventoryService';
 import type { AppState, WasteSlice } from '../types';
 
 export const createWasteSlice: StateCreator<

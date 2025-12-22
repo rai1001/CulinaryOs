@@ -13,6 +13,8 @@ import type {
     Ingredient,
     Unit
 } from '../types';
+import { where, documentId } from 'firebase/firestore';
+import { collections } from '../firebase/collections';
 
 export type EstrategiaCosto = 'ultima_compra' | 'costo_actual' | 'costo_estandar';
 
@@ -46,30 +48,64 @@ export async function calcularCostosFicha(
 ): Promise<FichaTecnica['costos']> {
     let costoIngredientes = 0;
 
-    if (data.ingredientes) {
-        for (const item of data.ingredientes) {
-            try {
-                const info = await obtenerCostoIndividual(item.ingredienteId);
+    if (data.ingredientes && data.ingredientes.length > 0) {
+        // Collect IDs to fetch in batch (optimize N+1)
+        const ingredientIds = [...new Set(data.ingredientes.map(i => i.ingredienteId))];
+        const ingredientsMap = new Map<string, Ingredient>();
 
-                // Convert recipe unit to inventory unit if they differ
-                const cantidadEnUnidadBase = convertUnit(item.cantidad, item.unidad, info.unidad);
+        // Firestore 'in' limit is 10. Split into chunks if necessary.
+        const chunks = [];
+        for (let i = 0; i < ingredientIds.length; i += 10) {
+            chunks.push(ingredientIds.slice(i, i + 10));
+        }
+
+        for (const chunk of chunks) {
+            try {
+                // If using 'documentId()', ensure we cast it correctly if needed by the query helper
+                // Assuming firestoreService.query handles this, or we use raw query
+                const results = await firestoreService.query<Ingredient>(
+                    collections.ingredients as any,
+                    where(documentId(), 'in', chunk)
+                );
+                results.forEach(ing => ingredientsMap.set(ing.id, ing));
+            } catch (e) {
+                console.error("Error batch fetching ingredients:", e);
+                // Fallback: try fetching individually if batch fails? Or just continue.
+            }
+        }
+
+        // If map is empty (maybe 'in' query failed or mocked environment), try falling back to individual get for tests/mocks
+        if (ingredientsMap.size === 0 && ingredientIds.length > 0) {
+             for (const id of ingredientIds) {
+                 try {
+                     const ing = await firestoreService.getById<Ingredient>(COLLECTIONS.INGREDIENTS, id);
+                     if (ing) ingredientsMap.set(id, ing);
+                 } catch (e) {}
+             }
+        }
+
+        for (const item of data.ingredientes) {
+            const ingredient = ingredientsMap.get(item.ingredienteId);
+
+            if (ingredient) {
+                 // Convert recipe unit to inventory unit if they differ
+                const cantidadEnUnidadBase = convertUnit(item.cantidad, item.unidad, ingredient.unit);
 
                 // Calculate cost accounting for yield
                 const costoItem = calcularCostoIngrediente(
                     cantidadEnUnidadBase,
-                    info.costo,
-                    info.yield
+                    ingredient.costPerUnit || 0,
+                    ingredient.yield || 1
                 );
 
                 // Update item with denormalized cost info for history/UI
-                item.costoUnitario = info.costo;
+                item.costoUnitario = ingredient.costPerUnit || 0;
                 item.costoTotal = Number(costoItem.toFixed(4));
-                item.nombre = info.nombre; // Ensure name is up to date
+                item.nombre = ingredient.name;
 
                 costoIngredientes += costoItem;
-            } catch (error) {
-                console.error(`Error calculating cost for ingredient ${item.ingredienteId}:`, error);
-                // We continue with other ingredients but maybe mark as error?
+            } else {
+                 console.warn(`Ingredient ${item.ingredienteId} not found during cost calculation`);
             }
         }
     }
