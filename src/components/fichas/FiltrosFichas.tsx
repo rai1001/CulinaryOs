@@ -48,40 +48,53 @@ export const FiltrosFichas: React.FC<FiltrosFichasProps> = ({ filters, onChange,
         <div className="mt-4">
             <button
                 onClick={onToggle}
-                className="flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-blue-600 transition-colors"
+                className={`flex items-center gap-2 text-sm font-medium transition-all px-3 py-2 rounded-lg border ${isOpen
+                    ? 'text-primary bg-primary/10 border-primary/20'
+                    : 'text-slate-400 hover:text-slate-200 bg-white/5 border-white/5 hover:border-white/10'
+                    }`}
             >
                 <SlidersHorizontal className="w-4 h-4" />
                 {isOpen ? 'Ocultar Filtros' : 'Filtros Avanzados'}
                 {(filters.categoria.length > 0 || filters.dificultad.length > 0) && (
-                    <span className="bg-blue-100 text-blue-600 text-xs px-2 py-0.5 rounded-full">
-                        Activos
+                    <span className="bg-primary text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold ml-1">
+                        {filters.categoria.length + filters.dificultad.length}
                     </span>
                 )}
             </button>
 
             {isOpen && (
-                <div className="mt-4 p-4 bg-gray-50 border border-gray-200 rounded-lg animate-fade-in-down">
-                    <div className="flex justify-between items-start mb-4">
-                        <h4 className="text-sm font-bold text-gray-800 uppercase tracking-wider">Configurar Filtros</h4>
-                        <button onClick={clearFilters} className="text-xs text-red-500 hover:text-red-700 flex items-center gap-1">
-                            <X className="w-3 h-3" /> Limpiar Todo
+                <div className="mt-4 p-6 bg-background/50 border border-white/5 rounded-xl animate-fade-in-down backdrop-blur-sm">
+                    <div className="flex justify-between items-center mb-6">
+                        <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                            <Filter className="w-3.5 h-3.5" />
+                            Configuración de Filtros
+                        </h4>
+                        <button
+                            onClick={clearFilters}
+                            className="text-xs text-rose-400 hover:text-rose-300 flex items-center gap-1.5 px-2 py-1 hover:bg-rose-500/10 rounded-md transition-all"
+                        >
+                            <X className="w-3.5 h-3.5" /> Limpiar Todo
                         </button>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
                         {/* Categorías */}
                         <div>
-                            <label className="text-xs font-semibold text-gray-500 mb-2 block">Categoría</label>
-                            <div className="space-y-2">
+                            <label className="text-[10px] font-bold text-slate-600 uppercase mb-3 block tracking-wider">Categoría</label>
+                            <div className="space-y-2.5">
                                 {['comida', 'bebida', 'postre', 'ingrediente-preparado'].map((cat) => (
-                                    <label key={cat} className="flex items-center gap-2 cursor-pointer">
-                                        <input
-                                            type="checkbox"
-                                            checked={filters.categoria.includes(cat as FichaCategoria)}
-                                            onChange={() => toggleCategoria(cat as FichaCategoria)}
-                                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                        />
-                                        <span className="text-sm text-gray-700 capitalize">{cat.replace('-', ' ')}</span>
+                                    <label key={cat} className="flex items-center gap-3 cursor-pointer group">
+                                        <div className="relative flex items-center">
+                                            <input
+                                                type="checkbox"
+                                                checked={filters.categoria.includes(cat as FichaCategoria)}
+                                                onChange={() => toggleCategoria(cat as FichaCategoria)}
+                                                className="peer h-4 w-4 rounded border-white/10 bg-white/5 text-primary focus:ring-primary focus:ring-offset-background"
+                                            />
+                                        </div>
+                                        <span className="text-sm text-slate-400 capitalize group-hover:text-slate-200 transition-colors">
+                                            {cat.replace('-', ' ')}
+                                        </span>
                                     </label>
                                 ))}
                             </div>
@@ -89,17 +102,17 @@ export const FiltrosFichas: React.FC<FiltrosFichasProps> = ({ filters, onChange,
 
                         {/* Dificultad */}
                         <div>
-                            <label className="text-xs font-semibold text-gray-500 mb-2 block">Dificultad</label>
-                            <div className="space-y-2">
+                            <label className="text-[10px] font-bold text-slate-600 uppercase mb-3 block tracking-wider">Dificultad</label>
+                            <div className="space-y-2.5">
                                 {['baja', 'media', 'alta'].map((dif) => (
-                                    <label key={dif} className="flex items-center gap-2 cursor-pointer">
+                                    <label key={dif} className="flex items-center gap-3 cursor-pointer group">
                                         <input
                                             type="checkbox"
                                             checked={filters.dificultad.includes(dif as FichaDificultad)}
                                             onChange={() => toggleDificultad(dif as FichaDificultad)}
-                                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                            className="h-4 w-4 rounded border-white/10 bg-white/5 text-primary focus:ring-primary focus:ring-offset-background"
                                         />
-                                        <span className="text-sm text-gray-700 capitalize">{dif}</span>
+                                        <span className="text-sm text-slate-400 capitalize group-hover:text-slate-200 transition-colors">{dif}</span>
                                     </label>
                                 ))}
                             </div>
@@ -107,21 +120,21 @@ export const FiltrosFichas: React.FC<FiltrosFichasProps> = ({ filters, onChange,
 
                         {/* Estado */}
                         <div>
-                            <label className="text-xs font-semibold text-gray-500 mb-2 block">Estado</label>
-                            <div className="space-y-2">
-                                <label className="flex items-center gap-2 cursor-pointer">
+                            <label className="text-[10px] font-bold text-slate-600 uppercase mb-3 block tracking-wider">Estado</label>
+                            <div className="space-y-2.5">
+                                <label className="flex items-center gap-3 cursor-pointer group">
                                     <input
                                         type="checkbox"
                                         checked={filters.soloActivas}
                                         onChange={(e) => onChange({ ...filters, soloActivas: e.target.checked })}
-                                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                        className="h-4 w-4 rounded border-white/10 bg-white/5 text-primary focus:ring-primary focus:ring-offset-background"
                                     />
-                                    <span className="text-sm text-gray-700">Solo Fichas Activas</span>
+                                    <span className="text-sm text-slate-400 group-hover:text-slate-200 transition-colors">Solo Fichas Activas</span>
                                 </label>
                             </div>
                         </div>
 
-                        {/* Note: Sliders for cost and margin omitted for MVP speed, using basic checkbox filters first */}
+                        {/* Note: Sliders for cost and margin omitted for MVP speed */}
                     </div>
                 </div>
             )}

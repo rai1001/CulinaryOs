@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { ConsumptionRatio } from '../../types/occupancy';
+import React, { useState } from 'react';
+import type { ConsumptionRatio } from '../../types/occupancy';
 import { Save, Plus, Trash2 } from 'lucide-react';
 
 // Mock data service for Ratios - In real app, this would be a Firestore collection 'consumptionRatios'
@@ -35,8 +35,8 @@ export const ConsumptionRatios: React.FC = () => {
                 <button
                     onClick={() => isEditing ? handleSave() : setIsEditing(true)}
                     className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${isEditing
-                            ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-                            : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                        ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                         }`}
                 >
                     <Save size={18} />

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { onSnapshot, query } from 'firebase/firestore';
+import { query } from 'firebase/firestore';
+import { onSnapshotMockable } from '../../services/mockSnapshot';
 import { collections } from '../../firebase/collections';
 import { useStore } from '../../store/useStore';
 import type { Outlet } from '../../types';
@@ -13,7 +14,7 @@ export const useOutletsSync = () => {
         // For now, we fetch all to show the selector list
         const q = query(collections.outlets);
 
-        const unsubscribe = onSnapshot(q, (snapshot) => {
+        const unsubscribe = onSnapshotMockable(q, 'outlets', (snapshot) => {
             const outletsData = snapshot.docs.map(doc => ({
                 id: doc.id,
                 ...doc.data()

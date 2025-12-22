@@ -1,6 +1,6 @@
 import { firestoreService } from './firestoreService';
-import { collections } from '../firebase/collections';
-import { crearFichaTecnica, obtenerFichaTecnica } from './fichasTecnicasService';
+import { collections, COLLECTION_NAMES } from '../firebase/collections';
+import { crearFichaTecnica } from './fichasTecnicasService';
 import { where } from 'firebase/firestore';
 import type { Recipe, Ingredient, CreateFichaDTO, IngredienteFicha } from '../types';
 
@@ -38,7 +38,7 @@ export async function convertirRecetaAFicha(
     outletId: string
 ): Promise<CreateFichaDTO> {
     // 1. Get Recipe
-    const receta = await firestoreService.getById<Recipe>(collections.recipes, recetaId);
+    const receta = await firestoreService.getById<Recipe>(COLLECTION_NAMES.RECIPES, recetaId);
     if (!receta) throw new Error(`Receta ${recetaId} no encontrada`);
 
     // 2. Get Ingredients and calculate costs

@@ -14,92 +14,92 @@ export const FichasList: React.FC<FichasListProps> = ({ fichas, onDelete, onDupl
     const navigate = useNavigate();
 
     const getMarginColor = (margin: number = 0) => {
-        if (margin >= 70) return 'text-green-600 font-medium';
-        if (margin >= 50) return 'text-yellow-600 font-medium';
-        return 'text-red-600 font-medium';
+        if (margin >= 70) return 'text-emerald-400 font-medium';
+        if (margin >= 50) return 'text-amber-400 font-medium';
+        return 'text-rose-400 font-medium';
     };
 
     if (fichas.length === 0) {
         return (
-            <div className="text-center py-12 bg-white rounded-lg shadow-sm border border-dashed border-gray-300">
-                <p className="text-gray-500 text-lg">No se encontraron fichas técnicas.</p>
-                <p className="text-gray-400 text-sm mt-1">Intenta ajustar los filtros o crea una nueva.</p>
+            <div className="text-center py-16 bg-surface rounded-xl border-2 border-dashed border-white/5">
+                <p className="text-slate-400 text-lg">No se encontraron fichas técnicas.</p>
+                <p className="text-slate-500 text-sm mt-1">Intenta ajustar los filtros o crea una nueva.</p>
             </div>
         );
     }
 
     return (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <div className="bg-surface rounded-xl shadow-lg border border-white/5 overflow-hidden">
             <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm">
-                    <thead className="bg-gray-50 border-b border-gray-200 text-gray-500 uppercase font-semibold">
+                    <thead className="bg-white/5 border-b border-white/5 text-slate-400 uppercase text-[10px] tracking-wider font-bold">
                         <tr>
-                            <th className="px-6 py-4 w-16">Foto</th>
+                            <th className="px-6 py-4 w-16 text-center">Foto</th>
                             <th className="px-6 py-4">Nombre</th>
                             <th className="px-6 py-4">Categoría</th>
                             <th className="px-6 py-4 text-center">Porciones</th>
-                            <th className="px-6 py-4 text-right">Costo/U</th>
-                            <th className="px-6 py-4 text-right">P. Venta</th>
+                            <th className="px-6 py-4 text-right">Costo / U</th>
+                            <th className="px-6 py-4 text-right">PVP</th>
                             <th className="px-6 py-4 text-right">Margen</th>
                             <th className="px-6 py-4 text-right w-24">Acciones</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-100">
+                    <tbody className="divide-y divide-white/5">
                         {fichas.map((ficha) => (
-                            <tr key={ficha.id} className="hover:bg-gray-50 transition-colors">
+                            <tr key={ficha.id} className="hover:bg-white/[0.02] transition-colors group">
                                 <td className="px-6 py-3">
-                                    <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden">
+                                    <div className="w-10 h-10 rounded-lg bg-background border border-white/5 flex items-center justify-center overflow-hidden transition-transform group-hover:scale-110">
                                         {ficha.foto ? (
                                             <img src={ficha.foto} alt="" className="w-full h-full object-cover" />
                                         ) : (
-                                            <ChefHat className="w-5 h-5 text-gray-400" />
+                                            <ChefHat className="w-5 h-5 text-slate-700" />
                                         )}
                                     </div>
                                 </td>
-                                <td className="px-6 py-3 font-medium text-gray-900 cursor-pointer hover:text-blue-600" onClick={() => navigate(`/fichas-tecnicas/${ficha.id}`)}>
+                                <td className="px-6 py-3 font-semibold text-slate-200 cursor-pointer hover:text-primary transition-colors" onClick={() => navigate(`/fichas-tecnicas/${ficha.id}`)}>
                                     {ficha.nombre}
                                 </td>
                                 <td className="px-6 py-3">
-                                    <span className="capitalize px-2 py-1 bg-gray-100 rounded text-xs text-gray-600">
+                                    <span className="capitalize px-2 py-0.5 bg-white/5 border border-white/5 rounded text-[10px] font-bold text-slate-400">
                                         {ficha.categoria}
                                     </span>
                                 </td>
-                                <td className="px-6 py-3 text-center text-gray-600">
-                                    {ficha.porciones}
+                                <td className="px-6 py-3 text-center text-slate-400">
+                                    {ficha.porciones} pax
                                 </td>
-                                <td className="px-6 py-3 text-right text-gray-600">
+                                <td className="px-6 py-3 text-right text-slate-300 font-mono">
                                     €{ficha.costos.porPorcion?.toFixed(2) ?? '0.00'}
                                 </td>
-                                <td className="px-6 py-3 text-right text-gray-600">
+                                <td className="px-6 py-3 text-right text-slate-300 font-mono">
                                     €{ficha.pricing.precioVentaSugerido?.toFixed(2) ?? '0.00'}
                                 </td>
                                 <td className={`px-6 py-3 text-right ${getMarginColor(ficha.pricing.margenBruto)}`}>
                                     {ficha.pricing.margenBruto?.toFixed(0) ?? 0}%
                                 </td>
                                 <td className="px-6 py-3 text-right">
-                                    <div className="flex items-center justify-end gap-2">
+                                    <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                         <button
                                             onClick={() => navigate(`/fichas-tecnicas/${ficha.id}/editar`)}
-                                            className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded"
+                                            className="p-1.5 text-slate-500 hover:text-primary hover:bg-primary/10 rounded-lg transition-all"
                                             title="Editar"
                                         >
                                             <Edit className="w-4 h-4" />
                                         </button>
 
-                                        <div className="relative group/menu">
-                                            <button className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded">
+                                        <div className="relative group/menu_list">
+                                            <button className="p-1.5 text-slate-500 hover:text-white hover:bg-white/10 rounded-lg transition-all">
                                                 <MoreVertical className="w-4 h-4" />
                                             </button>
-                                            <div className="absolute right-0 top-full mt-1 w-32 bg-white rounded shadow-lg border border-gray-100 hidden group-hover/menu:block z-10 text-left">
-                                                <button onClick={() => onDuplicate?.(ficha.id)} className="w-full px-3 py-2 text-xs text-gray-700 hover:bg-gray-50 flex items-center gap-2">
-                                                    <Copy className="w-3 h-3" /> Duplicar
+                                            <div className="absolute right-0 top-full mt-2 w-36 bg-surface border border-white/10 rounded-xl shadow-2xl opacity-0 translate-y-2 pointer-events-none group-hover/menu_list:opacity-100 group-hover/menu_list:translate-y-0 group-hover/menu_list:pointer-events-auto transition-all z-20 overflow-hidden text-left">
+                                                <button onClick={() => onDuplicate?.(ficha.id)} className="w-full px-4 py-2.5 text-xs text-slate-300 hover:bg-white/5 flex items-center gap-2">
+                                                    <Copy className="w-3.5 h-3.5" /> Duplicar
                                                 </button>
-                                                <button onClick={() => onDownload?.(ficha.id)} className="w-full px-3 py-2 text-xs text-gray-700 hover:bg-gray-50 flex items-center gap-2">
-                                                    <Download className="w-3 h-3" /> PDF
+                                                <button onClick={() => onDownload?.(ficha.id)} className="w-full px-4 py-2.5 text-xs text-slate-300 hover:bg-white/5 flex items-center gap-2">
+                                                    <Download className="w-3.5 h-3.5" /> Descargar PDF
                                                 </button>
-                                                <div className="border-t border-gray-100 my-1"></div>
-                                                <button onClick={() => onDelete?.(ficha.id)} className="w-full px-3 py-2 text-xs text-red-600 hover:bg-red-50 flex items-center gap-2">
-                                                    <Trash2 className="w-3 h-3" /> Eliminar
+                                                <div className="border-t border-white/5 mx-2 my-1"></div>
+                                                <button onClick={() => onDelete?.(ficha.id)} className="w-full px-4 py-2.5 text-xs text-rose-400 hover:bg-rose-500/10 flex items-center gap-2">
+                                                    <Trash2 className="w-3.5 h-3.5" /> Eliminar
                                                 </button>
                                             </div>
                                         </div>

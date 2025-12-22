@@ -1,4 +1,4 @@
-import { OccupancyData, ConsumptionRatio, IngredientNeed } from '../types/occupancy';
+import type { OccupancyData, ConsumptionRatio, IngredientNeed } from '../types/occupancy';
 
 export async function calculateBreakfastNeeds(
     occupancyData: OccupancyData[],
@@ -11,14 +11,8 @@ export async function calculateBreakfastNeeds(
     // Basic aggregation
     occupancyData.forEach(day => {
         consumptionRatios.forEach(ratio => {
-            // Filter by meal type compatibility if needed
-            if (ratio.category !== 'breakfast' && day.mealType !== ratio.category) {
-                // Strict matching? Or breakfast includes coffee which might be 'breakfast' category
-                // Assuming ratios are specifically for this calculation context
-                // If the function is calculateBreakfastNeeds, we might filter Ratios that are 'breakfast' only?
-                // Let's assume the passed ratios are already filtered or we check category
-                if (ratio.category !== 'breakfast') return;
-            }
+            // Filter by meal type compatibility
+            if (ratio.category !== 'breakfast') return;
 
             // Calculation: Pax * QuantityPerPax
             const quantity = day.estimatedPax * ratio.quantityPerPax;

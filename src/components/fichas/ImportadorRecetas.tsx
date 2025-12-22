@@ -23,7 +23,7 @@ export const ImportadorRecetas: React.FC<ImportadorRecetasProps> = ({ onClose, o
     useEffect(() => {
         const load = async () => {
             try {
-                const data = await firestoreService.getAll<Recipe>(collections.recipes);
+                const data = await firestoreService.getAll<Recipe>(collections.recipes as any);
                 setRecetas(data);
             } catch (e) {
                 console.error(e);
@@ -113,8 +113,8 @@ export const ImportadorRecetas: React.FC<ImportadorRecetasProps> = ({ onClose, o
                                 key={receta.id}
                                 onClick={() => toggleSelect(receta.id)}
                                 className={`p-4 rounded-lg border cursor-pointer transition-all ${selected.includes(receta.id)
-                                        ? 'bg-blue-50 border-blue-500 ring-1 ring-blue-500'
-                                        : 'bg-white border-gray-200 hover:border-blue-300'
+                                    ? 'bg-blue-50 border-blue-500 ring-1 ring-blue-500'
+                                    : 'bg-white border-gray-200 hover:border-blue-300'
                                     }`}
                             >
                                 <div className="flex justify-between items-start mb-2">

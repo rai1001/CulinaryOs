@@ -1,73 +1,64 @@
-# React + TypeScript + Vite
+# CulinaryOs 🍳
+**Sistema de Gestión Inteligente para Cocinas Profesionales**
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+![Version](https://img.shields.io/badge/version-1.0.0-blue)
+![Build](https://img.shields.io/badge/build-passing-brightgreen)
+![License](https://img.shields.io/badge/license-MIT-green)
 
-Currently, two official plugins are available:
+CulinaryOs es una plataforma SaaS diseñada para optimizar la logística, el control de inventario y la rentabilidad en entornos de hostelería premium. Desde la trazabilidad de lotes hasta la generación automática de pedidos basada en demanda predecible.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## ✨ Características Principales
 
-## React Compiler
+*   **📦 Gestión de Inventario Inteligente**: Control por lotes (FIFO), alertas de caducidad y stock mínimo.
+*   **🛒 Compras Automáticas**: Generación de pedidos basada en previsiones de ocupación y eventos.
+*   **📝 Fichas Técnicas 2.0**: Escandallos precisos con actualización de costos en tiempo real y análisis de rentabilidad.
+*   **📊 Analytics & Engineering**: Matriz de Boston para ingeniería de menús y dashboards de KPIs operativos.
+*   **🛡️ Control HACCP Digital**: Registros de temperatura y tareas de higiene con alertas críticas.
+*   **🤖 AI Advisor**: Asistente inteligente para optimización de menús y resolución de roturas de stock.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## 🚀 Stack Tecnológico
 
-## Expanding the ESLint configuration
+*   **Frontend**: React 18, TypeScript, Vite, Tailwind CSS.
+*   **Backend/BaaS**: Firebase (Firestore, Auth, Hosting).
+*   **Estado**: Zustand (gestión ligera y eficiente).
+*   **Iconografía**: Lucide React.
+*   **Testing**: Playwright (E2E), Vitest (Unit).
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## 🛠️ Instalación y Desarrollo
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+1.  **Clonar el repositorio**:
+    ```bash
+    git clone https://github.com/user/CulinaryOs.git
+    cd CulinaryOs
+    ```
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+2.  **Instalar dependencias**:
+    ```bash
+    npm install
+    ```
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+3.  **Configurar Firebase**:
+    Crea un proyecto en Firebase y añade tus credenciales en un archivo `.env` basado en `.env.example`.
+
+4.  **Iniciar en modo desarrollo**:
+    ```bash
+    npm run dev
+    ```
+
+## 🧪 Testing
+
+```bash
+# Ejecutar tests unitarios
+npm run test
+
+# Ejecutar tests E2E
+npx playwright test
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## 🗺️ Roadmap v1.x
+- [ ] Integración con TPVs (Alegra, CoverManager).
+- [ ] Módulo de gestión de personal y turnos avanzado.
+- [ ] App móvil nativa para inventariado rápido.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+---
+Desarrollado con ❤️ para la industria de la hospitalidad.

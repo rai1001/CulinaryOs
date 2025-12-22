@@ -63,7 +63,7 @@ export const RentabilidadChart: React.FC<RentabilidadChartProps> = ({ fichas }) 
 
                             {/* Tooltip (Simple SVG text for now, or use React Overlay) */}
                             <foreignObject x={getX(f.costos.porPorcion) + 10} y={getY(f.pricing.margenBruto || 0) - 40} width="150" height="60" className="opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                                <div xmlns="http://www.w3.org/1999/xhtml" className="bg-gray-800 text-white text-xs p-2 rounded shadow-lg">
+                                <div className="bg-gray-800 text-white text-xs p-2 rounded shadow-lg">
                                     <p className="font-bold truncate">{f.nombre}</p>
                                     <p>Margen: {f.pricing.margenBruto}%</p>
                                 </div>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import type { FichaTecnica } from '../../types/fichasTecnicas';
 import { simularEscenario, type ResultadoSimulacion } from '../../services/analyticsService';
-import { RefreshCw, TrendingUp, TrendingDown, DollarSign } from 'lucide-react';
+import { RefreshCw, TrendingUp, TrendingDown } from 'lucide-react';
 
 interface SimuladorProps {
     ficha: FichaTecnica;

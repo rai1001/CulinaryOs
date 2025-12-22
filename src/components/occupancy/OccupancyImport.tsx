@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ExcelImporter } from '../common/ExcelImporter';
-import { OccupancyData } from '../../types/occupancy';
+
 import { parseOccupancyImport, saveOccupancyData } from '../../services/occupancyService';
 import { CheckCircle, AlertCircle } from 'lucide-react';
 

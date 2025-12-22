@@ -125,7 +125,7 @@ export const getBatchesExpiringSoon = (
  * @param eventId - ID of the event
  * @param userId - ID of the user performing the action (for logging, future use)
  */
-export const deductStockForEvent = async (eventId: string, userId?: string): Promise<void> => {
+export const deductStockForEvent = async (eventId: string, _userId?: string): Promise<void> => {
     // 1. Fetch Event
     const event = await firestoreService.getById<Event>(COLLECTIONS.EVENTS, eventId);
     if (!event || !event.menuId) return;

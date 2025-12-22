@@ -1,4 +1,4 @@
-import { IngredientSupplierConfig, SupplierOption } from '../types/suppliers';
+import type { IngredientSupplierConfig, SupplierOption } from '../types/suppliers';
 
 // Mock DB fetch - in real app would use firestoreService
 const mockConfigs: Map<string, IngredientSupplierConfig> = new Map();
@@ -16,7 +16,7 @@ export const supplierSelectionService = {
 
     selectOptimalSupplier: async (
         ingredientId: string,
-        quantityNeeded: number,
+        _quantityNeeded: number,
         urgency: 'normal' | 'urgent' = 'normal'
     ): Promise<SupplierOption | null> => {
         const config = await supplierSelectionService.getIngredientSuppliers(ingredientId);

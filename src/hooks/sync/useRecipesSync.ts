@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { onSnapshot, query, where } from 'firebase/firestore';
+import { query, where } from 'firebase/firestore';
+import { onSnapshotMockable } from '../../services/mockSnapshot';
 import { collections } from '../../firebase/collections';
 import { useStore } from '../../store/useStore';
 import type { Recipe } from '../../types';
@@ -22,19 +23,25 @@ export const useRecipesSync = () => {
             where('outletId', '==', activeOutletId)
         );
 
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            const data = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            })) as Recipe[];
+        const unsubscribe = onSnapshotMockable(
+            q,
+            'recipes',
+            (snapshot) => {
+                const data = snapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                })) as Recipe[];
 
-            setRecipes(data);
-            setLoading(false);
-        }, (err) => {
-            console.error("Error syncing recipes:", err);
-            setError(err);
-            setLoading(false);
-        });
+                setRecipes(data);
+                setLoading(false);
+            },
+            (err) => {
+                console.error("Error syncing recipes:", err);
+                setError(err);
+                setLoading(false);
+            },
+            activeOutletId
+        );
 
         return () => unsubscribe();
     }, [activeOutletId, setRecipes]);

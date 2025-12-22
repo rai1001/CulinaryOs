@@ -3,8 +3,8 @@ import { OccupancyImport } from '../components/occupancy/OccupancyImport';
 import { ConsumptionRatios } from '../components/occupancy/ConsumptionRatios';
 import { getOccupancyForecast } from '../services/occupancyService';
 import { calculateBreakfastNeeds } from '../services/breakfastCalculator';
-import { OccupancyData, IngredientNeed } from '../types/occupancy';
-import { Calculator, Calendar, Users } from 'lucide-react';
+import type { OccupancyData, IngredientNeed } from '../types/occupancy';
+import { Calculator, Users } from 'lucide-react';
 
 export const HospitalityDashboard: React.FC = () => {
     const [occupancyData, setOccupancyData] = useState<OccupancyData[]>([]);

@@ -20,10 +20,10 @@ const KPICard: React.FC<{
     color: string;
     bgColor: string;
 }> = ({ title, value, icon, color, bgColor }) => (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex items-start justify-between">
+    <div className="bg-surface rounded-xl shadow-lg border border-white/5 p-6 flex items-start justify-between transition-all hover:border-white/10 hover:shadow-xl">
         <div>
-            <p className="text-sm font-medium text-gray-500 mb-1">{title}</p>
-            <h3 className="text-2xl font-bold text-gray-800">{value}</h3>
+            <p className="text-sm font-medium text-slate-400 mb-1">{title}</p>
+            <h3 className="text-2xl font-bold text-white">{value}</h3>
         </div>
         <div className={`p-3 rounded-lg ${bgColor} ${color}`}>
             {icon}
@@ -149,23 +149,26 @@ export const FichasTecnicasDashboard: React.FC = () => {
     const stats = useMemo(() => calculateGlobalMetrics(fichas), [fichas]);
 
     return (
-        <div className="container mx-auto px-4 py-8 max-w-7xl animate-fade-in">
+        <div className="container mx-auto px-4 py-8 max-w-7xl animate-fade-in text-slate-200">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-900">Fichas Técnicas</h1>
-                    <p className="text-gray-500 mt-1">Gestiona tus recetas, costos y márgenes</p>
+                    <div className="flex items-center gap-3">
+                        <FileText className="w-8 h-8 text-primary" />
+                        <h1 className="text-3xl font-bold text-white">Fichas Técnicas</h1>
+                    </div>
+                    <p className="text-slate-400 mt-1">Gestiona tus recetas, costos y márgenes</p>
                 </div>
                 <div className="flex gap-3 w-full md:w-auto">
                     <button
                         onClick={() => navigate('/analytics/rentabilidad')}
-                        className="flex-1 md:flex-none justify-center px-4 py-2 bg-white text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-50 flex items-center gap-2 font-medium transition-transform active:scale-95"
+                        className="flex-1 md:flex-none justify-center px-4 py-2 bg-surface text-slate-300 border border-white/10 rounded-lg hover:bg-white/10 flex items-center gap-2 font-medium transition-all active:scale-95"
                     >
-                        <TrendingUp className="w-5 h-5 text-blue-600" />
+                        <TrendingUp className="w-5 h-5 text-primary" />
                         Rentabilidad
                     </button>
                     <button
                         onClick={() => navigate('/fichas-tecnicas/nueva')}
-                        className="flex-1 md:flex-none justify-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2 font-medium shadow-sm transition-transform active:scale-95 hover:shadow-md"
+                        className="flex-1 md:flex-none justify-center px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-600 flex items-center gap-2 font-medium shadow-lg shadow-primary/25 transition-all active:scale-95 hover:shadow-primary/40"
                     >
                         <Plus className="w-5 h-5" />
                         Nueva Ficha
@@ -179,44 +182,44 @@ export const FichasTecnicasDashboard: React.FC = () => {
                     title="Total Fichas"
                     value={stats.totalFichas}
                     icon={<FileText className="w-6 h-6" />}
-                    color="text-blue-600"
-                    bgColor="bg-blue-50"
+                    color="text-primary"
+                    bgColor="bg-primary/10"
                 />
                 <KPICard
                     title="Costo Promedio"
                     value={`€${stats.costoPromedio.toFixed(2)}`}
                     icon={<DollarSign className="w-6 h-6" />}
-                    color="text-green-600"
-                    bgColor="bg-green-50"
+                    color="text-emerald-500"
+                    bgColor="bg-emerald-500/10"
                 />
                 <KPICard
                     title="Margen Promedio"
                     value={`${stats.margenPromedio.toFixed(0)}%`}
                     icon={<TrendingUp className="w-6 h-6" />}
-                    color="text-purple-600"
-                    bgColor="bg-purple-50"
+                    color="text-violet-500"
+                    bgColor="bg-violet-500/10"
                 />
                 <KPICard
                     title="Más Rentable"
                     value={stats.masRentable?.nombre || '-'}
                     icon={<Award className="w-6 h-6" />}
-                    color="text-yellow-600"
-                    bgColor="bg-yellow-50"
+                    color="text-amber-500"
+                    bgColor="bg-amber-500/10"
                 />
             </div>
 
             {/* Main Control Bar */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 mb-6 sticky top-4 z-20">
+            <div className="bg-surface rounded-xl shadow-lg border border-white/5 p-5 mb-6 sticky top-4 z-20 backdrop-blur-md bg-surface/80">
                 <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
                     {/* Search */}
                     <div className="relative flex-1 w-full">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 w-5 h-5" />
                         <input
                             type="text"
                             placeholder="Buscar por nombre, ingrediente..."
                             value={filters.searchTerm}
                             onChange={(e) => setFilters({ ...filters, searchTerm: e.target.value })}
-                            className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                            className="w-full pl-10 pr-4 py-2.5 bg-background border border-white/5 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all text-white placeholder:text-slate-600"
                         />
                     </div>
 
@@ -225,7 +228,7 @@ export const FichasTecnicasDashboard: React.FC = () => {
                         <select
                             value={sortBy}
                             onChange={(e) => setSortBy(e.target.value)}
-                            className="px-4 py-2.5 border border-gray-200 rounded-lg bg-gray-50 text-gray-700 text-sm font-medium focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer"
+                            className="px-4 py-2.5 bg-background border border-white/5 rounded-lg text-slate-300 text-sm font-medium focus:ring-2 focus:ring-primary outline-none cursor-pointer"
                         >
                             <option value="nombre-asc">Nombre A-Z</option>
                             <option value="nombre-desc">Nombre Z-A</option>
@@ -236,16 +239,16 @@ export const FichasTecnicasDashboard: React.FC = () => {
                         </select>
 
                         {/* View Toggles */}
-                        <div className="flex bg-gray-100 p-1 rounded-lg">
+                        <div className="flex bg-background p-1 rounded-lg border border-white/5">
                             <button
                                 onClick={() => setViewMode('grid')}
-                                className={`p-2 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white shadow text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+                                className={`p-2 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white/10 shadow text-primary' : 'text-slate-500 hover:text-slate-300'}`}
                             >
                                 <Grid className="w-5 h-5" />
                             </button>
                             <button
                                 onClick={() => setViewMode('list')}
-                                className={`p-2 rounded-md transition-all ${viewMode === 'list' ? 'bg-white shadow text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+                                className={`p-2 rounded-md transition-all ${viewMode === 'list' ? 'bg-white/10 shadow text-primary' : 'text-slate-500 hover:text-slate-300'}`}
                             >
                                 <List className="w-5 h-5" />
                             </button>
@@ -264,22 +267,22 @@ export const FichasTecnicasDashboard: React.FC = () => {
             {/* Content Area */}
             {loading ? (
                 <div className="flex justify-center items-center py-20">
-                    <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
+                    <Loader2 className="w-10 h-10 text-primary animate-spin" />
                 </div>
             ) : error ? (
-                <div className="text-center py-12 bg-red-50 rounded-lg border border-red-100">
-                    <p className="text-red-600 mb-4 font-medium">{error}</p>
-                    <button onClick={loadFichas} className="px-4 py-2 bg-white border border-red-200 text-red-600 rounded-lg hover:bg-red-50 flex items-center gap-2 mx-auto">
+                <div className="text-center py-12 bg-red-500/10 rounded-lg border border-red-500/20">
+                    <p className="text-red-400 mb-4 font-medium">{error}</p>
+                    <button onClick={loadFichas} className="px-4 py-2 bg-surface border border-red-500/30 text-red-400 rounded-lg hover:bg-red-500/10 flex items-center gap-2 mx-auto transition-colors">
                         <RefreshCw className="w-4 h-4" /> Reintentar
                     </button>
                 </div>
             ) : sortedFichas.length === 0 ? (
-                <div className="text-center py-16 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
-                    <div className="bg-white p-4 rounded-full shadow-sm inline-block mb-4">
-                        <Search className="w-8 h-8 text-gray-400" />
+                <div className="text-center py-16 bg-surface rounded-xl border-2 border-dashed border-white/5">
+                    <div className="bg-white/5 p-4 rounded-full shadow-sm inline-block mb-4">
+                        <Search className="w-8 h-8 text-slate-600" />
                     </div>
-                    <h3 className="text-lg font-semibold text-gray-900">No se encontraron resultados</h3>
-                    <p className="text-gray-500 mt-2 mb-6">Prueba ajustando los filtros o tu búsqueda.</p>
+                    <h3 className="text-lg font-semibold text-white">No se encontraron resultados</h3>
+                    <p className="text-slate-500 mt-2 mb-6">Prueba ajustando los filtros o tu búsqueda.</p>
                     <button
                         onClick={() => setFilters({
                             searchTerm: '',
@@ -289,7 +292,7 @@ export const FichasTecnicasDashboard: React.FC = () => {
                             rangoMargen: [0, 100],
                             soloActivas: true
                         })}
-                        className="text-blue-600 hover:text-blue-700 font-medium hover:underline"
+                        className="text-primary hover:text-blue-400 font-medium transition-colors"
                     >
                         Limpiar filtros
                     </button>

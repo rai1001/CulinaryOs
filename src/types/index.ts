@@ -29,6 +29,10 @@ export interface RecipeIngredient {
 export interface Recipe {
     id: string;
     name: string;
+    description?: string;
+    instructions?: string[];
+    prepTime?: number;
+    cookTime?: number;
     station: 'hot' | 'cold' | 'dessert';
     ingredients: RecipeIngredient[];
     isBase?: boolean; // True if this is a base recipe (e.g., from "Bases" sheet)

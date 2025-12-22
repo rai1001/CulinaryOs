@@ -1,6 +1,6 @@
 import React from 'react';
 import type { FichaTecnica } from '../../types/fichasTecnicas';
-import { ArrowRight } from 'lucide-react';
+
 
 interface ComparadorPlatosProps {
     fichas: FichaTecnica[];
@@ -22,8 +22,8 @@ export const ComparadorPlatos: React.FC<ComparadorPlatosProps> = ({ fichas, sele
                             key={f.id}
                             onClick={() => onSelect(f.id)}
                             className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${seleccionadas.includes(f.id)
-                                    ? 'bg-blue-100 text-blue-700 border-blue-200'
-                                    : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300'
+                                ? 'bg-blue-100 text-blue-700 border-blue-200'
+                                : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300'
                                 }`}
                         >
                             {f.nombre}
