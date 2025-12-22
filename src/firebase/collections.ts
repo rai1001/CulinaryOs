@@ -17,7 +17,10 @@ export const COLLECTION_NAMES = {
     HACCP_TASKS: 'haccpTasks',
     HACCP_TASK_COMPLETIONS: 'haccpTaskCompletions',
     PRODUCTION_TASKS: 'productionTasks',
-    OUTLETS: 'outlets'
+    OUTLETS: 'outlets',
+    BATCHES: 'batches',
+    FICHAS_TECNICAS: 'fichasTecnicas',
+    VERSIONES_FICHAS: 'versionesFichas'
 } as const;
 
 // Collection References
@@ -36,7 +39,10 @@ export const collections = {
     haccpTasks: collection(db, COLLECTION_NAMES.HACCP_TASKS),
     haccpTaskCompletions: collection(db, COLLECTION_NAMES.HACCP_TASK_COMPLETIONS),
     productionTasks: collection(db, COLLECTION_NAMES.PRODUCTION_TASKS),
-    outlets: collection(db, COLLECTION_NAMES.OUTLETS)
+    outlets: collection(db, COLLECTION_NAMES.OUTLETS),
+    batches: collection(db, COLLECTION_NAMES.BATCHES),
+    fichasTecnicas: collection(db, COLLECTION_NAMES.FICHAS_TECNICAS),
+    versionesFichas: collection(db, COLLECTION_NAMES.VERSIONES_FICHAS)
 };
 
 // Alias for compatibility if needed, but try to use collections (refs) or COLLECTION_NAMES (strings)

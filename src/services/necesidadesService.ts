@@ -1,5 +1,5 @@
 import type { Recipe, RecipeIngredient } from '../types';
-import type { Ingredient, Batch } from '../types/inventory';
+import type { Ingredient } from '../types/inventory';
 import { calculateTotalStock } from './inventoryService';
 
 export interface NeedsResult {
@@ -20,6 +20,7 @@ export interface ReorderNeed {
     orderQuantity: number; // = optimal - stock
     unit: string;
     supplierId?: string;
+    costPerUnit: number;
 }
 
 export const necesidadesService = {
@@ -81,6 +82,16 @@ export const necesidadesService = {
                     const toOrder = optimal - currentStock;
 
                     if (toOrder > 0) {
+                        // Task 3.4: Best-Option Supplier Selection
+                        let selectedSupplierId = ing.supplierId;
+                        let selectedCost = ing.costPerUnit || 0;
+
+                        if (ing.supplierInfo && ing.supplierInfo.length > 0) {
+                            const cheapest = [...ing.supplierInfo].sort((a, b) => a.costPerUnit - b.costPerUnit)[0];
+                            selectedSupplierId = cheapest.supplierId;
+                            selectedCost = cheapest.costPerUnit;
+                        }
+
                         needs.push({
                             ingredientId: ing.id,
                             ingredientName: ing.name,
@@ -89,7 +100,8 @@ export const necesidadesService = {
                             optimalStock: optimal,
                             orderQuantity: toOrder,
                             unit: ing.unit,
-                            supplierId: ing.supplierId
+                            supplierId: selectedSupplierId,
+                            costPerUnit: selectedCost
                         });
                     }
                 }

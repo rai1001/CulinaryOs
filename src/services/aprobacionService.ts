@@ -2,11 +2,12 @@ import { firestoreService } from './firestoreService';
 import { COLLECTIONS } from '../firebase/collections';
 import { pedidosService } from './pedidosService';
 import { auditService } from './auditService';
+import type { PurchaseOrder } from '../types/purchases';
 
 export const aprobacionService = {
-    approveOrder: async (orderId: string, userId: string): Promise<void> => {
+    approveOrder: async (orderId: string, userId: string, logistics?: Partial<PurchaseOrder>): Promise<void> => {
         // Mock Bypass delegated to pedidosService.updateStatus
-        await pedidosService.updateStatus(orderId, 'APPROVED', userId);
+        await pedidosService.updateStatus(orderId, 'APPROVED', userId, logistics);
 
         const mockDB = localStorage.getItem('E2E_MOCK_DB');
         if (!mockDB) {
@@ -14,14 +15,14 @@ export const aprobacionService = {
                 action: 'PURCHASE_ORDER_Approved',
                 entityId: orderId,
                 userId,
-                details: { status: 'APPROVED' }
+                details: { status: 'APPROVED', ...logistics }
             });
         }
         console.log(`Order ${orderId} approved by ${userId}`);
     },
 
     rejectOrder: async (orderId: string, userId: string, reason: string): Promise<void> => {
-        // E2E Mock Bypass
+        // ... (existing implementation)
         const mockDBStr = localStorage.getItem('E2E_MOCK_DB');
         if (mockDBStr) {
             const db = JSON.parse(mockDBStr);
@@ -51,8 +52,8 @@ export const aprobacionService = {
         console.log(`Order ${orderId} rejected by ${userId}: ${reason}`);
     },
 
-    sendOrder: async (orderId: string, userId: string): Promise<void> => {
-        await pedidosService.updateStatus(orderId, 'ORDERED', userId);
+    sendOrder: async (orderId: string, userId: string, logistics?: Partial<PurchaseOrder>): Promise<void> => {
+        await pedidosService.updateStatus(orderId, 'ORDERED', userId, logistics);
 
         const mockDB = localStorage.getItem('E2E_MOCK_DB');
         if (!mockDB) {
@@ -60,7 +61,7 @@ export const aprobacionService = {
                 action: 'PURCHASE_ORDER_Sent',
                 entityId: orderId,
                 userId,
-                details: { status: 'ORDERED' }
+                details: { status: 'ORDERED', ...logistics }
             });
         }
         console.log(`Order ${orderId} sent to supplier`);

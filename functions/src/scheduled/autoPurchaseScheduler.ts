@@ -64,29 +64,40 @@ export const autoPurchaseScheduler = onSchedule("every 1 hours", async (event) =
 
             console.log(`Processing Auto Purchase for Outlet: ${outletId}`);
 
-            // 1. Fetch Ingredients
-            const itemsSnap = await db.collection('ingredients')
-                .where('outletId', '==', outletId)
-                .get();
+            // 1. Fetch Ingredients and Active Batches
+            const [ingredientsSnap, batchesSnap] = await Promise.all([
+                db.collection('ingredients').where('outletId', '==', outletId).get(),
+                db.collection('batches').where('outletId', '==', outletId).where('status', '==', 'ACTIVE').get()
+            ]);
 
-            const ingredients = itemsSnap.docs.map(d => ({ id: d.id, ...d.data() } as Ingredient));
+            const ingredients = ingredientsSnap.docs.map(d => ({ id: d.id, ...d.data() } as Ingredient));
+            const batches = batchesSnap.docs.map(d => d.data());
 
-            // 2. Identify Needs (Reorder Point Logic)
+            // 2. Calculate Real Stock from Batches
+            const stockMap: Record<string, number> = {};
+            batches.forEach(b => {
+                const ingId = b.ingredientId;
+                stockMap[ingId] = (stockMap[ingId] || 0) + (b.currentQuantity || 0);
+            });
+
+            // 3. Identify Needs (Reorder Point Logic)
             const needs = ingredients.filter(ing => {
-                const current = ing.stock || 0;
-                // If reorderPoint not set, default to 20% of optimal, or 0 if optimal not set
+                const current = stockMap[ing.id] ?? ing.stock ?? 0;
                 const optimal = ing.optimalStock || 0;
                 const reorder = ing.reorderPoint ?? (optimal * 0.2);
 
                 return optimal > 0 && current <= reorder;
             }).map(ing => ({
                 ingredient: ing,
-                quantity: (ing.optimalStock || 0) - (ing.stock || 0)
+                quantity: (ing.optimalStock || 0) - (stockMap[ing.id] ?? ing.stock ?? 0)
             }));
 
-            if (needs.length === 0) continue;
+            if (needs.length === 0) {
+                console.log(`No needs identified for outlet: ${outletId}`);
+                continue;
+            }
 
-            // 3. Group by Supplier
+            // 4. Group by Supplier
             const bySupplier: Record<string, typeof needs> = {};
             needs.forEach(item => {
                 const supId = item.ingredient.supplierId || 'SIN_ASIGNAR';
@@ -94,22 +105,28 @@ export const autoPurchaseScheduler = onSchedule("every 1 hours", async (event) =
                 bySupplier[supId].push(item);
             });
 
-            // 4. Create Purchase Orders
+            // 5. Create Purchase Orders
             const batch = db.batch();
-            let ordersCreated = 0;
+            let ordersCreatedCount = 0;
+            const todayStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
 
             for (const [supplierId, items] of Object.entries(bySupplier)) {
-                if (supplierId === 'SIN_ASIGNAR') continue; // Skip items without supplier for automation
+                if (supplierId === 'SIN_ASIGNAR') continue;
 
                 const ref = db.collection('purchaseOrders').doc();
                 const totalCost = items.reduce((sum, item) => sum + (item.quantity * item.ingredient.costPerUnit), 0);
 
+                // Generate a unique order number similar to the purchasingService
+                const shortId = ref.id.slice(0, 4).toUpperCase();
+                const orderNumber = `AUTO-${todayStr}-${shortId}`;
+
                 batch.set(ref, {
                     id: ref.id,
+                    orderNumber,
                     supplierId,
                     outletId,
                     date: new Date().toISOString(),
-                    status: 'DRAFT', // Always DRAFT for now
+                    status: 'DRAFT',
                     type: 'AUTOMATIC',
                     generatedAt: new Date().toISOString(),
                     items: items.map(i => ({
@@ -117,17 +134,28 @@ export const autoPurchaseScheduler = onSchedule("every 1 hours", async (event) =
                         quantity: i.quantity,
                         unit: i.ingredient.unit,
                         costPerUnit: i.ingredient.costPerUnit,
-                        name: i.ingredient.name
+                        tempDescription: i.ingredient.name
                     })),
                     totalCost,
                     notes: 'Generado automáticamente por planificador'
                 });
-                ordersCreated++;
+                ordersCreatedCount++;
             }
 
-            if (ordersCreated > 0) {
+            if (ordersCreatedCount > 0) {
                 await batch.commit();
-                console.log(`Generated ${ordersCreated} orders for outlet ${outletId}`);
+
+                // Create a notification for the outlet
+                await db.collection('notifications').add({
+                    type: 'SYSTEM',
+                    message: `Se han generado ${ordersCreatedCount} borradores de pedido automáticos para revisión.`,
+                    read: false,
+                    timestamp: admin.firestore.FieldValue.serverTimestamp(),
+                    outletId,
+                    link: '/purchasing' // Optional: help UI navigation
+                });
+
+                console.log(`Generated ${ordersCreatedCount} orders for outlet ${outletId}`);
             }
         }
 

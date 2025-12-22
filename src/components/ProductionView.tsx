@@ -21,7 +21,8 @@ export const ProductionView: React.FC = () => {
         setSelectedProductionEventId,
         productionTasks,
         generateProductionTasks,
-        updateTaskStatus
+        updateTaskStatus,
+        staff
     } = useStore();
 
     // Local state for event creation 
@@ -64,6 +65,21 @@ export const ProductionView: React.FC = () => {
     }, [selectedEvent]);
 
     const totalCost = shoppingList.reduce((sum, item) => sum + item.totalCost, 0);
+
+    // Calculate Labor Cost
+    const laborCost = useMemo(() => {
+        if (!eventTasks) return 0;
+        return eventTasks.reduce((sum, task) => {
+            if (!task.assignedEmployeeId || !task.totalTimeSpent) return sum;
+            const emp = staff.find(e => e.id === task.assignedEmployeeId);
+            if (!emp || !emp.hourlyRate) return sum;
+            // totalTimeSpent is in seconds
+            const hours = task.totalTimeSpent / 3600;
+            return sum + (hours * emp.hourlyRate);
+        }, 0);
+    }, [eventTasks, staff]);
+
+    const primeCost = totalCost + laborCost;
 
     const handlePrint = () => {
         window.print();
@@ -196,10 +212,26 @@ export const ProductionView: React.FC = () => {
                                         <Printer className="w-5 h-5" />
                                     </button>
                                 </div>
-                                <p className="text-sm text-slate-400">Coste Estimado</p>
-                                <p className="text-3xl font-bold text-emerald-400 flex items-center justify-end gap-1">
-                                    <Euro className="w-6 h-6" /> {totalCost.toFixed(2)}
-                                </p>
+                                <div className="flex gap-6">
+                                    <div className="text-right">
+                                        <p className="text-xs text-slate-500 uppercase font-bold mb-1">Costo Alimentos</p>
+                                        <p className="text-xl font-bold text-emerald-400 flex items-center justify-end gap-1">
+                                            <Euro className="w-5 h-5" /> {totalCost.toFixed(2)}
+                                        </p>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-xs text-slate-500 uppercase font-bold mb-1">Costo Laboral</p>
+                                        <p className="text-xl font-bold text-blue-400 flex items-center justify-end gap-1">
+                                            <Euro className="w-5 h-5" /> {laborCost.toFixed(2)}
+                                        </p>
+                                    </div>
+                                    <div className="text-right border-l border-white/10 pl-6">
+                                        <p className="text-xs text-slate-500 uppercase font-bold mb-1">Prime Cost Total</p>
+                                        <p className="text-3xl font-bold text-white flex items-center justify-end gap-1">
+                                            <Euro className="w-6 h-6 text-primary" /> {primeCost.toFixed(2)}
+                                        </p>
+                                    </div>
+                                </div>
                             </div>
                         </header>
 

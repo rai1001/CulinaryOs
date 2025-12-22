@@ -10,9 +10,11 @@ interface ColumnProps {
     color: string;
     onDrop: (taskId: string, status: KanbanTaskStatus) => void;
     onToggleTimer: (taskId: string) => void;
+    staff: any[];
+    onAssignEmployee: (taskId: string, employeeId: string) => void;
 }
 
-const KanbanColumn: React.FC<ColumnProps> = ({ id, title, tasks, color, onDrop, onToggleTimer }) => {
+const KanbanColumn: React.FC<ColumnProps> = ({ id, title, tasks, color, onDrop, onToggleTimer, staff, onAssignEmployee }) => {
     const handleDragOver = (e: React.DragEvent) => {
         e.preventDefault();
     };
@@ -47,7 +49,13 @@ const KanbanColumn: React.FC<ColumnProps> = ({ id, title, tasks, color, onDrop, 
 
             <div className="flex-1 p-3 space-y-3 overflow-y-auto">
                 {tasks.map(task => (
-                    <TaskCard key={task.id} task={task} onToggleTimer={onToggleTimer} />
+                    <TaskCard
+                        key={task.id}
+                        task={task}
+                        onToggleTimer={onToggleTimer}
+                        staff={staff}
+                        onAssignEmployee={onAssignEmployee}
+                    />
                 ))}
                 {tasks.length === 0 && (
                     <div className="text-center py-8 text-slate-600 text-sm italic">
@@ -59,7 +67,17 @@ const KanbanColumn: React.FC<ColumnProps> = ({ id, title, tasks, color, onDrop, 
     );
 };
 
-const TaskCard = ({ task, onToggleTimer }: { task: KanbanTask, onToggleTimer: (id: string) => void }) => {
+const TaskCard = ({
+    task,
+    onToggleTimer,
+    staff,
+    onAssignEmployee
+}: {
+    task: KanbanTask,
+    onToggleTimer: (id: string) => void,
+    staff: any[],
+    onAssignEmployee: (taskId: string, employeeId: string) => void
+}) => {
     // Local state for ticking timer
     const [elapsed, setElapsed] = useState(task.totalTimeSpent || 0);
 
@@ -94,6 +112,17 @@ const TaskCard = ({ task, onToggleTimer }: { task: KanbanTask, onToggleTimer: (i
             <div className="flex justify-between items-start mb-2">
                 <h4 className="font-medium text-slate-200">{task.title}</h4>
                 <div className="flex items-center gap-1">
+                    <select
+                        value={task.assignedEmployeeId || ''}
+                        onChange={(e) => onAssignEmployee(task.id, e.target.value)}
+                        className="bg-white/5 border border-white/10 rounded px-1 py-0.5 text-[10px] text-slate-400 hover:text-white transition-colors max-w-[80px]"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <option value="">Asignar...</option>
+                        {staff.map(emp => (
+                            <option key={emp.id} value={emp.id}>{emp.name}</option>
+                        ))}
+                    </select>
                     {task.shift && (
                         <span className={`text-[10px] px-1.5 py-0.5 rounded uppercase font-bold ${task.shift === 'MORNING' ? 'bg-orange-500/20 text-orange-300' : 'bg-indigo-500/20 text-indigo-300'
                             }`}>
@@ -138,7 +167,7 @@ interface ProductionKanbanBoardProps {
 }
 
 export const ProductionKanbanBoard: React.FC<ProductionKanbanBoardProps> = ({ tasks, onTaskStatusChange }) => {
-    const { toggleTaskTimer, selectedProductionEventId } = useStore();
+    const { toggleTaskTimer, selectedProductionEventId, staff, updateTaskSchedule } = useStore();
 
     const handleUpdateStatus = (taskId: string, status: KanbanTaskStatus) => {
         onTaskStatusChange(taskId, status);
@@ -147,6 +176,12 @@ export const ProductionKanbanBoard: React.FC<ProductionKanbanBoardProps> = ({ ta
     const handleToggleTimer = (taskId: string) => {
         if (selectedProductionEventId) {
             toggleTaskTimer(selectedProductionEventId, taskId);
+        }
+    };
+
+    const handleAssignEmployee = (taskId: string, employeeId: string) => {
+        if (selectedProductionEventId) {
+            updateTaskSchedule(selectedProductionEventId, taskId, { assignedEmployeeId: employeeId });
         }
     };
 
@@ -167,6 +202,8 @@ export const ProductionKanbanBoard: React.FC<ProductionKanbanBoardProps> = ({ ta
                     color="text-slate-300"
                     onDrop={handleUpdateStatus}
                     onToggleTimer={handleToggleTimer}
+                    staff={staff}
+                    onAssignEmployee={handleAssignEmployee}
                 />
                 <KanbanColumn
                     id="in-progress"
@@ -175,6 +212,8 @@ export const ProductionKanbanBoard: React.FC<ProductionKanbanBoardProps> = ({ ta
                     color="text-blue-400"
                     onDrop={handleUpdateStatus}
                     onToggleTimer={handleToggleTimer}
+                    staff={staff}
+                    onAssignEmployee={handleAssignEmployee}
                 />
                 <KanbanColumn
                     id="done"
@@ -183,6 +222,8 @@ export const ProductionKanbanBoard: React.FC<ProductionKanbanBoardProps> = ({ ta
                     color="text-green-400"
                     onDrop={handleUpdateStatus}
                     onToggleTimer={handleToggleTimer}
+                    staff={staff}
+                    onAssignEmployee={handleAssignEmployee}
                 />
             </div>
         </div>

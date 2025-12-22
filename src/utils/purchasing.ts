@@ -96,13 +96,16 @@ export const generateDraftOrders = (
 
         draftOrders.push({
             id: uuidv4(),
+            orderNumber: `PED-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${uuidv4().slice(0, 4)}`.toUpperCase(),
             supplierId,
             date: new Date().toISOString().split('T')[0], // Created today
             deliveryDate: earliestNeeded, // Expected delivery (= Need date)
             orderDeadline,
             status: 'DRAFT',
             items,
-            totalCost: parseFloat(totalCost.toFixed(2))
+            totalCost: parseFloat(totalCost.toFixed(2)),
+            outletId: 'unknown',
+            type: 'AUTOMATIC'
         });
     });
 

@@ -47,7 +47,11 @@ export interface ProductionSlice {
     setProductionTasks: (eventId: string, tasks: KanbanTask[]) => void;
     replaceAllProductionTasks: (tasksByEvent: Record<string, KanbanTask[]>) => void;
     toggleTaskTimer: (eventId: string, taskId: string) => void;
-    updateTaskSchedule: (eventId: string, taskId: string, updates: { assignedDate?: string; shift?: import('../types').ShiftType }) => void;
+    updateTaskSchedule: (eventId: string, taskId: string, updates: {
+        assignedDate?: string;
+        shift?: import('../types').ShiftType;
+        assignedEmployeeId?: string;
+    }) => void;
 }
 
 export interface StaffSlice {

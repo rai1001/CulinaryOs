@@ -17,7 +17,7 @@ export const consumeStockFIFO = (
 
     // Sort by expiry date (FIFO)
     const sortedBatches = [...batches].sort((a, b) =>
-        new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime()
+        new Date(a.expiresAt).getTime() - new Date(b.expiresAt).getTime()
     );
 
     const newBatches: IngredientBatch[] = [];
@@ -31,18 +31,18 @@ export const consumeStockFIFO = (
             continue;
         }
 
-        if (batch.quantity > remainingQtyToConsume) {
+        if (batch.currentQuantity > remainingQtyToConsume) {
             // Partial consumption of this batch
             newBatches.push({
                 ...batch,
-                quantity: batch.quantity - remainingQtyToConsume
+                currentQuantity: batch.currentQuantity - remainingQtyToConsume
             });
             totalConsumed += remainingQtyToConsume;
             remainingQtyToConsume = 0;
         } else {
             // Complete consumption of this batch (batch is depleted)
-            totalConsumed += batch.quantity;
-            remainingQtyToConsume -= batch.quantity;
+            totalConsumed += batch.currentQuantity;
+            remainingQtyToConsume -= batch.currentQuantity;
             // Don't add to newBatches (batch is empty)
         }
     }
@@ -55,7 +55,7 @@ export const consumeStockFIFO = (
  */
 export const calculateTotalStock = (batches?: IngredientBatch[]): number => {
     if (!batches) return 0;
-    return batches.reduce((sum, batch) => sum + batch.quantity, 0);
+    return batches.reduce((sum, batch) => sum + batch.currentQuantity, 0);
 };
 
 /**
@@ -70,9 +70,14 @@ export const createMigrationBatch = (
     return {
         id: crypto.randomUUID(),
         ingredientId,
-        quantity: currentStock,
-        expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days default
-        receivedDate: new Date().toISOString(),
-        costPerUnit
+        initialQuantity: currentStock,
+        currentQuantity: currentStock,
+        unit: 'un', // Default unit, should be passed if available
+        batchNumber: `LOT-MIG-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}`,
+        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days default
+        receivedAt: new Date().toISOString(),
+        costPerUnit: costPerUnit,
+        outletId: 'unknown',
+        status: 'ACTIVE'
     };
 };

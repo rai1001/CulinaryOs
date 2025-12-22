@@ -1,9 +1,12 @@
 import type { Ingredient, NutritionalInfo } from './inventory';
 import type { AutoPurchaseSettings } from './purchases';
 
+// Re-export all types from modular files
+
 export * from './inventory';
 export * from './suppliers';
 export * from './purchases';
+export * from './fichasTecnicas';
 
 
 
@@ -111,6 +114,7 @@ export interface KanbanTask {
     totalTimeSpent?: number; // In seconds
     shift?: ShiftType;
     assignedDate?: string; // YYYY-MM-DD
+    assignedEmployeeId?: string;
 }
 
 // Staff & Scheduling Types
@@ -137,6 +141,7 @@ export interface Employee {
     // Tracking
     vacationDaysTotal: number; // Annual allowance, default 30
     vacationDates: string[]; // ISO Dates (YYYY-MM-DD)
+    hourlyRate?: number; // For Prime Cost calculation
     outletId?: string;
 }
 
@@ -312,7 +317,7 @@ export interface DemandPrediction {
     }[];
 }
 
-export type ViewType = 'dashboard' | 'schedule' | 'production' | 'data' | 'events' | 'recipes' | 'ingredients' | 'suppliers' | 'inventory' | 'purchasing' | 'waste' | 'haccp' | 'analytics' | 'kds' | 'ai-scanner' | 'ai-search' | 'ai-menu' | 'ai-ingredients' | 'outlets' | 'menus' | 'breakfast';
+export type ViewType = 'dashboard' | 'schedule' | 'production' | 'data' | 'events' | 'recipes' | 'ingredients' | 'suppliers' | 'inventory' | 'purchasing' | 'waste' | 'haccp' | 'analytics' | 'kds' | 'ai-scanner' | 'ai-search' | 'ai-menu' | 'ai-ingredients' | 'outlets' | 'menus' | 'breakfast' | 'fichas-tecnicas';
 
 export interface Notification {
     id: string;
@@ -321,4 +326,5 @@ export interface Notification {
     pccId?: string;
     read: boolean;
     timestamp: any; // Firestore Timestamp or Date
+    outletId?: string;
 }

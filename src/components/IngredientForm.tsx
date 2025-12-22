@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useStore } from '../store/useStore';
-import type { Unit, Ingredient } from '../types';
-import { Plus, Sparkles, Loader2 } from 'lucide-react';
+import { Plus, Sparkles, Loader2, Trash2 } from 'lucide-react';
+import type { Unit, Ingredient, IngredientSupplier } from '../types';
 import { enrichIngredientCallable } from '../api/ai';
 import type { IngredientEnrichment } from '../types';
 import { addDocument, updateDocument } from '../services/firestoreService';
@@ -22,6 +22,7 @@ export const IngredientForm: React.FC<{ initialData?: Ingredient; onClose?: () =
             minStock: 0,
             supplierId: '',
             category: 'other',
+            supplierInfo: [],
             nutritionalInfo: {
                 calories: 0,
                 protein: 0,
@@ -192,7 +193,7 @@ export const IngredientForm: React.FC<{ initialData?: Ingredient; onClose?: () =
                 </div>
 
                 <div className="space-y-1">
-                    <label className="text-sm text-slate-400">Proveedor</label>
+                    <label className="text-sm text-slate-400">Proveedor Principal</label>
                     <select
                         className="w-full bg-black/20 border border-white/10 rounded px-3 py-2 text-white outline-none"
                         value={formData.supplierId || ''}
@@ -203,6 +204,99 @@ export const IngredientForm: React.FC<{ initialData?: Ingredient; onClose?: () =
                             <option key={s.id} value={s.id}>{s.name}</option>
                         ))}
                     </select>
+                </div>
+
+                <div className="col-span-2 border-t border-white/10 pt-4 mt-2">
+                    <div className="flex justify-between items-center mb-4">
+                        <h4 className="text-md font-semibold text-white">Proveedores Alternativos</h4>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                const newSupplier: IngredientSupplier = { supplierId: '', costPerUnit: 0 };
+                                setFormData({
+                                    ...formData,
+                                    supplierInfo: [...(formData.supplierInfo || []), newSupplier]
+                                });
+                            }}
+                            className="text-xs bg-white/5 border border-white/10 px-3 py-1.5 rounded-lg text-slate-300 hover:text-white transition-colors flex items-center gap-2"
+                        >
+                            <Plus size={14} /> Añadir Proveedor
+                        </button>
+                    </div>
+
+                    <div className="space-y-3">
+                        {(formData.supplierInfo || []).map((info, index) => (
+                            <div key={index} className="grid grid-cols-12 gap-3 items-end bg-black/10 p-3 rounded-lg border border-white/5">
+                                <div className="col-span-5 space-y-1">
+                                    <label className="text-[10px] text-slate-500 uppercase font-bold px-1">Proveedor</label>
+                                    <select
+                                        className="w-full bg-black/20 border border-white/10 rounded px-3 py-1.5 text-sm text-white outline-none"
+                                        value={info.supplierId}
+                                        onChange={e => {
+                                            const newList = [...(formData.supplierInfo || [])];
+                                            newList[index].supplierId = e.target.value;
+                                            setFormData({ ...formData, supplierInfo: newList });
+                                        }}
+                                    >
+                                        <option value="">Seleccionar...</option>
+                                        {suppliers.map(s => (
+                                            <option key={s.id} value={s.id}>{s.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="col-span-3 space-y-1">
+                                    <label className="text-[10px] text-slate-500 uppercase font-bold px-1">Coste</label>
+                                    <input
+                                        type="number"
+                                        className="w-full bg-black/20 border border-white/10 rounded px-3 py-1.5 text-sm text-white"
+                                        value={info.costPerUnit}
+                                        onChange={e => {
+                                            const newList = [...(formData.supplierInfo || [])];
+                                            newList[index].costPerUnit = Number(e.target.value);
+                                            setFormData({ ...formData, supplierInfo: newList });
+                                        }}
+                                    />
+                                </div>
+                                <div className="col-span-3 space-y-1">
+                                    <label className="text-[10px] text-slate-500 uppercase font-bold px-1">Lead Time (días)</label>
+                                    <input
+                                        type="number"
+                                        className="w-full bg-black/20 border border-white/10 rounded px-3 py-1.5 text-sm text-white"
+                                        value={info.leadTimeDays || ''}
+                                        onChange={e => {
+                                            const newList = [...(formData.supplierInfo || [])];
+                                            newList[index].leadTimeDays = Number(e.target.value);
+                                            setFormData({ ...formData, supplierInfo: newList });
+                                        }}
+                                    />
+                                </div>
+                                <div className="col-span-1 pb-1">
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            const newList = (formData.supplierInfo || []).filter((_, i) => i !== index);
+                                            setFormData({ ...formData, supplierInfo: newList });
+                                        }}
+                                        className="p-2 text-slate-500 hover:text-rose-400 transition-colors"
+                                    >
+                                        <Trash2 size={16} />
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    <div className="mt-4 p-3 bg-indigo-500/5 rounded-lg border border-indigo-500/10">
+                        <label className="text-xs text-indigo-300 font-medium flex items-center gap-2">
+                            <input
+                                type="checkbox"
+                                className="rounded border-indigo-500/30 bg-indigo-500/10"
+                                checked={!!formData.supplierId}
+                                readOnly
+                            />
+                            El proveedor principal (selección arriba) se utilizará por defecto.
+                        </label>
+                    </div>
                 </div>
 
                 <div className="col-span-2 border-t border-white/10 pt-4 mt-2">

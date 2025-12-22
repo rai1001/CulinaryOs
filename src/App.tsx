@@ -1,7 +1,7 @@
 import React, { Suspense } from 'react';
 import { Routes, Route, Navigate, NavLink, useLocation } from 'react-router-dom';
 import { Dashboard } from './components/Dashboard';
-import { LayoutDashboard, Calendar, ShoppingCart, Database, CalendarDays, ChefHat, Package, Truck, ClipboardList, ShoppingBag, Trash2, ShieldCheck, TrendingUp, Search, BookOpen, Sparkles, Coffee, Menu as MenuIcon, X, Briefcase, Settings, LogOut } from 'lucide-react';
+import { LayoutDashboard, Calendar, ShoppingCart, Database, CalendarDays, ChefHat, Package, Truck, ClipboardList, ShoppingBag, Trash2, ShieldCheck, TrendingUp, Search, BookOpen, Sparkles, Coffee, Menu as MenuIcon, X, Briefcase, Settings, LogOut, FileText } from 'lucide-react';
 import { getAuth } from 'firebase/auth';
 import { useStore } from './store/useStore';
 import { OutletSelector } from './components/OutletSelector';
@@ -37,6 +37,7 @@ const MenuView = React.lazy(() => import('./components/MenuView').then(m => ({ d
 const BreakfastView = React.lazy(() => import('./components/BreakfastView').then(m => ({ default: m.BreakfastView })));
 const StaffView = React.lazy(() => import('./components/StaffView').then(m => ({ default: m.StaffView })));
 const IntegrationsView = React.lazy(() => import('./components/IntegrationsView').then(m => ({ default: m.IntegrationsView })));
+const FichasTecnicasView = React.lazy(() => import('./components/FichasTecnicasView').then(m => ({ default: m.FichasTecnicasView })));
 
 // Loading fallback component
 const LoadingFallback = () => (
@@ -123,6 +124,7 @@ function App() {
           </div>
 
           <NavItem to="/menus" icon={<BookOpen />} label="Mis Menús" />
+          <NavItem to="/fichas-tecnicas" icon={<FileText />} label="Fichas Técnicas" />
           <NavItem to="/ai-menu" icon={<Sparkles />} label="Generador IA" />
 
           <div className="pt-4 pb-2">
@@ -221,6 +223,7 @@ function App() {
                 <Route path="/ai-menu" element={<AIMenuView />} />
                 <Route path="/ai-search" element={<AISearchView />} />
                 <Route path="/menus" element={<MenuView />} />
+                <Route path="/fichas-tecnicas" element={<FichasTecnicasView />} />
                 <Route path="/breakfast" element={<BreakfastView />} />
                 <Route path="/integrations" element={<IntegrationsView />} />
                 {/* Fallback */}

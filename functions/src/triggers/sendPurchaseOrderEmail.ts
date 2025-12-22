@@ -33,45 +33,97 @@ export const sendPurchaseOrderEmail = functions.firestore
                 // 3. Generate HTML Table for Items
                 const itemsHtml = newData.items.map((item: any) => `
                     <tr>
-                        <td style="padding: 8px; border-bottom: 1px solid #ddd;">${item.tempDescription || 'Ingrediente ' + item.ingredientId}</td>
-                        <td style="padding: 8px; border-bottom: 1px solid #ddd;">${item.quantity} ${item.unit}</td>
-                        <td style="padding: 8px; border-bottom: 1px solid #ddd;">${item.costPerUnit}€</td>
+                        <td style="padding: 12px 8px; border-bottom: 1px solid #eee; color: #334155; font-weight: 500;">
+                            ${item.tempDescription || 'Ingrediente ' + item.ingredientId}
+                            <br/><span style="font-size: 10px; color: #94a3b8; font-family: monospace;">ID: ${item.ingredientId}</span>
+                        </td>
+                        <td style="padding: 12px 8px; border-bottom: 1px solid #eee; text-align: right; color: #0f172a; font-weight: 700;">
+                            ${item.quantity} <span style="font-size: 11px; font-weight: 400; color: #64748b;">${item.unit}</span>
+                        </td>
+                        <td style="padding: 12px 8px; border-bottom: 1px solid #eee; text-align: right; color: #64748b;">
+                            ${(item.costPerUnit || 0).toFixed(2)}€
+                        </td>
+                        <td style="padding: 12px 8px; border-bottom: 1px solid #eee; text-align: right; color: #0f172a; font-weight: 700;">
+                            ${((item.quantity || 0) * (item.costPerUnit || 0)).toFixed(2)}€
+                        </td>
                     </tr>
                 `).join('');
 
                 const emailHtml = `
-                    <div style="font-family: Arial, sans-serif; color: #333;">
-                        <h2>Nuevo Pedido: ${newData.orderNumber}</h2>
-                        <p>Hola <strong>${supplier.name}</strong>,</p>
-                        <p>Por favor, procese el siguiente pedido para <strong>${branchName}</strong>.</p>
-                        
-                        <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
-                            <thead>
-                                <tr style="background-color: #f4f4f4;">
-                                    <th style="padding: 10px; text-align: left;">Producto</th>
-                                    <th style="padding: 10px; text-align: left;">Cantidad</th>
-                                    <th style="padding: 10px; text-align: left;">Precio Unit. Estimado</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${itemsHtml}
-                            </tbody>
-                        </table>
+                    <!DOCTYPE html>
+                    <html>
+                    <body style="background-color: #f8fafc; padding: 40px 20px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+                        <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+                            <!-- Header -->
+                            <div style="background-color: #0f172a; padding: 32px; text-align: center;">
+                                <h1 style="color: #ffffff; margin: 0; font-size: 24px; letter-spacing: -0.025em;">PEDIDO DE COMPRA</h1>
+                                <p style="color: #94a3b8; margin: 8px 0 0 0; font-size: 14px;">${newData.orderNumber}</p>
+                            </div>
 
-                        <p style="margin-top: 20px;">
-                            <strong>Fecha de Entrega Deseada:</strong> ${newData.deliveryDate || 'Lo antes posible'}<br>
-                            <strong>Notas:</strong> ${newData.notes || 'N/A'}
-                        </p>
+                            <!-- Info -->
+                            <div style="padding: 32px;">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 32px;">
+                                    <div style="flex: 1;">
+                                        <p style="text-transform: uppercase; font-size: 10px; font-weight: 800; color: #64748b; margin: 0 0 8px 0; letter-spacing: 0.05em;">Para:</p>
+                                        <p style="margin: 0; color: #0f172a; font-weight: 700;">${supplier.name}</p>
+                                        ${supplier.email ? `<p style="margin: 4px 0 0 0; font-size: 13px; color: #64748b;">${supplier.email}</p>` : ''}
+                                    </div>
+                                    <div style="flex: 1; text-align: right;">
+                                        <p style="text-transform: uppercase; font-size: 10px; font-weight: 800; color: #64748b; margin: 0 0 8px 0; letter-spacing: 0.05em;">Desde:</p>
+                                        <p style="margin: 0; color: #0f172a; font-weight: 700;">${branchName}</p>
+                                        <p style="margin: 4px 0 0 0; font-size: 13px; color: #64748b;">${new Date().toLocaleDateString('es-ES')}</p>
+                                    </div>
+                                </div>
 
-                        <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;">
-                        <p style="font-size: 12px; color: #888;">Este pedido fue generado automáticamente por ChefOS.</p>
-                    </div>
+                                <!-- Logistics -->
+                                <div style="background-color: #f1f5f9; border-radius: 12px; padding: 20px; margin-bottom: 32px; border-left: 4px solid #6366f1;">
+                                    <p style="margin: 0; font-size: 14px; color: #334155;">
+                                        <strong>Fecha requerida de entrega:</strong> <span style="color: #6366f1;">${newData.deliveryDate || 'Lo antes posible'}</span>
+                                    </p>
+                                    ${newData.deliveryNotes ? `
+                                        <p style="margin: 12px 0 0 0; font-size: 13px; color: #64748b;">
+                                            <strong>Instrucciones:</strong> ${newData.deliveryNotes}
+                                        </p>
+                                    ` : ''}
+                                </div>
+
+                                <!-- Table -->
+                                <table style="width: 100%; border-collapse: collapse;">
+                                    <thead>
+                                        <tr>
+                                            <th style="text-align: left; font-size: 10px; text-transform: uppercase; color: #94a3b8; padding-bottom: 12px; border-bottom: 2px solid #f1f5f9;">PRODUCTO</th>
+                                            <th style="text-align: right; font-size: 10px; text-transform: uppercase; color: #94a3b8; padding-bottom: 12px; border-bottom: 2px solid #f1f5f9;">CANT</th>
+                                            <th style="text-align: right; font-size: 10px; text-transform: uppercase; color: #94a3b8; padding-bottom: 12px; border-bottom: 2px solid #f1f5f9;">COSTO</th>
+                                            <th style="text-align: right; font-size: 10px; text-transform: uppercase; color: #94a3b8; padding-bottom: 12px; border-bottom: 2px solid #f1f5f9;">TOTAL</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${itemsHtml}
+                                    </tbody>
+                                    <tfoot>
+                                        <tr>
+                                            <td colspan="3" style="text-align: right; padding: 24px 8px 0 0; font-weight: 700; color: #64748b; font-size: 14px;">TOTAL DEL PEDIDO:</td>
+                                            <td style="text-align: right; padding: 24px 8px 0 0; font-weight: 800; color: #0f172a; font-size: 18px;">${(newData.totalCost || 0).toFixed(2)}€</td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+
+                                <!-- Footer -->
+                                <div style="margin-top: 48px; padding-top: 24px; border-top: 1px solid #f1f5f9; text-align: center;">
+                                    <p style="margin: 0; font-size: 12px; color: #94a3b8;">
+                                        Este es un pedido automático generado a través de <strong>CulinaryOS</strong>.
+                                        Si tiene alguna duda, por favor contacte directamente con el punto de venta.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </body>
+                    </html>
                 `;
 
                 // 4. Send Email via Resend
-                // Make sure to configure sender domain in Resend dashboard
                 await resend.emails.send({
-                    from: 'Pedidos ChefOS <orders@chefos.app>',
+                    from: 'ChefOS <orders@chefos.app>',
                     to: supplier.email,
                     subject: `Pedido ${newData.orderNumber} - ${branchName}`,
                     html: emailHtml

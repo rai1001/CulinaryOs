@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useStore } from '../store/useStore';
-import { AlertTriangle, Search, Plus, ChevronDown, ChevronRight, Calculator, Calendar, Scan, Filter } from 'lucide-react';
+import { AlertTriangle, Search, Plus, ChevronDown, ChevronRight, Calculator, Calendar, Scan, Filter, Sparkles } from 'lucide-react';
 import type { Ingredient } from '../types';
 import { BarcodeScanner } from './scanner/BarcodeScanner';
 import { ExpiryDateScanner } from './scanner/ExpiryDateScanner';
@@ -8,6 +8,7 @@ import { DataImportModal, type ImportType } from './common/DataImportModal';
 import { addDocument, updateDocument } from '../services/firestoreService';
 import { collections, COLLECTION_NAMES } from '../firebase/collections';
 import { lookupProductByBarcode, type ProductLookupResult } from '../services/productLookupService';
+import { AIInventoryAdvisor } from './inventory/AIInventoryAdvisor';
 
 type ScanStep = 'idle' | 'scanning-barcode' | 'product-found' | 'scanning-expiry' | 'confirm-batch';
 type FilterTab = 'all' | 'expiring' | 'low-stock' | 'meat' | 'fish' | 'produce' | 'dairy' | 'dry' | 'frozen' | 'canned' | 'cocktail' | 'sports_menu' | 'corporate_menu' | 'coffee_break' | 'restaurant' | 'other';
@@ -37,6 +38,8 @@ export const InventoryView: React.FC = () => {
         expiryDate: '',
         costPerUnit: ''
     });
+
+    const [isAIAdvisorOpen, setIsAIAdvisorOpen] = useState(false);
 
     // Determine alerts
 
@@ -147,13 +150,18 @@ export const InventoryView: React.FC = () => {
                 await addDocument(collections.ingredients, newIngredient);
 
                 const newBatch = {
-                    quantity: parseFloat(batchForm.quantity),
-                    expiryDate: new Date(batchForm.expiryDate).toISOString(),
-                    receivedDate: new Date().toISOString(),
+                    initialQuantity: parseFloat(batchForm.quantity),
+                    currentQuantity: parseFloat(batchForm.quantity),
+                    expiresAt: new Date(batchForm.expiryDate).toISOString(),
+                    receivedAt: new Date().toISOString(),
                     costPerUnit: parseFloat(batchForm.costPerUnit) || 0,
                     barcode: scannedBarcode,
                     id: crypto.randomUUID(),
-                    ingredientId: newIngredientId
+                    ingredientId: newIngredientId,
+                    unit: 'un' as any, // Default
+                    batchNumber: `LOT-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}`,
+                    outletId: activeOutletId,
+                    status: 'ACTIVE' as const
                 };
 
                 // Local update
@@ -172,18 +180,23 @@ export const InventoryView: React.FC = () => {
                 const updatedBatches = [newBatch];
                 await updateDocument(COLLECTION_NAMES.INGREDIENTS, newIngredientId, {
                     batches: updatedBatches,
-                    stock: newBatch.quantity
+                    stock: newBatch.currentQuantity
                 });
 
             } else if (existingIngredient) {
                 const newBatch = {
-                    quantity: parseFloat(batchForm.quantity),
-                    expiryDate: new Date(batchForm.expiryDate).toISOString(),
-                    receivedDate: new Date().toISOString(),
+                    initialQuantity: parseFloat(batchForm.quantity),
+                    currentQuantity: parseFloat(batchForm.quantity),
+                    expiresAt: new Date(batchForm.expiryDate).toISOString(),
+                    receivedAt: new Date().toISOString(),
                     costPerUnit: parseFloat(batchForm.costPerUnit) || existingIngredient.costPerUnit,
                     barcode: scannedBarcode,
                     id: crypto.randomUUID(),
-                    ingredientId: existingIngredient.id
+                    ingredientId: existingIngredient.id,
+                    unit: existingIngredient.unit,
+                    batchNumber: `LOT-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}`,
+                    outletId: activeOutletId,
+                    status: 'ACTIVE' as const
                 };
 
                 // Local update
@@ -198,7 +211,7 @@ export const InventoryView: React.FC = () => {
                 // If we assume single user or optimistic:
                 const currentBatches = existingIngredient.batches || [];
                 const updatedBatches = [...currentBatches, newBatch];
-                const newStock = updatedBatches.reduce((sum, b) => sum + b.quantity, 0);
+                const newStock = updatedBatches.reduce((sum, b) => sum + b.currentQuantity, 0);
 
                 await updateDocument(COLLECTION_NAMES.INGREDIENTS, existingIngredient.id, {
                     batches: updatedBatches,
@@ -233,14 +246,14 @@ export const InventoryView: React.FC = () => {
         if (activeFilter !== 'all') {
             if (activeFilter === 'low-stock') {
                 filtered = filtered.filter(ing => {
-                    const totalStock = (ing.batches || []).reduce((sum, batch) => sum + batch.quantity, 0);
+                    const totalStock = (ing.batches || []).reduce((sum, batch) => sum + batch.currentQuantity, 0);
                     return totalStock < (ing.minStock || 0);
                 });
             } else if (activeFilter === 'expiring') {
                 filtered = filtered.filter(ing => {
                     const batches = ing.batches || [];
                     return batches.some(batch => {
-                        const daysUntilExpiry = Math.floor((new Date(batch.expiryDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+                        const daysUntilExpiry = Math.floor((new Date(batch.expiresAt).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
                         return daysUntilExpiry <= 7 && daysUntilExpiry >= 0;
                     });
                 });
@@ -255,7 +268,7 @@ export const InventoryView: React.FC = () => {
     // Count for badges
     // ⚡ Bolt: Memoized to prevent unnecessary recalculation on search/typing
     const expiringCount = React.useMemo(() => ingredients.filter(ing => {
-        const nearExpiryBatches = ing.batches?.filter(b => getDaysUntilExpiry(b.expiryDate) <= 7) || [];
+        const nearExpiryBatches = ing.batches?.filter(b => getDaysUntilExpiry(b.expiresAt) <= 7) || [];
         return nearExpiryBatches.length > 0;
     }).length, [ingredients]);
 
@@ -297,11 +310,16 @@ export const InventoryView: React.FC = () => {
                         const newBatch = {
                             id: crypto.randomUUID(),
                             ingredientId: match.id,
-                            quantity: Number(item.quantity) || 0,
-                            expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // Default 30 days if not scanned
-                            receivedDate: new Date().toISOString(),
+                            initialQuantity: Number(item.quantity) || 0,
+                            currentQuantity: Number(item.quantity) || 0,
+                            expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // Default 30 days if not scanned
+                            receivedAt: new Date().toISOString(),
                             costPerUnit: match.costPerUnit, // Assume same cost
-                            barcode: match.defaultBarcode || ''
+                            barcode: match.defaultBarcode || '',
+                            unit: match.unit,
+                            batchNumber: 'LOT-IMPORT',
+                            outletId: activeOutletId,
+                            status: 'ACTIVE' as const
                         };
 
                         // Local
@@ -324,7 +342,7 @@ export const InventoryView: React.FC = () => {
                         // For SAME ingredient appearing twice? Unlikely in scan.
 
                         const updatedBatches = [...currentBatches, newBatch];
-                        const newStock = updatedBatches.reduce((sum, b) => sum + b.quantity, 0);
+                        const newStock = updatedBatches.reduce((sum, b) => sum + b.currentQuantity, 0);
 
                         await updateDocument(COLLECTION_NAMES.INGREDIENTS, match.id, {
                             batches: updatedBatches,
@@ -378,7 +396,14 @@ export const InventoryView: React.FC = () => {
                         onClick={() => setImportType('inventory')}
                         className="bg-white text-gray-700 border border-gray-300 px-6 py-3 rounded-xl font-semibold flex items-center gap-2 hover:bg-gray-50 transition-all shadow-sm"
                     >
-                        Importar / Escanear Albarán
+                        Importar Albarán
+                    </button>
+                    <button
+                        onClick={() => setIsAIAdvisorOpen(true)}
+                        className="bg-indigo-600 text-white px-6 py-3 rounded-xl font-semibold flex items-center gap-2 hover:bg-indigo-500 transition-all shadow-lg shadow-indigo-600/20"
+                    >
+                        <Sparkles size={20} />
+                        AI Advisor
                     </button>
                 </div>
             </div>
@@ -506,10 +531,10 @@ export const InventoryView: React.FC = () => {
                         <tbody className="divide-y divide-gray-100">
                             {filteredIngredients.map((ing, idx) => {
                                 const totalStock = ing.stock || 0;
-                                const totalValue = ing.batches?.reduce((acc, b) => acc + (b.quantity * b.costPerUnit), 0) || (totalStock * ing.costPerUnit);
+                                const totalValue = ing.batches?.reduce((acc, b) => acc + (b.currentQuantity * b.costPerUnit), 0) || (totalStock * ing.costPerUnit);
                                 const minStock = ing.minStock || 0;
                                 const isLowStock = totalStock <= minStock;
-                                const nearExpiryBatches = ing.batches?.filter(b => getDaysUntilExpiry(b.expiryDate) <= 7) || [];
+                                const nearExpiryBatches = ing.batches?.filter(b => getDaysUntilExpiry(b.expiresAt) <= 7) || [];
                                 const isExpanded = expandedIds.has(ing.id);
 
                                 return (
@@ -593,24 +618,24 @@ export const InventoryView: React.FC = () => {
                                                                 </tr>
                                                             </thead>
                                                             <tbody>
-                                                                {ing.batches?.sort((a, b) => new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime()).map(batch => {
-                                                                    const daysToExpiry = getDaysUntilExpiry(batch.expiryDate);
+                                                                {ing.batches?.sort((a, b) => new Date(a.expiresAt).getTime() - new Date(b.expiresAt).getTime()).map(batch => {
+                                                                    const daysToExpiry = getDaysUntilExpiry(batch.expiresAt);
                                                                     const isExpired = daysToExpiry < 0;
                                                                     const isNearExpiry = daysToExpiry <= 3;
 
                                                                     return (
                                                                         <tr key={batch.id} className="border-t border-gray-100 hover:bg-gray-50">
                                                                             <td className="px-4 py-3 text-gray-600">
-                                                                                {new Date(batch.receivedDate).toLocaleDateString('es-ES')}
+                                                                                {new Date(batch.receivedAt).toLocaleDateString('es-ES')}
                                                                             </td>
                                                                             <td className="px-4 py-3">
                                                                                 <div className="font-medium text-gray-900">
-                                                                                    {new Date(batch.expiryDate).toLocaleDateString('es-ES')}
+                                                                                    {new Date(batch.expiresAt).toLocaleDateString('es-ES')}
                                                                                 </div>
                                                                                 <div className="text-xs text-gray-400">({daysToExpiry} días)</div>
                                                                             </td>
                                                                             <td className="px-4 py-3 font-medium text-gray-900">
-                                                                                {batch.quantity} {ing.unit}
+                                                                                {batch.currentQuantity} {ing.unit}
                                                                             </td>
                                                                             <td className="px-4 py-3 text-gray-700">{batch.costPerUnit} €</td>
                                                                             <td className="px-4 py-3">
@@ -865,15 +890,26 @@ export const InventoryView: React.FC = () => {
                 )
             }
 
-            {importType && (
-                <DataImportModal
-                    isOpen={!!importType}
-                    onClose={() => setImportType(null)}
-                    onImportComplete={handleImportComplete}
-                    type={importType}
-                />
-            )}
-        </div>
+            {
+                importType && (
+                    <DataImportModal
+                        isOpen={!!importType}
+                        onClose={() => setImportType(null)}
+                        onImportComplete={handleImportComplete}
+                        type={importType}
+                    />
+                )
+            }
+            {
+                isAIAdvisorOpen && (
+                    <AIInventoryAdvisor
+                        outletId={activeOutletId || ''}
+                        isOpen={isAIAdvisorOpen}
+                        onClose={() => setIsAIAdvisorOpen(false)}
+                    />
+                )
+            }
+        </div >
     );
 };
 

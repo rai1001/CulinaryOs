@@ -16,7 +16,7 @@ export const consumeStockFIFO = (
 
     // Sort batches by expiry date ASC (FIFO - consume oldest first)
     const sortedBatches = [...batches].sort((a, b) =>
-        new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime()
+        new Date(a.expiresAt).getTime() - new Date(b.expiresAt).getTime()
     );
 
     const newBatches: IngredientBatch[] = [];
@@ -28,16 +28,16 @@ export const consumeStockFIFO = (
             continue;
         }
 
-        if (batch.quantity > remainingQtyToConsume) {
+        if (batch.currentQuantity > remainingQtyToConsume) {
             // Partial consumption of this batch
             newBatches.push({
                 ...batch,
-                quantity: batch.quantity - remainingQtyToConsume
+                currentQuantity: batch.currentQuantity - remainingQtyToConsume
             });
             remainingQtyToConsume = 0;
         } else {
             // Fully consume this batch (don't push to newBatches)
-            remainingQtyToConsume -= batch.quantity;
+            remainingQtyToConsume -= batch.currentQuantity;
         }
     }
 
@@ -53,10 +53,15 @@ export const createDefaultBatch = (ingredient: Ingredient): IngredientBatch => {
     return {
         id: uuidv4(),
         ingredientId: ingredient.id,
-        quantity: ingredient.stock || 0,
-        expiryDate: new Date(Date.now() + INVENTORY.DEFAULT_EXPIRY_DAYS * TIME.MS_PER_DAY).toISOString(),
-        receivedDate: new Date().toISOString(),
-        costPerUnit: ingredient.costPerUnit
+        initialQuantity: ingredient.stock || 0,
+        currentQuantity: ingredient.stock || 0,
+        unit: ingredient.unit,
+        batchNumber: `LOT-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}`,
+        expiresAt: new Date(Date.now() + INVENTORY.DEFAULT_EXPIRY_DAYS * TIME.MS_PER_DAY).toISOString(),
+        receivedAt: new Date().toISOString(),
+        costPerUnit: ingredient.costPerUnit,
+        outletId: ingredient.outletId || 'unknown',
+        status: 'ACTIVE'
     };
 };
 
@@ -78,7 +83,7 @@ export const initializeBatches = (ingredient: Ingredient): Ingredient => {
     return {
         ...ingredient,
         batches,
-        stock: batches.reduce((sum, b) => sum + b.quantity, 0)
+        stock: batches.reduce((sum, b) => sum + b.currentQuantity, 0)
     };
 };
 
@@ -88,7 +93,7 @@ export const initializeBatches = (ingredient: Ingredient): Ingredient => {
  * @returns Total stock quantity
  */
 export const calculateTotalStock = (batches: IngredientBatch[]): number => {
-    return batches.reduce((sum, batch) => sum + batch.quantity, 0);
+    return batches.reduce((sum, batch) => sum + batch.currentQuantity, 0);
 };
 
 /**
@@ -104,8 +109,8 @@ export const getBatchesExpiringSoon = (
     const cutoffDate = new Date(Date.now() + days * TIME.MS_PER_DAY);
 
     return batches.filter(batch =>
-        new Date(batch.expiryDate) <= cutoffDate
+        new Date(batch.expiresAt) <= cutoffDate
     ).sort((a, b) =>
-        new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime()
+        new Date(a.expiresAt).getTime() - new Date(b.expiresAt).getTime()
     );
 };

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useStore } from '../store/useStore';
 import { Trash2, TrendingDown, Plus, AlertCircle, DollarSign, Search } from 'lucide-react';
 import type { WasteReason } from '../types';
+import { AIWasteAdvisor } from './waste/AIWasteAdvisor';
 
 export const WasteView = () => {
     const { ingredients, wasteRecords, addWasteRecord } = useStore();
@@ -218,6 +219,9 @@ export const WasteView = () => {
                             </p>
                         </div>
                     </div>
+
+                    {/* AI Advisor Panel */}
+                    <AIWasteAdvisor />
 
                     {/* Breakdown by Reason */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

@@ -1,3 +1,0 @@
-﻿src/services/ocrService.ts(15,9): error TS2322: Type '"6"' is not assignable to type 'PSM | undefined'.
-src/store/useStore.test.ts(77,17): error TS2353: Object literal may only specify known properties, and 'status' does not exist in type 'Event'.
-src/store/useStore.test.ts(94,17): error TS2353: Object literal may only specify known properties, and 'status' does not exist in type 'Event'.

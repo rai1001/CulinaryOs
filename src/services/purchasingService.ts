@@ -1,14 +1,12 @@
 import { db } from "../firebase/config";
-import { collection, query, where, getDocs, Timestamp } from "firebase/firestore";
+import { collection, query, where, getDocs } from "firebase/firestore";
 import { addDocument } from "./firestoreService";
 import { COLLECTIONS } from "../firebase/collections";
+import { v4 as uuidv4 } from 'uuid';
 import type {
     Ingredient,
-    Supplier,
     PurchaseOrder,
-    PurchaseOrderItem,
-    StockMovement,
-    Unit
+    PurchaseOrderItem
 } from "../types";
 
 // Helper to determine order quantity based on needs and supplier constraints
@@ -39,8 +37,12 @@ export const generateDraftOrder = async (
     }));
 
     const totalCost = orderItems.reduce((sum, item) => sum + (item.quantity * item.costPerUnit), 0);
+    const orderId = uuidv4();
+    const orderNumber = `PED-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${orderId.slice(0, 4)}`.toUpperCase();
 
-    const orderData: Omit<PurchaseOrder, 'id'> = {
+    const orderData: PurchaseOrder = {
+        id: orderId, // We might need to handle ID if addDocument generates one, but for now we provide it for the object logic
+        orderNumber,
         supplierId,
         outletId,
         status: 'DRAFT',

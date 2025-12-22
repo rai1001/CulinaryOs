@@ -1,4 +1,4 @@
-import { Unit } from './inventory';
+import type { Unit } from './inventory';
 
 export type PurchaseStatus = 'DRAFT' | 'APPROVED' | 'ORDERED' | 'RECEIVED' | 'PARTIAL' | 'CANCELLED';
 
@@ -34,6 +34,8 @@ export interface PurchaseOrder {
     approvedBy?: string;
     rejectedBy?: string;
     sentAt?: string;
+    deliveryNotes?: string;
+    actualDeliveryDate?: string;
 }
 
 export interface PurchaseOrderFilters {

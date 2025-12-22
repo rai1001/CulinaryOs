@@ -9,8 +9,9 @@ import { DailyRegisters } from './haccp/DailyRegisters';
 import { TaskManager } from './haccp/TaskManager';
 import { HACCPHistory } from './haccp/HACCPHistory';
 import { HACCPAlerts } from './haccp/HACCPAlerts';
+import { ChecklistView } from './haccp/ChecklistView';
 
-type TabId = 'alerts' | 'daily' | 'tasks' | 'history' | 'config';
+type TabId = 'alerts' | 'checklist' | 'daily' | 'tasks' | 'history' | 'config';
 
 interface TabConfig {
     id: TabId;
@@ -20,10 +21,11 @@ interface TabConfig {
 
 const tabs: TabConfig[] = [
     { id: 'alerts', label: 'Alertas', icon: <Bell className="w-4 h-4" /> },
+    { id: 'checklist', label: 'Checklist', icon: <ListChecks className="w-4 h-4" /> },
     { id: 'daily', label: 'Registros', icon: <Thermometer className="w-4 h-4" /> },
-    { id: 'tasks', label: 'Tareas', icon: <ListChecks className="w-4 h-4" /> },
+    { id: 'tasks', label: 'Gestión Tareas', icon: <ClipboardList className="w-4 h-4" /> },
     { id: 'history', label: 'Histórico', icon: <History className="w-4 h-4" /> },
-    { id: 'config', label: 'Configuración', icon: <Settings className="w-4 h-4" /> },
+    { id: 'config', label: 'Puntos Críticos', icon: <Settings className="w-4 h-4" /> },
 ];
 
 export const HACCPView: React.FC = () => {
@@ -82,6 +84,7 @@ export const HACCPView: React.FC = () => {
     const renderContent = () => {
         switch (activeTab) {
             case 'alerts': return <HACCPAlerts />;
+            case 'checklist': return <ChecklistView />;
             case 'daily': return <DailyRegisters />;
             case 'tasks': return <TaskManager />;
             case 'history': return <HACCPHistory />;

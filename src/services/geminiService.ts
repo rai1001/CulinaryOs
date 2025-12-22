@@ -257,3 +257,165 @@ export async function scanHACCPLog(base64Data: string): Promise<AIAnalysisResult
     `;
     return analyzeImage(base64Data, prompt);
 }
+/**
+ * Optimize Inventory Settings based on historical usage and future demand
+ */
+export async function optimizeInventorySettings(context: {
+    ingredients: any[];
+    totalFuturePax: number;
+}): Promise<AIAnalysisResult> {
+    const prompt = `
+        Actúa como un experto en cadena de suministro para restaurantes de alta gama.
+        Analiza los siguientes datos de inventario y eventos próximos para optimizar los 'Reorder Points' (punto de pedido) y 'Optimal Stock' (stock máximo).
+
+        DATOS DISPONIBLES:
+        - Pax total previstos (próximas 2 semanas): ${context.totalFuturePax}
+        - Ingredientes (incluye histórico de consumo diario y demanda futura por eventos confirmados).
+
+        CONTEXTO:
+        ${JSON.stringify(context.ingredients.map(i => ({
+        id: i.id,
+        name: i.name,
+        unit: i.unit,
+        currentReorderPoint: i.reorderPoint,
+        currentOptimalStock: i.optimalStock,
+        currentStock: i.currentStock,
+        avgDailyUsage: i.usageHistory?.avgDaily,
+        futureEventDemand: i.futureDemand?.neededQuantity,
+        eventCount: i.futureDemand?.eventCount
+    })), null, 2)}
+
+        INSTRUCCIONES:
+        1. Compara el uso histórico vs la demanda futura.
+        2. Si hay eventos grandes (pico de demanda), sugiere subir el reorderPoint proactivamente para evitar roturas de stock.
+        3. Si un producto tiene poco uso histórico y no hay eventos, sugiere bajar el optimalStock para reducir capital inmovilizado y posibles mermas.
+        4. Considera el 'yield' (rendimiento) si está presente, aunque aquí ya se asumen cantidades netas.
+        5. Devuelve UNICAMENTE un objeto JSON con esta estructura:
+        {
+            "recommendations": [
+                {
+                    "ingredientId": "string",
+                    "ingredientName": "string",
+                    "suggestedReorderPoint": number,
+                    "suggestedOptimalStock": number,
+                    "reasoning": "Breve explicación en español (máx 15 palabras)",
+                    "trend": "UP" | "DOWN" | "STABLE"
+                }
+            ],
+            "globalAnalysis": "Resumen ejecutivo de la salud del inventario (español, 2 frases)"
+        }
+        Sugiere cambios solo para ingredientes donde la diferencia sea significativa (>10%).
+    `;
+
+    try {
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        const text = response.text();
+
+        const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/) || text.match(/\{[\s\S]*\}/);
+        const jsonStr = jsonMatch ? jsonMatch[1] || jsonMatch[0] : text;
+        const data = JSON.parse(jsonStr);
+        return { success: true, data };
+    } catch (error: any) {
+        console.error("Inventory Optimization Error:", error);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * NEW: Suggest specific purchases based on future demand
+ */
+export async function suggestPurchases(context: any[]): Promise<AIAnalysisResult> {
+    const prompt = `
+        Actúa como un Jefe de Compras experto. 
+        Analiza las necesidades de ingredientes para los próximos eventos y genera una lista de compra sugerida.
+        
+        CONTEXTO:
+        ${JSON.stringify(context, null, 2)}
+        
+        INSTRUCCIONES:
+        1. Para cada ingrediente, calcula la cantidad a comprar sabiendo: (Demanda Futura + 10% margen de seguridad) - Stock Actual.
+        2. Si la cantidad resultante es <= 0, no sugerir compra para ese ítem.
+        3. Agrupa por prioridad: 'CRITICAL' (stock insuficiente para el próximo evento) o 'PLANNING' (stock suficiente pero por debajo del óptimo).
+        4. Devuelve UNICAMENTE un objeto JSON:
+        {
+            "suggestions": [
+                {
+                    "ingredientId": "string",
+                    "ingredientName": "string",
+                    "quantityToBuy": number,
+                    "unit": "string",
+                    "priority": "CRITICAL" | "PLANNING",
+                    "reason": "Por qué comprar esta cantidad"
+                }
+            ],
+            "summary": "Resumen de la inversión estimada y urgencia"
+        }
+    `;
+
+    try {
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        const text = response.text();
+
+        const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/) || text.match(/\{[\s\S]*\}/);
+        const jsonStr = jsonMatch ? jsonMatch[1] || jsonMatch[0] : text;
+        const data = JSON.parse(jsonStr);
+        return { success: true, data };
+    } catch (error: any) {
+        console.error("Purchase Suggestion Error:", error);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * NEW: Analyze Waste Patterns and provide reduction insights
+ */
+export async function analyzeWaste(wasteRecords: any[], ingredients: any[]): Promise<AIAnalysisResult> {
+    const prompt = `
+        Actúa como un experto en control de costes y sostenibilidad en restauración (Loss Prevention Expert).
+        Analiza los siguientes registros de mermas y propón estrategias concretas para reducirlas.
+
+        DATOS DE MERMAS:
+        ${JSON.stringify(wasteRecords.map(r => ({
+        date: r.date,
+        ingredient: ingredients.find(i => i.id === r.ingredientId)?.name,
+        quantity: r.quantity,
+        unit: r.unit,
+        reason: r.reason,
+        cost: r.quantity * r.costAtTime
+    })), null, 2)}
+
+        INSTRUCCIONES:
+        1. Identifica patrones (ej: "Se tira mucha leche los lunes", "La merma por caducidad en carne es alta").
+        2. Clasifica las recomendaciones por impacto económico.
+        3. Propón acciones preventivas (ej: cambiar frecuencia de pedido, mejorar formación en cortes, ajustar stock de seguridad).
+        4. Devuelve UNICAMENTE un objeto JSON:
+        {
+            "insights": [
+                {
+                    "title": "string",
+                    "observation": "Qué está pasando",
+                    "recommendation": "Qué hacer (máx 20 palabras)",
+                    "severity": "CRITICAL" | "MODERATE" | "LOW"
+                }
+            ],
+            "estimatedSavings": "Ahorro potencial estimado si se aplican las medidas",
+            "summary": "Resumen ejecutivo de la situación"
+        }
+    `;
+
+    try {
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        const text = response.text();
+
+        const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/) || text.match(/\{[\s\S]*\}/);
+        const jsonStr = jsonMatch ? jsonMatch[1] || jsonMatch[0] : text;
+        const data = JSON.parse(jsonStr);
+        return { success: true, data };
+    } catch (error: any) {
+        console.error("Waste Analysis Error:", error);
+        return { success: false, error: error.message };
+    }
+}

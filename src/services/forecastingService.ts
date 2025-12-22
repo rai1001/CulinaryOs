@@ -1,0 +1,114 @@
+import type { AppState } from '../store/types';
+import { addDays, isBefore, parseISO } from 'date-fns';
+
+export interface ForecastData {
+    ingredientId: string;
+    ingredientName: string;
+    currentStock: number;
+    unit: string;
+    futureDemand: {
+        neededQuantity: number;
+        eventCount: number;
+    };
+    historicalUsage: {
+        avgDaily: number;
+        totalWaste: number;
+    };
+}
+
+export const forecastingService = {
+    /**
+     * Aggregates all future inventory needs based on confirmed events within a window
+     */
+    getFutureInventoryDemand: (state: AppState, windowDays: number = 14): Record<string, { neededQuantity: number; eventCount: number }> => {
+        const { events, recipes, menus } = state;
+        const now = new Date();
+        const windowEnd = addDays(now, windowDays);
+
+        const demand: Record<string, { neededQuantity: number; eventCount: number }> = {};
+
+        // 1. Index recipes and menus for fast lookup
+        const recipeMap = new Map(recipes.map(r => [r.id, r]));
+        const menuMap = new Map(menus.map(m => [m.id, m]));
+
+        // 2. Filter events in the window
+        events.forEach(event => {
+            const eventDate = parseISO(event.date);
+            if (isBefore(eventDate, now)) return; // Past
+            if (!isBefore(eventDate, windowEnd)) return; // Outside window
+
+            if (!event.menuId) return;
+            const menu = menuMap.get(event.menuId);
+            if (!menu || !menu.recipeIds) return;
+
+            menu.recipeIds.forEach(recipeId => {
+                const recipe = recipeMap.get(recipeId);
+                if (!recipe) return;
+
+                recipe.ingredients.forEach(ri => {
+                    if (!demand[ri.ingredientId]) {
+                        demand[ri.ingredientId] = { neededQuantity: 0, eventCount: 0 };
+                    }
+
+                    // Logic: Qty * PAX
+                    demand[ri.ingredientId].neededQuantity += (ri.quantity * event.pax);
+                    demand[ri.ingredientId].eventCount += 1;
+                });
+            });
+        });
+
+        return demand;
+    },
+
+    /**
+     * Aggregates historical consumption from waste records and (ideally) past events
+     */
+    getHistoricalConsumption: (state: AppState, windowDays: number = 30): Record<string, { totalWaste: number; avgDaily: number }> => {
+        const { wasteRecords } = state;
+        const now = new Date();
+        const windowStart = addDays(now, -windowDays);
+
+        const consumption: Record<string, { totalWaste: number; avgDaily: number }> = {};
+
+        // Process Waste Records
+        wasteRecords.forEach(record => {
+            const recordDate = parseISO(record.date);
+            if (!isBefore(windowStart, recordDate)) return; // Too old
+
+            if (!consumption[record.ingredientId]) {
+                consumption[record.ingredientId] = { totalWaste: 0, avgDaily: 0 };
+            }
+            consumption[record.ingredientId].totalWaste += record.quantity;
+        });
+
+        // Calculate Average Daily (Simplified: Total Waste / Days)
+        // In a real scenario, we'd add 'Actual Consumption' from past production completions
+        Object.keys(consumption).forEach(id => {
+            consumption[id].avgDaily = consumption[id].totalWaste / windowDays;
+        });
+
+        return consumption;
+    },
+
+    /**
+     * Consolidates all data into a format suitable for Gemini analysis
+     */
+    aggregateForecastContext: (state: AppState): ForecastData[] => {
+        const futureDemand = forecastingService.getFutureInventoryDemand(state);
+        const history = forecastingService.getHistoricalConsumption(state);
+        const { ingredients } = state;
+        return ingredients.map((ing: any) => {
+            const demand = futureDemand[ing.id] || { neededQuantity: 0, eventCount: 0 };
+            const hist = history[ing.id] || { totalWaste: 0, avgDaily: 0 };
+
+            return {
+                ingredientId: ing.id,
+                ingredientName: ing.name,
+                currentStock: ing.stock || 0,
+                unit: ing.unit,
+                futureDemand: demand,
+                historicalUsage: hist
+            };
+        }).filter((item: ForecastData) => item.futureDemand.neededQuantity > 0 || item.historicalUsage.totalWaste > 0);
+    }
+};

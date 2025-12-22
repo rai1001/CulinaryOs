@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, Clock, Calendar, Power } from 'lucide-react';
+import { X, Save, Clock, Power } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import type { AutoPurchaseSettings } from '../../types';
 import { useToast } from '../ui/Toast';
@@ -21,7 +21,7 @@ const DAYS_OF_WEEK = [
 ];
 
 export const AutoPurchaseSettingsModal: React.FC<AutoPurchaseSettingsProps> = ({ isOpen, onClose }) => {
-    const { activeOutletId } = useStore(); // TODO: Add settings to store
+    const { activeOutletId, outlets, updateOutlet } = useStore();
     const { addToast } = useToast();
 
     // Local state for form
@@ -36,19 +36,32 @@ export const AutoPurchaseSettingsModal: React.FC<AutoPurchaseSettingsProps> = ({
 
     const [isLoading, setIsLoading] = useState(false);
 
-    // TODO: Load real settings from store/backend on mount
+    // Initial load from store
     useEffect(() => {
-        if (isOpen) {
-            // Mock load
-            console.log("Loading settings for outlet", activeOutletId);
+        if (isOpen && activeOutletId) {
+            const activeOutlet = outlets.find(o => o.id === activeOutletId);
+            if (activeOutlet?.autoPurchaseSettings) {
+                setSettings({
+                    ...activeOutlet.autoPurchaseSettings,
+                    outletId: activeOutletId
+                });
+            } else {
+                // Set defaults with correct outletId
+                setSettings(prev => ({ ...prev, outletId: activeOutletId }));
+            }
         }
-    }, [isOpen, activeOutletId]);
+    }, [isOpen, activeOutletId, outlets]);
 
     const handleSave = async () => {
         if (!activeOutletId) return;
         setIsLoading(true);
         try {
             await updateDocument('outlets', activeOutletId, {
+                autoPurchaseSettings: settings
+            });
+
+            // Update store
+            updateOutlet(activeOutletId, {
                 autoPurchaseSettings: settings
             });
 

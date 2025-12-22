@@ -144,8 +144,9 @@ export const createPurchaseSlice: StateCreator<
         const allReceived = updatedItems.every((i: import('../../types').PurchaseOrderItem) => (i.receivedQuantity || 0) >= i.quantity);
         const anyReceived = updatedItems.some((i: import('../../types').PurchaseOrderItem) => (i.receivedQuantity || 0) > 0);
         const newStatus = allReceived ? 'RECEIVED' : (anyReceived ? 'PARTIAL' : order.status);
+        const actualDeliveryDate = allReceived ? new Date().toISOString() : order.actualDeliveryDate;
 
-        const updatedOrder = { ...order, items: updatedItems, status: newStatus };
+        const updatedOrder = { ...order, items: updatedItems, status: newStatus, actualDeliveryDate };
 
         try {
             // Save Order

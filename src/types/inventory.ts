@@ -32,8 +32,14 @@ export interface Batch {
     status: 'ACTIVE' | 'DEPLETED' | 'EXPIRED';
 }
 
-// Legacy alias if needed, or update consumers
 export type IngredientBatch = Batch;
+
+export interface IngredientSupplier {
+    supplierId: string;
+    costPerUnit: number;
+    isDefault?: boolean;
+    leadTimeDays?: number;
+}
 
 export interface Ingredient {
     id: string;
@@ -58,6 +64,7 @@ export interface Ingredient {
     // Automatic Purchasing Fields
     optimalStock?: number; // Desired max stock level
     reorderPoint?: number; // Point at which to reorder (similar to minStock, but explicit trigger)
+    supplierInfo?: IngredientSupplier[];
 }
 
 // Stock Movements

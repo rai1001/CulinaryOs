@@ -157,6 +157,38 @@
                     "order": "DESCENDING"
                 }
             ]
+        },
+        {
+            "collectionGroup": "fichasTecnicas",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "outletId",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "categoria",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "nombre",
+                    "order": "ASCENDING"
+                }
+            ]
+        },
+        {
+            "collectionGroup": "fichasTecnicas",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "outletId",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "fechaCreacion",
+                    "order": "DESCENDING"
+                }
+            ]
         }
     ],
     "fieldOverrides": []

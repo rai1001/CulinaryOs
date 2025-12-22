@@ -3,7 +3,7 @@ import { firestoreService } from './firestoreService';
 import { COLLECTIONS } from '../firebase/collections';
 import type { ReorderNeed } from './necesidadesService';
 import type { PurchaseOrder, PurchaseOrderItem, PurchaseStatus } from '../types/purchases';
-import { collection } from 'firebase/firestore';
+import { collection, where, CollectionReference } from 'firebase/firestore';
 import { db } from '../firebase/config';
 
 export const pedidosService = {
@@ -26,17 +26,18 @@ export const pedidosService = {
         outletId: string
     ): Promise<PurchaseOrder> => {
         const orderId = uuidv4();
-        const orderNumber = `PED-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${orderId.slice(0, 4)}`.toUpperCase();
+        const todayStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+        const orderNumber = `PED-${todayStr}-${orderId.slice(0, 4)}`.toUpperCase();
 
         const items: PurchaseOrderItem[] = needs.map(need => ({
-            id: uuidv4(),
             ingredientId: need.ingredientId,
             quantity: need.orderQuantity,
             unit: need.unit as any,
-            costPerUnit: 0,
-            tempDescription: need.ingredientName,
-            name: need.ingredientName // Ensure name property exists
+            costPerUnit: need.costPerUnit || 0,
+            tempDescription: need.ingredientName
         }));
+
+        const totalCost = items.reduce((sum, item) => sum + (item.quantity * item.costPerUnit), 0);
 
         const order: PurchaseOrder = {
             id: orderId,
@@ -46,15 +47,13 @@ export const pedidosService = {
             date: new Date().toISOString(),
             status: 'DRAFT',
             items,
-            totalCost: 0,
+            totalCost,
             type: 'AUTOMATIC',
-            createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
-            supplierName: 'Unknown' // Should fetch supplier name
         };
 
-        // Save to Firestore (Fixed create call)
-        await firestoreService.create(collection(db, COLLECTIONS.PURCHASE_ORDERS), order);
+        // Save to Firestore
+        await firestoreService.create(collection(db, COLLECTIONS.PURCHASE_ORDERS) as any, order);
 
         return order;
     },
@@ -77,6 +76,7 @@ export const pedidosService = {
     },
 
     getAll: async (outletId: string): Promise<PurchaseOrder[]> => {
+        // ... (mock bypass) ...
         // E2E Mock Bypass
         const mockDB = localStorage.getItem('E2E_MOCK_DB');
         if (mockDB) {
@@ -88,14 +88,14 @@ export const pedidosService = {
                 console.error("E2E Mock Read Error", e);
             }
         }
-        return firestoreService.getAll<PurchaseOrder>(COLLECTIONS.PURCHASE_ORDERS, {
-            field: 'outletId',
-            operator: '==',
-            value: outletId
-        });
+
+        return firestoreService.query<PurchaseOrder>(
+            collection(db, COLLECTIONS.PURCHASE_ORDERS) as CollectionReference<PurchaseOrder>,
+            where('outletId', '==', outletId)
+        );
     },
 
-    updateStatus: async (orderId: string, status: PurchaseStatus, userId?: string) => {
+    updateStatus: async (orderId: string, status: PurchaseStatus, userId?: string, extraData?: Partial<PurchaseOrder>) => {
         // E2E Mock Bypass
         const mockDBStr = localStorage.getItem('E2E_MOCK_DB');
         if (mockDBStr) {
@@ -108,6 +108,11 @@ export const pedidosService = {
                 if (status === 'ORDERED') orders[idx].sentAt = new Date().toISOString();
                 if (status === 'APPROVED' && userId) orders[idx].approvedBy = userId;
 
+                // Apply extra data to mock
+                if (extraData) {
+                    Object.assign(orders[idx], extraData);
+                }
+
                 db.purchaseOrders = orders;
                 localStorage.setItem('E2E_MOCK_DB', JSON.stringify(db));
                 console.log(`[E2E] Order ${orderId} updated to ${status}`);
@@ -115,7 +120,11 @@ export const pedidosService = {
             }
         }
 
-        const updateData: Partial<PurchaseOrder> = { status, updatedAt: new Date().toISOString() };
+        const updateData: Partial<PurchaseOrder> = {
+            ...extraData,
+            status,
+            updatedAt: new Date().toISOString()
+        };
         if (status === 'ORDERED') {
             updateData.sentAt = new Date().toISOString();
         }

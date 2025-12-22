@@ -34,7 +34,7 @@ export const createWasteSlice: StateCreator<
         const { newBatches } = consumeStockFIFO(ingredient.batches, record.quantity);
 
         ingredient.batches = newBatches;
-        ingredient.stock = newBatches.reduce((sum, b) => sum + b.quantity, 0);
+        ingredient.stock = newBatches.reduce((sum, b) => sum + b.currentQuantity, 0);
 
         const newIngredients = [...ingredients];
         newIngredients[ingredientIndex] = ingredient;

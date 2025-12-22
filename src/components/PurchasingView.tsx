@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useStore } from '../store/useStore';
-import { ShoppingCart, FileText, CheckCircle, Truck, PackageCheck, LayoutDashboard, Settings } from 'lucide-react';
+import { ShoppingCart, FileText, CheckCircle, Truck, PackageCheck, LayoutDashboard, Settings, BarChart3 } from 'lucide-react';
 import { AutoPurchaseSettingsModal } from './purchasing/AutoPurchaseSettings';
 import { AprobacionPedido } from './purchasing/AprobacionPedido';
 import { RecepcionPedido } from './purchasing/RecepcionPedido';
 import { SupplierView } from './SupplierView';
+import { SupplierPerformance } from './purchasing/SupplierPerformance';
+import { AIPurchaseAdvisor } from './purchasing/AIPurchaseAdvisor';
 
 // Sub-components
-import { useToast } from './ui';
+// Sub-components
 
 // Dashboard Tab Content
 const DashboardTab: React.FC = () => {
@@ -38,16 +40,39 @@ const DashboardTab: React.FC = () => {
                     </div>
                 ))}
             </div>
-            {/* Recent Activity or aggregate chart could go here */}
-            <div className="bg-surface border border-white/5 rounded-xl p-6 text-center text-slate-500">
-                <p>Resumen de actividad reciente (Próximamente)</p>
+            {/* Alerts for Auto-Purchasing */}
+            {purchaseOrders.some(o => o.status === 'DRAFT' && o.type === 'AUTOMATIC') && (
+                <div className="bg-indigo-500/10 border border-indigo-500/20 p-4 rounded-xl flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-indigo-500/20 rounded-lg text-indigo-400">
+                            <FileText size={20} />
+                        </div>
+                        <div>
+                            <p className="text-white font-bold">Nuevas sugerencias de compra</p>
+                            <p className="text-slate-400 text-sm">El sistema ha generado borradores basados en tu stock actual.</p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* AI Advisor Panel */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2">
+                    <AIPurchaseAdvisor />
+                </div>
+                <div className="space-y-6">
+                    {/* Recent Activity or aggregate chart could go here */}
+                    <div className="bg-surface border border-white/5 rounded-xl p-6 h-full flex items-center justify-center text-slate-500">
+                        <p>Resumen de actividad reciente (Próximamente)</p>
+                    </div>
+                </div>
             </div>
         </div>
     );
 };
 
 export const PurchasingView: React.FC = () => {
-    const [activeTab, setActiveTab] = useState<'dashboard' | 'approval' | 'receiving' | 'suppliers'>('dashboard');
+    const [activeTab, setActiveTab] = useState<'dashboard' | 'approval' | 'receiving' | 'performance' | 'suppliers'>('dashboard');
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const { activeOutletId } = useStore();
 
@@ -55,6 +80,7 @@ export const PurchasingView: React.FC = () => {
         { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
         { id: 'approval', label: 'Aprobación', icon: CheckCircle },
         { id: 'receiving', label: 'Recepción', icon: PackageCheck },
+        { id: 'performance', label: 'Rendimiento', icon: BarChart3 },
         { id: 'suppliers', label: 'Proveedores', icon: Truck },
     ];
 
@@ -100,6 +126,7 @@ export const PurchasingView: React.FC = () => {
                 {activeTab === 'dashboard' && <DashboardTab />}
                 {activeTab === 'approval' && <AprobacionPedido outletId={activeOutletId || ''} />}
                 {activeTab === 'receiving' && <RecepcionPedido outletId={activeOutletId || ''} />}
+                {activeTab === 'performance' && <SupplierPerformance />}
                 {activeTab === 'suppliers' && <SupplierView />}
             </div>
 
