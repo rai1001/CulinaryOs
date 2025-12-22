@@ -38,7 +38,9 @@ const BreakfastView = React.lazy(() => import('./components/BreakfastView').then
 const StaffView = React.lazy(() => import('./components/StaffView').then(m => ({ default: m.StaffView })));
 const IntegrationsView = React.lazy(() => import('./components/IntegrationsView').then(m => ({ default: m.IntegrationsView })));
 const FichasTecnicasDashboard = React.lazy(() => import('./pages/FichasTecnicasDashboard').then(m => ({ default: m.FichasTecnicasDashboard })));
+const FichasTecnicasDashboard = React.lazy(() => import('./pages/FichasTecnicasDashboard').then(m => ({ default: m.FichasTecnicasDashboard })));
 const AnalisisRentabilidad = React.lazy(() => import('./pages/AnalisisRentabilidad').then(m => ({ default: m.AnalisisRentabilidad })));
+const HospitalityDashboard = React.lazy(() => import('./pages/HospitalityDashboard').then(m => ({ default: m.HospitalityDashboard })));
 
 // Loading fallback component
 const LoadingFallback = () => (
@@ -114,7 +116,10 @@ function App() {
           <NavItem to="/dashboard" icon={<LayoutDashboard />} label="Inicio" />
           <NavItem to="/schedule" icon={<Calendar />} label="Horario" />
           <NavItem to="/events" icon={<CalendarDays />} label="Eventos" />
-          <NavItem to="/breakfast" icon={<Coffee />} label="Desayunos" />
+          <NavItem to="/schedule" icon={<Calendar />} label="Horario" />
+          <NavItem to="/events" icon={<CalendarDays />} label="Eventos" />
+          <NavItem to="/hospitality" icon={<Coffee />} label="Logística Hotel" />
+          <NavItem to="/breakfast" icon={<Coffee />} label="Servicio Diaria" />
           <NavItem to="/purchasing" icon={<ShoppingBag />} label="Compras Auto" />
           <NavItem to="/waste" icon={<Trash2 />} label="Mermas" />
           <NavItem to="/haccp" icon={<ShieldCheck />} label="HACCP Digital" />
@@ -227,6 +232,7 @@ function App() {
                 <Route path="/fichas-tecnicas" element={<FichasTecnicasDashboard />} />
                 <Route path="/analytics/fichas" element={<AnalisisRentabilidad />} />
                 <Route path="/breakfast" element={<BreakfastView />} />
+                <Route path="/hospitality" element={<HospitalityDashboard />} />
                 <Route path="/integrations" element={<IntegrationsView />} />
                 {/* Fallback */}
                 <Route path="*" element={<Navigate to="/dashboard" replace />} />

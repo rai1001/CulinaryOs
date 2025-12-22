@@ -7,13 +7,15 @@ import {
 } from '../services/firestoreService';
 import { COLLECTIONS, collections } from '../firebase/collections';
 import { useStore } from '../store/useStore';
-import { BookOpen, Plus, Search, Edit2, Trash2, Save, X, Utensils } from 'lucide-react';
+import { useOutletScoping } from '../hooks/useOutletScoping';
+import { BookOpen, Plus, Search, Edit2, Trash2, Save, X, Utensils, Store } from 'lucide-react';
 import type { Menu, MenuVariation, Recipe, Ingredient } from '../types';
 import { useToast, ConfirmModal } from './ui';
 import { DataImportModal, type ImportType } from './common/DataImportModal';
 
 export const MenuView: React.FC = () => {
-    const { menus, recipes, activeOutletId } = useStore();
+    const { menus, recipes } = useStore();
+    const { activeOutletId, isValidOutlet } = useOutletScoping();
     const { addToast } = useToast();
 
     const [isEditing, setIsEditing] = useState(false);
@@ -188,6 +190,11 @@ export const MenuView: React.FC = () => {
             return 0;
         });
     }, [menus, searchTerm, activeCategory, activeStatus, sortConfig]);
+
+    const scopedMenus = React.useMemo(() => {
+        if (!isValidOutlet) return [];
+        return filteredMenus.filter(m => m.outletId === activeOutletId);
+    }, [filteredMenus, isValidOutlet, activeOutletId]);
 
     const handleEdit = (menu: Menu) => {
         setFormData({ ...menu });
@@ -528,56 +535,67 @@ export const MenuView: React.FC = () => {
             </div>
 
             {/* Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 overflow-y-auto pb-6 custom-scrollbar">
-                {filteredMenus.map(menu => (
-                    <div key={menu.id} className="bg-surface border border-white/5 rounded-xl hover:border-primary/30 transition-all p-6 group relative overflow-hidden">
-                        <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
-                            <button
-                                onClick={() => handleEdit(menu)}
-                                className="p-2 bg-black/50 text-white rounded hover:bg-primary transition-colors"
-                            >
-                                <Edit2 size={16} />
-                            </button>
-                            <button
-                                onClick={() => handleDelete(menu.id)}
-                                className="p-2 bg-black/50 text-white rounded hover:bg-red-500 transition-colors"
-                            >
-                                <Trash2 size={16} />
-                            </button>
-                        </div>
-
-                        <div className="mb-4">
-                            <h3 className="text-xl font-bold text-white mb-2">{menu.name}</h3>
-                            <p className="text-sm text-slate-400 line-clamp-2 min-h-[2.5rem]">
-                                {menu.description || 'Sin descripción'}
-                            </p>
-                        </div>
-
-                        <div className="space-y-3 pt-4 border-t border-white/5">
-                            <div className="flex justify-between text-sm">
-                                <span className="text-slate-500">Platos</span>
-                                <span className="text-white font-medium">{menu.recipeIds.length}</span>
+            {/* Grid */}
+            {!isValidOutlet ? (
+                <div className="flex flex-col items-center justify-center p-12 border-2 border-dashed border-white/10 rounded-xl bg-white/5">
+                    <Store className="w-12 h-12 text-slate-500 mb-4" />
+                    <h3 className="text-xl font-bold text-white mb-2">Selecciona una Cocina</h3>
+                    <p className="text-slate-400 text-center max-w-md">
+                        Selecciona una cocina activa para ver y gestionar sus menús.
+                    </p>
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 overflow-y-auto pb-6 custom-scrollbar">
+                    {scopedMenus.map(menu => (
+                        <div key={menu.id} className="bg-surface border border-white/5 rounded-xl hover:border-primary/30 transition-all p-6 group relative overflow-hidden">
+                            <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
+                                <button
+                                    onClick={() => handleEdit(menu)}
+                                    className="p-2 bg-black/50 text-white rounded hover:bg-primary transition-colors"
+                                >
+                                    <Edit2 size={16} />
+                                </button>
+                                <button
+                                    onClick={() => handleDelete(menu.id)}
+                                    className="p-2 bg-black/50 text-white rounded hover:bg-red-500 transition-colors"
+                                >
+                                    <Trash2 size={16} />
+                                </button>
                             </div>
-                            <div className="flex justify-between text-sm">
-                                <span className="text-slate-500">Variaciones</span>
-                                <span className={`font-medium ${menu.variations?.length ? 'text-emerald-400' : 'text-slate-600'}`}>
-                                    {menu.variations?.length || 0}
-                                </span>
+
+                            <div className="mb-4">
+                                <h3 className="text-xl font-bold text-white mb-2">{menu.name}</h3>
+                                <p className="text-sm text-slate-400 line-clamp-2 min-h-[2.5rem]">
+                                    {menu.description || 'Sin descripción'}
+                                </p>
                             </div>
-                            <div className="flex justify-between items-center pt-2">
-                                <span className="text-slate-500 text-sm">Precio Venta</span>
-                                <span className="text-lg font-bold text-white">{menu.sellPrice?.toFixed(2)}€</span>
+
+                            <div className="space-y-3 pt-4 border-t border-white/5">
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-slate-500">Platos</span>
+                                    <span className="text-white font-medium">{menu.recipeIds.length}</span>
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-slate-500">Variaciones</span>
+                                    <span className={`font-medium ${menu.variations?.length ? 'text-emerald-400' : 'text-slate-600'}`}>
+                                        {menu.variations?.length || 0}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between items-center pt-2">
+                                    <span className="text-slate-500 text-sm">Precio Venta</span>
+                                    <span className="text-lg font-bold text-white">{menu.sellPrice?.toFixed(2)}€</span>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                ))}
+                    ))}
 
-                {filteredMenus.length === 0 && (
-                    <div className="col-span-full py-12 text-center text-slate-500">
-                        No se encontraron menús. ¡Crea uno nuevo!
-                    </div>
-                )}
-            </div>
+                    {scopedMenus.length === 0 && (
+                        <div className="col-span-full py-12 text-center text-slate-500">
+                            No se encontraron menús. ¡Crea uno nuevo!
+                        </div>
+                    )}
+                </div>
+            )}
 
             <ConfirmModal
                 isOpen={deleteConfirm.isOpen}

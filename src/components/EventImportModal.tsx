@@ -1,7 +1,8 @@
 import React, { useState, useRef } from 'react';
 import * as XLSX from 'xlsx';
-import { Upload, X, Check, FileSpreadsheet, Loader2, AlertCircle, Camera, FileText } from 'lucide-react';
+import { Upload, X, Check, FileSpreadsheet, Loader2, AlertCircle, Camera, FileText, Calendar, RefreshCw } from 'lucide-react';
 import { useStore } from '../store/useStore';
+import { calendarIntegrationService } from '../services/calendarIntegrationService';
 import { format, parse, isValid } from 'date-fns';
 import type { EventType } from '../types';
 import { scanEventOrder } from '../services/geminiService';
@@ -23,15 +24,51 @@ export const EventImportModal: React.FC<EventImportModalProps> = ({ onClose, onS
     const { events, setEvents } = useStore();
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const [mode, setMode] = useState<'excel' | 'scan'>('excel');
+    const [mode, setMode] = useState<'excel' | 'scan' | 'ics' | 'sync'>('excel');
     const [parsing, setParsing] = useState(false);
     const [parsedData, setParsedData] = useState<ParsedEvent | null>(null);
+    const [importedEvents, setImportedEvents] = useState<Partial<ParsedEvent>[]>([]); // For bulk ICS
     const [error, setError] = useState<string | null>(null);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             const selectedFile = e.target.files[0];
-            parseExcel(selectedFile);
+            if (mode === 'excel') {
+                parseExcel(selectedFile);
+            } else if (mode === 'ics') {
+                parseICSFile(selectedFile);
+            }
+        }
+    };
+
+    // ICS Handler
+    const parseICSFile = async (file: File) => {
+        setParsing(true);
+        setError(null);
+        setImportedEvents([]);
+
+        try {
+            const text = await file.text();
+            const events = calendarIntegrationService.parseICS(text);
+            if (events.length > 0) {
+                // Map to ParsedEvent structure for preview
+                const mapped = events.map(e => ({
+                    name: e.name || 'Sin Título',
+                    date: e.date || format(new Date(), 'yyyy-MM-dd'),
+                    pax: e.pax || 0,
+                    menuNotes: e.notes || '',
+                    type: e.type || 'Otros'
+                } as ParsedEvent));
+                setImportedEvents(mapped);
+                // Auto-select first for detail view if wanted, or show list
+            } else {
+                throw new Error("No se encontraron eventos válidos en el archivo ICS.");
+            }
+        } catch (err: any) {
+            console.error(err);
+            setError(err.message || "Error al leer ICS");
+        } finally {
+            setParsing(false);
         }
     };
 
@@ -196,35 +233,49 @@ export const EventImportModal: React.FC<EventImportModalProps> = ({ onClose, onS
         onClose();
     };
 
+    const handleSaveBulk = () => {
+        const newEventsArray = importedEvents.map(evt => ({
+            id: crypto.randomUUID(),
+            name: evt.name || 'Evento Importado',
+            date: evt.date || format(new Date(), 'yyyy-MM-dd'),
+            pax: evt.pax || 0,
+            type: evt.type || 'Otros',
+            notes: evt.menuNotes || '',
+            status: 'confirmed' as const,
+            menuId: undefined
+        }));
+
+        setEvents([...events, ...newEventsArray]);
+        onSave();
+        onClose();
+    };
+
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
             <div className="bg-surface border border-white/10 rounded-xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
                 <div className="p-4 border-b border-white/10 flex items-center justify-between bg-white/5">
                     <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                        {mode === 'excel' ? <FileSpreadsheet className="text-emerald-400" /> : <Camera className="text-purple-400" />}
-                        {mode === 'excel' ? 'Importar Hoja de Servicio' : 'Escanear Orden de Evento (BEO)'}
+                        {mode === 'excel' ? <FileSpreadsheet className="text-emerald-400" /> :
+                            mode === 'scan' ? <Camera className="text-purple-400" /> :
+                                mode === 'ics' ? <Calendar className="text-blue-400" /> :
+                                    <RefreshCw className="text-orange-400" />}
+                        {mode === 'excel' ? 'Importar Hoja de Servicio' :
+                            mode === 'scan' ? 'Escanear Orden de Evento (BEO)' :
+                                mode === 'ics' ? 'Importar Calendario (.ics)' :
+                                    'Sincronizar Nube'}
                     </h3>
                     <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors">
                         <X className="w-5 h-5" />
                     </button>
                 </div>
 
-                {!parsedData && (
-                    <div className="flex border-b border-white/10">
-                        <button
-                            onClick={() => setMode('excel')}
-                            className={`flex-1 py-3 text-sm font-medium transition-colors ${mode === 'excel' ? 'bg-white/5 text-emerald-400 border-b-2 border-emerald-400' : 'text-slate-400 hover:text-white'}`}
-                        >
-                            Excel Import
-                        </button>
-                        <button
-                            onClick={() => setMode('scan')}
-                            className={`flex-1 py-3 text-sm font-medium transition-colors ${mode === 'scan' ? 'bg-white/5 text-purple-400 border-b-2 border-purple-400' : 'text-slate-400 hover:text-white'}`}
-                        >
-                            Scanner / OCR
-                        </button>
-                    </div>
-                )}
+                <div className="flex border-b border-white/10 overflow-x-auto">
+                    <button onClick={() => setMode('excel')} className={`flex-1 py-3 text-sm font-medium whitespace-nowrap px-4 transition-colors ${mode === 'excel' ? 'bg-white/5 text-emerald-400 border-b-2 border-emerald-400' : 'text-slate-400 hover:text-white'}`}>Excel</button>
+                    <button onClick={() => setMode('scan')} className={`flex-1 py-3 text-sm font-medium whitespace-nowrap px-4 transition-colors ${mode === 'scan' ? 'bg-white/5 text-purple-400 border-b-2 border-purple-400' : 'text-slate-400 hover:text-white'}`}>OCR Scanner</button>
+                    <button onClick={() => setMode('ics')} className={`flex-1 py-3 text-sm font-medium whitespace-nowrap px-4 transition-colors ${mode === 'ics' ? 'bg-white/5 text-blue-400 border-b-2 border-blue-400' : 'text-slate-400 hover:text-white'}`}>ICS File</button>
+                    <button onClick={() => setMode('sync')} className={`flex-1 py-3 text-sm font-medium whitespace-nowrap px-4 transition-colors ${mode === 'sync' ? 'bg-white/5 text-orange-400 border-b-2 border-orange-400' : 'text-slate-400 hover:text-white'}`}>Cloud Sync</button>
+                </div>
+
 
                 <div className="p-6 overflow-y-auto flex-1">
                     {!parsedData ? (
@@ -237,7 +288,7 @@ export const EventImportModal: React.FC<EventImportModalProps> = ({ onClose, onS
                                 ref={fileInputRef}
                                 onChange={mode === 'excel' ? handleFileChange : handleScanUpload}
                                 className="hidden"
-                                accept={mode === 'excel' ? ".xlsx, .xls" : ".jpg, .jpeg, .png, .webp"}
+                                accept={mode === 'excel' ? ".xlsx, .xls" : mode === 'ics' ? ".ics" : ".jpg, .jpeg, .png, .webp"}
                             />
 
                             {parsing ? (
@@ -245,7 +296,8 @@ export const EventImportModal: React.FC<EventImportModalProps> = ({ onClose, onS
                                     <Loader2 className="w-10 h-10 text-primary animate-spin mb-4" />
                                     <p className="text-lg font-medium text-white">Analizando archivo...</p>
                                     <p className="text-sm text-slate-400 mt-2">
-                                        {mode === 'excel' ? 'Buscando fechas, comensales y menús' : 'Extrayendo datos con IA'}
+                                        {mode === 'excel' ? 'Buscando fechas, comensales y menús' :
+                                            mode === 'ics' ? 'Leyendo calendario...' : 'Extrayendo datos con IA'}
                                     </p>
                                 </>
                             ) : error ? (
@@ -262,13 +314,62 @@ export const EventImportModal: React.FC<EventImportModalProps> = ({ onClose, onS
                                         <FileText className="w-10 h-10 text-purple-400 mb-4" />
                                     )}
                                     <p className="text-lg font-medium text-white">
-                                        {mode === 'excel' ? 'Click para subir Excel' : 'Click para subir Imagen BEO'}
+                                        {mode === 'excel' ? 'Click para subir Excel' :
+                                            mode === 'ics' ? 'Click para subir archivo ICS' : 'Click para subir Imagen BEO'}
                                     </p>
                                     <p className="text-sm text-slate-400 mt-2">
-                                        {mode === 'excel' ? 'Soporta .xlsx y .xls' : 'Soporta JPG, PNG (las fotos claras funcionan mejor)'}
+                                        {mode === 'excel' ? 'Soporta .xlsx y .xls' :
+                                            mode === 'ics' ? 'Soporta archivos .ics estándar' :
+                                                'Soporta JPG, PNG (las fotos claras funcionan mejor)'}
                                     </p>
                                 </>
                             )}
+                        </div>
+                    ) : mode === 'sync' ? (
+                        <div className="flex flex-col items-center justify-center h-full space-y-6 text-center p-8">
+                            <div className="bg-orange-500/10 p-4 rounded-full">
+                                <RefreshCw className="w-12 h-12 text-orange-400" />
+                            </div>
+                            <h4 className="text-xl font-bold text-white">Sincronización Automática</h4>
+                            <p className="text-slate-400 max-w-sm">Conecta tus calendarios de Google o Outlook para importar eventos automáticamente.</p>
+
+                            <div className="flex gap-4 mt-4 w-full justify-center">
+                                <button
+                                    onClick={() => calendarIntegrationService.initiateGoogleAuth()}
+                                    className="flex items-center gap-3 px-6 py-3 bg-[#4285F4] hover:bg-[#3367D6] text-white rounded-lg font-medium transition-colors"
+                                >
+                                    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" /><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" /><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" /><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" /></svg>
+                                    Google Calendar
+                                </button>
+                                <button
+                                    onClick={() => calendarIntegrationService.initiateOutlookAuth()}
+                                    className="flex items-center gap-3 px-6 py-3 bg-[#0078D4] hover:bg-[#106EBE] text-white rounded-lg font-medium transition-colors"
+                                >
+                                    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M1.6 4.5l9 6.2 9-6.2c-.4-.5-1-.8-1.6-.8h-14.8c-.6 0-1.2.3-1.6.8zm19.8 1.4l-9 6.2-9-6.2c-.4.5-.6 1.1-.5 1.7v9.4c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-9.4c.1-.6-.1-1.2-.5-1.7z" /></svg>
+                                    Outlook
+                                </button>
+                            </div>
+                            <p className="text-xs text-slate-500 mt-4">(Próximamente: Integración API directa)</p>
+                        </div>
+                    ) : importedEvents.length > 0 ? (
+                        <div className="space-y-4">
+                            <div className="flex items-center gap-2 text-blue-400 bg-blue-400/10 p-3 rounded-lg border border-blue-400/20 text-sm">
+                                <Check className="w-4 h-4" />
+                                <span>Se encontraron {importedEvents.length} eventos en el archivo ICS.</span>
+                            </div>
+                            <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                                {importedEvents.map((evt, idx) => (
+                                    <div key={idx} className="bg-white/5 p-3 rounded border border-white/5 flex justify-between items-center text-sm">
+                                        <div>
+                                            <div className="text-white font-medium">{evt.name}</div>
+                                            <div className="text-slate-400 text-xs">{evt.date} • {evt.type}</div>
+                                        </div>
+                                        {evt.pax ? (
+                                            <div className="bg-slate-800 px-2 py-1 rounded text-xs text-slate-300">PAX: {evt.pax}</div>
+                                        ) : null}
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     ) : (
                         <div className="space-y-6">
@@ -323,6 +424,20 @@ export const EventImportModal: React.FC<EventImportModalProps> = ({ onClose, onS
                                 </div>
                             </div>
 
+                            {/* ICS Bulk Review Warning */}
+                            {importedEvents.length > 0 && ( /* Only if single Parsed Data logic is skipped? Wait. logic flows here if parsedData is set.*/ null)}
+                            {/* Actually loop above for ImportedEvents handles 'null' parsedData case. If parsedData is set (single edit flow) it goes here.
+                               Wait: my logic for importedEvents sets them in array but doesn't set parsedData (single).
+                               So if importedEvents > 0, we are in the "List View" block I added above?
+                               Ah, I replaced the "else" block of "if !parsedData". 
+                               So if !parsedData:
+                                  if mode == sync -> show sync
+                                  else if importedEvents > 0 -> show list
+                                  else -> show upload box
+                               
+                               Perfect.
+                            */}
+
                             <div className="space-y-1">
                                 <label className="text-xs text-slate-400 uppercase font-bold">Menú / Observaciones</label>
                                 <textarea
@@ -337,16 +452,16 @@ export const EventImportModal: React.FC<EventImportModalProps> = ({ onClose, onS
                     )}
                 </div>
 
-                {parsedData && (
+                {(parsedData || importedEvents.length > 0) && (
                     <div className="p-4 border-t border-white/10 bg-white/5 flex justify-end gap-3">
                         <button
-                            onClick={() => setParsedData(null)}
+                            onClick={() => { setParsedData(null); setImportedEvents([]); }}
                             className="px-4 py-2 hover:bg-white/10 rounded text-slate-300 transition-colors"
                         >
                             Atrás
                         </button>
                         <button
-                            onClick={handleSave}
+                            onClick={importedEvents.length > 0 ? handleSaveBulk : handleSave}
                             className="px-6 py-2 bg-primary hover:bg-blue-600 rounded text-white font-medium shadow-lg shadow-primary/25 transition-all"
                         >
                             Confirmar e Importar

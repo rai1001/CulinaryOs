@@ -1,31 +1,50 @@
-/**
- * @file src/pages/FichasTecnicasDashboard.tsx
- * @description Main dashboard for the Fichas Técnicas module including KPIs and advanced filtering.
- */
-
 import React, { useState, useEffect, useMemo } from 'react';
-import { FileText, DollarSign, TrendingUp, Award, Grid, List as ListIcon, Plus, Info, FileStack } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import {
+    Search, Grid, List, Plus, FileText,
+    DollarSign, TrendingUp, Award,
+    Loader2, RefreshCw
+} from 'lucide-react';
 import { useStore } from '../store/useStore';
+import { FichasGrid } from '../components/fichas/FichasGrid';
+import { FichasList } from '../components/fichas/FichasList';
+import { FiltrosFichas, type FilterState } from '../components/fichas/FiltrosFichas';
 import { listarFichas, eliminarFichaTecnica, duplicarFicha } from '../services/fichasTecnicasService';
 import { calculateGlobalMetrics } from '../services/analyticsService';
-import { KPICard, FiltrosFichas } from '../components/fichas/DashboardAtoms';
-import type { FilterState } from '../components/fichas/DashboardAtoms';
-import { FichasGrid, FichasList } from '../components/fichas/DisplayComponents';
-import { FichaTecnicaForm } from '../components/fichas/FichaTecnicaForm';
-import { useNavigate } from 'react-router-dom';
-import type { FichaTecnica } from '../types';
+import type { FichaTecnica } from '../types/fichasTecnicas';
+
+const KPICard: React.FC<{
+    title: string;
+    value: string | number;
+    icon: React.ReactNode;
+    color: string;
+    bgColor: string;
+}> = ({ title, value, icon, color, bgColor }) => (
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex items-start justify-between">
+        <div>
+            <p className="text-sm font-medium text-gray-500 mb-1">{title}</p>
+            <h3 className="text-2xl font-bold text-gray-800">{value}</h3>
+        </div>
+        <div className={`p-3 rounded-lg ${bgColor} ${color}`}>
+            {icon}
+        </div>
+    </div>
+);
 
 export const FichasTecnicasDashboard: React.FC = () => {
-    const { activeOutletId, currentUser } = useStore();
     const navigate = useNavigate();
+    const { activeOutletId, currentUser } = useStore();
 
-    // State
     const [fichas, setFichas] = useState<FichaTecnica[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-    const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-    const [showForm, setShowForm] = useState(false);
-    const [editingFicha, setEditingFicha] = useState<FichaTecnica | undefined>(undefined);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
+    // View & Sort State
+    const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+    const [sortBy, setSortBy] = useState('nombre-asc');
+    const [showFilters, setShowFilters] = useState(false);
+
+    // Filters State
     const [filters, setFilters] = useState<FilterState>({
         searchTerm: '',
         categoria: [],
@@ -35,188 +54,260 @@ export const FichasTecnicasDashboard: React.FC = () => {
         soloActivas: true
     });
 
-    // Data Loading
-    const loadFichas = async () => {
-        if (!activeOutletId) return;
-        setIsLoading(true);
-        try {
-            const data = await listarFichas(activeOutletId);
-            setFichas(data);
-        } catch (error) {
-            console.error('Error loading fichas:', error);
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
     useEffect(() => {
         loadFichas();
     }, [activeOutletId]);
 
-    // Filtering & Metrics
-    const filteredFichas = useMemo(() => {
-        return fichas.filter(f => {
-            const matchSearch = f.nombre.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
-                f.categoria.toLowerCase().includes(filters.searchTerm.toLowerCase());
-            const matchCat = filters.categoria.length === 0 || filters.categoria.includes(f.categoria);
-            const matchDif = filters.dificultad.length === 0 || filters.dificultad.includes(f.dificultad);
-            const matchCoste = f.costos.porPorcion <= filters.rangoCoste[1];
-            const matchMargen = (f.pricing.margenBruto || 0) >= filters.rangoMargen[0];
+    const loadFichas = async () => {
+        if (!activeOutletId) return;
+        try {
+            setLoading(true);
+            setError(null);
+            const data = await listarFichas(activeOutletId);
+            setFichas(data);
+        } catch (err) {
+            console.error('Error loading fichas:', err);
+            setError('Error al cargar las fichas técnicas. Por favor intenta de nuevo.');
+        } finally {
+            setLoading(false);
+        }
+    };
 
-            const result = matchSearch && matchCat && matchDif && matchCoste && matchMargen;
-            return result;
+    const handleDelete = async (id: string) => {
+        if (window.confirm('¿Estás seguro de que deseas eliminar esta ficha técnica?')) {
+            try {
+                await eliminarFichaTecnica(id);
+                setFichas(prev => prev.filter(f => f.id !== id));
+            } catch (error) {
+                console.error('Error deleting ficha:', error);
+                alert('Error al eliminar la ficha técnica');
+            }
+        }
+    };
+
+    const handleDuplicate = async (id: string) => {
+        if (!currentUser) return;
+        const fichaToDup = fichas.find(f => f.id === id);
+        if (!fichaToDup) return;
+
+        const newName = prompt('Nombre para la copia:', `${fichaToDup.nombre} (Copia)`);
+        if (newName) {
+            try {
+                await duplicarFicha(id, newName, currentUser.id);
+                loadFichas(); // Reload to see new one
+            } catch (error) {
+                console.error('Error duplicating ficha:', error);
+                alert('Error al duplicar la ficha técnica');
+            }
+        }
+    };
+
+    const handleDownload = (id: string) => {
+        // Placeholder for PDF download
+        console.log('Download PDF for', id);
+        alert('Funcionalidad de PDF en desarrollo');
+    };
+
+    // Filter Logic
+    const filteredFichas = useMemo(() => {
+        return fichas.filter(ficha => {
+            // Search
+            if (filters.searchTerm) {
+                const term = filters.searchTerm.toLowerCase();
+                if (!ficha.nombre.toLowerCase().includes(term) && !ficha.descripcion?.toLowerCase().includes(term)) {
+                    return false;
+                }
+            }
+            // Categories
+            if (filters.categoria.length > 0 && !filters.categoria.includes(ficha.categoria)) return false;
+
+            // Difficulty
+            if (filters.dificultad.length > 0 && !filters.dificultad.includes(ficha.dificultad)) return false;
+
+            // Active
+            if (filters.soloActivas && !ficha.activa) return false;
+
+            return true;
         });
     }, [fichas, filters]);
 
-    const metrics = useMemo(() => calculateGlobalMetrics(fichas), [fichas]);
+    // Sort Logic
+    const sortedFichas = useMemo(() => {
+        return [...filteredFichas].sort((a, b) => {
+            switch (sortBy) {
+                case 'nombre-asc': return a.nombre.localeCompare(b.nombre);
+                case 'nombre-desc': return b.nombre.localeCompare(a.nombre);
+                case 'coste-asc': return (a.costos.porPorcion || 0) - (b.costos.porPorcion || 0);
+                case 'coste-desc': return (b.costos.porPorcion || 0) - (a.costos.porPorcion || 0);
+                case 'margen-desc': return (b.pricing.margenBruto || 0) - (a.pricing.margenBruto || 0);
+                case 'fecha-desc': return (b.ultimaModificacion || '').localeCompare(a.ultimaModificacion || '');
+                default: return 0;
+            }
+        });
+    }, [filteredFichas, sortBy]);
 
-    // Actions
-    const handleDelete = async (id: string) => {
-        if (confirm('¿Estás seguro de que deseas eliminar esta ficha técnica? El registro se marcará como inactivo.')) {
-            await eliminarFichaTecnica(id);
-            loadFichas();
-        }
-    };
-
-    const handleDuplicate = async (ficha: FichaTecnica) => {
-        if (!currentUser) return;
-        const nombre = prompt('Ingresa el nombre para la nueva copia:', `${ficha.nombre} (Copia)`);
-        if (nombre) {
-            await duplicarFicha(ficha.id, nombre, currentUser.id);
-            loadFichas();
-        }
-    };
+    const stats = useMemo(() => calculateGlobalMetrics(fichas), [fichas]);
 
     return (
-        <div className="p-8 max-w-[1600px] mx-auto space-y-8 text-slate-200 min-h-screen">
-            {/* Header section with KPIs */}
-            <header className="space-y-6">
-                <div className="flex justify-between items-end">
-                    <div>
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-primary rounded-xl shadow-lg shadow-primary/30">
-                                <FileStack className="w-8 h-8 text-white" />
-                            </div>
-                            <h1 className="text-4xl font-black text-white tracking-tight">Fichas Técnicas</h1>
-                        </div>
-                        <p className="text-slate-400 mt-2 font-medium">Control avanzado de costos, recetas y márgenes operativos.</p>
-                    </div>
+        <div className="container mx-auto px-4 py-8 max-w-7xl animate-fade-in">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+                <div>
+                    <h1 className="text-3xl font-bold text-gray-900">Fichas Técnicas</h1>
+                    <p className="text-gray-500 mt-1">Gestiona tus recetas, costos y márgenes</p>
+                </div>
+                <div className="flex gap-3 w-full md:w-auto">
                     <button
-                        onClick={() => {
-                            setEditingFicha(undefined);
-                            setShowForm(true);
-                        }}
-                        className="bg-primary hover:bg-blue-600 text-white px-8 py-3 rounded-xl text-sm font-black transition-all flex items-center gap-3 shadow-2xl shadow-primary/40 hover:-translate-y-1 active:scale-95"
+                        onClick={() => navigate('/analytics/rentabilidad')}
+                        className="flex-1 md:flex-none justify-center px-4 py-2 bg-white text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-50 flex items-center gap-2 font-medium transition-transform active:scale-95"
                     >
-                        <Plus className="w-5 h-5" /> Nueva Ficha
+                        <TrendingUp className="w-5 h-5 text-blue-600" />
+                        Rentabilidad
+                    </button>
+                    <button
+                        onClick={() => navigate('/fichas-tecnicas/nueva')}
+                        className="flex-1 md:flex-none justify-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2 font-medium shadow-sm transition-transform active:scale-95 hover:shadow-md"
+                    >
+                        <Plus className="w-5 h-5" />
+                        Nueva Ficha
                     </button>
                 </div>
+            </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                    <KPICard title="Total Fichas" value={metrics.totalFichas} icon={<FileText size={20} />} color="blue" />
-                    <KPICard title="Costo Promedio p/p" value={`${metrics.costoPromedio.toFixed(2)}€`} icon={<DollarSign size={20} />} color="green" />
-                    <KPICard title="Margen Promedio" value={`${metrics.margenPromedio.toFixed(0)}%`} icon={<TrendingUp size={20} />} color="purple" />
-                    <KPICard title="Más Rentable" value={metrics.masRentable?.nombre || '-'} icon={<Award size={20} />} color="yellow" />
-                </div>
-            </header>
+            {/* KPIs */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <KPICard
+                    title="Total Fichas"
+                    value={stats.totalFichas}
+                    icon={<FileText className="w-6 h-6" />}
+                    color="text-blue-600"
+                    bgColor="bg-blue-50"
+                />
+                <KPICard
+                    title="Costo Promedio"
+                    value={`€${stats.costoPromedio.toFixed(2)}`}
+                    icon={<DollarSign className="w-6 h-6" />}
+                    color="text-green-600"
+                    bgColor="bg-green-50"
+                />
+                <KPICard
+                    title="Margen Promedio"
+                    value={`${stats.margenPromedio.toFixed(0)}%`}
+                    icon={<TrendingUp className="w-6 h-6" />}
+                    color="text-purple-600"
+                    bgColor="bg-purple-50"
+                />
+                <KPICard
+                    title="Más Rentable"
+                    value={stats.masRentable?.nombre || '-'}
+                    icon={<Award className="w-6 h-6" />}
+                    color="text-yellow-600"
+                    bgColor="bg-yellow-50"
+                />
+            </div>
 
-            {/* Filters Section */}
-            <section className="bg-surface-light border border-white/5 rounded-3xl p-6 shadow-2xl">
-                <div className="flex flex-col md:flex-row gap-6 mb-6">
-                    <div className="flex-1 relative group">
-                        <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
-                            <FileText className="w-5 h-5 text-slate-500 group-focus-within:text-primary transition-colors" />
-                        </div>
+            {/* Main Control Bar */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 mb-6 sticky top-4 z-20">
+                <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+                    {/* Search */}
+                    <div className="relative flex-1 w-full">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
                         <input
                             type="text"
-                            placeholder="Busca por nombre o categoría..."
-                            className="w-full bg-surface border border-white/10 rounded-2xl pl-12 pr-6 py-4 text-white focus:border-primary focus:outline-none transition-all shadow-inner"
+                            placeholder="Buscar por nombre, ingrediente..."
                             value={filters.searchTerm}
                             onChange={(e) => setFilters({ ...filters, searchTerm: e.target.value })}
+                            className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
                         />
                     </div>
 
-                    <div className="flex bg-surface p-1.5 rounded-2xl border border-white/5 shadow-inner self-start">
-                        <button
-                            onClick={() => setViewMode('grid')}
-                            className={`px-4 py-2 rounded-xl transition-all font-bold text-xs flex items-center gap-2 ${viewMode === 'grid' ? 'bg-primary text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'
-                                }`}
+                    <div className="flex gap-3 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
+                        {/* Sort */}
+                        <select
+                            value={sortBy}
+                            onChange={(e) => setSortBy(e.target.value)}
+                            className="px-4 py-2.5 border border-gray-200 rounded-lg bg-gray-50 text-gray-700 text-sm font-medium focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer"
                         >
-                            <Grid size={16} /> Grid
-                        </button>
-                        <button
-                            onClick={() => setViewMode('list')}
-                            className={`px-4 py-2 rounded-xl transition-all font-bold text-xs flex items-center gap-2 ${viewMode === 'list' ? 'bg-primary text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'
-                                }`}
-                        >
-                            <ListIcon size={16} /> Lista
-                        </button>
-                    </div>
+                            <option value="nombre-asc">Nombre A-Z</option>
+                            <option value="nombre-desc">Nombre Z-A</option>
+                            <option value="coste-asc">Costo Mayor</option>
+                            <option value="coste-desc">Costo Menor</option>
+                            <option value="margen-desc">Mayor Margen</option>
+                            <option value="fecha-desc">Recientes</option>
+                        </select>
 
-                    <button
-                        onClick={() => navigate('/analytics/fichas')}
-                        className="bg-white/5 hover:bg-white/10 text-white px-6 py-4 rounded-2xl font-bold text-sm border border-white/10 transition-all flex items-center gap-2"
-                    >
-                        <TrendingUp size={18} className="text-primary" /> Ver Análisis Pro
+                        {/* View Toggles */}
+                        <div className="flex bg-gray-100 p-1 rounded-lg">
+                            <button
+                                onClick={() => setViewMode('grid')}
+                                className={`p-2 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white shadow text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+                            >
+                                <Grid className="w-5 h-5" />
+                            </button>
+                            <button
+                                onClick={() => setViewMode('list')}
+                                className={`p-2 rounded-md transition-all ${viewMode === 'list' ? 'bg-white shadow text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+                            >
+                                <List className="w-5 h-5" />
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <FiltrosFichas
+                    filters={filters}
+                    onChange={setFilters}
+                    isOpen={showFilters}
+                    onToggle={() => setShowFilters(!showFilters)}
+                />
+            </div>
+
+            {/* Content Area */}
+            {loading ? (
+                <div className="flex justify-center items-center py-20">
+                    <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
+                </div>
+            ) : error ? (
+                <div className="text-center py-12 bg-red-50 rounded-lg border border-red-100">
+                    <p className="text-red-600 mb-4 font-medium">{error}</p>
+                    <button onClick={loadFichas} className="px-4 py-2 bg-white border border-red-200 text-red-600 rounded-lg hover:bg-red-50 flex items-center gap-2 mx-auto">
+                        <RefreshCw className="w-4 h-4" /> Reintentar
                     </button>
                 </div>
-
-                <FiltrosFichas filters={filters} onChange={setFilters} />
-            </section>
-
-            {/* Display Area */}
-            <main data-testid="fichas-results" className="pb-12">
-                {isLoading ? (
-                    <div className="flex flex-col items-center justify-center py-32 space-y-4">
-                        <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin shadow-2xl shadow-primary/50"></div>
-                        <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Cargando Recetario...</p>
+            ) : sortedFichas.length === 0 ? (
+                <div className="text-center py-16 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
+                    <div className="bg-white p-4 rounded-full shadow-sm inline-block mb-4">
+                        <Search className="w-8 h-8 text-gray-400" />
                     </div>
-                ) : filteredFichas.length > 0 ? (
-                    viewMode === 'grid' ? (
-                        <FichasGrid
-                            fichas={filteredFichas}
-                            onEdit={(f) => { setEditingFicha(f); setShowForm(true); }}
-                            onDelete={handleDelete}
-                            onDuplicate={handleDuplicate}
-                            onViewHistory={(f) => { setEditingFicha(f); setShowForm(true); /* Logic to switch to history tab will be handled inside form */ }}
-                        />
-                    ) : (
-                        <FichasList
-                            fichas={filteredFichas}
-                            onEdit={(f) => { setEditingFicha(f); setShowForm(true); }}
-                            onDelete={handleDelete}
-                        />
-                    )
-                ) : (
-                    <div className="text-center py-24 bg-surface/30 rounded-[40px] border-2 border-dashed border-white/5">
-                        <Info className="w-16 h-16 text-slate-700 mx-auto mb-6" />
-                        <h2 className="text-2xl font-black text-slate-400">No se encontraron fichas</h2>
-                        <p className="text-slate-600 mt-2 max-w-md mx-auto">Ajusta los filtros de búsqueda o comienza a documentar una nueva receta maestra.</p>
-                        <button
-                            onClick={() => setShowForm(true)}
-                            className="mt-8 text-primary font-bold hover:underline"
-                        >
-                            Crear mi primera ficha técnica
-                        </button>
-                    </div>
-                )}
-            </main>
-
-            {/* Form Modal Overlay */}
-            {showForm && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-xl animate-in fade-in duration-300">
-                    <div className="w-full max-w-6xl shadow-2xl" onClick={e => e.stopPropagation()}>
-                        <FichaTecnicaForm
-                            initialData={(editingFicha || { outletId: activeOutletId || undefined }) as any}
-                            userId={currentUser?.id || ''}
-                            onClose={() => setShowForm(false)}
-                            onSaved={() => {
-                                setShowForm(false);
-                                loadFichas();
-                            }}
-                        />
-                    </div>
+                    <h3 className="text-lg font-semibold text-gray-900">No se encontraron resultados</h3>
+                    <p className="text-gray-500 mt-2 mb-6">Prueba ajustando los filtros o tu búsqueda.</p>
+                    <button
+                        onClick={() => setFilters({
+                            searchTerm: '',
+                            categoria: [],
+                            dificultad: [],
+                            rangoCoste: [0, 100],
+                            rangoMargen: [0, 100],
+                            soloActivas: true
+                        })}
+                        className="text-blue-600 hover:text-blue-700 font-medium hover:underline"
+                    >
+                        Limpiar filtros
+                    </button>
                 </div>
+            ) : viewMode === 'grid' ? (
+                <FichasGrid
+                    fichas={sortedFichas}
+                    onDelete={handleDelete}
+                    onDuplicate={handleDuplicate}
+                    onDownload={handleDownload}
+                />
+            ) : (
+                <FichasList
+                    fichas={sortedFichas}
+                    onDelete={handleDelete}
+                    onDuplicate={handleDuplicate}
+                    onDownload={handleDownload}
+                />
             )}
         </div>
     );

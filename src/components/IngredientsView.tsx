@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useStore } from '../store/useStore';
-import { Package, Search, Plus, X, Import } from 'lucide-react';
+import { useOutletScoping } from '../hooks/useOutletScoping';
+import { Package, Search, Plus, X, Import, Store } from 'lucide-react';
 import { IngredientList } from './lists/IngredientList';
 import { IngredientForm } from './IngredientForm';
 import { deleteDocument, addDocument } from '../services/firestoreService';
@@ -9,7 +10,8 @@ import { COLLECTIONS, collections } from '../firebase/collections';
 import type { Ingredient, Unit } from '../types';
 
 export const IngredientsView: React.FC = () => {
-    const { ingredients, activeOutletId } = useStore();
+    const { ingredients } = useStore();
+    const { activeOutletId, isValidOutlet } = useOutletScoping();
     const [searchTerm, setSearchTerm] = useState('');
     const [showAddModal, setShowAddModal] = useState(false);
     const [editingIngredient, setEditingIngredient] = useState<Ingredient | undefined>(undefined);
@@ -61,8 +63,12 @@ export const IngredientsView: React.FC = () => {
     const filteredIngredients = React.useMemo(() => {
         let result = ingredients.filter(i =>
             i.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
-            (activeCategory === 'all' || i.category === activeCategory)
+            (activeCategory === 'all' || i.category === activeCategory) &&
+            (isValidOutlet ? i.outletId === activeOutletId : true) // If invalid outlet, showing global/mixed is risky. Better to show nothing? Or just filter if valid.
         );
+
+        // Stricter: If no valid outlet, show empty to force selection (safer for multi-tenant feel)
+        if (!isValidOutlet) return [];
 
         return [...result].sort((a, b) => {
             const aValue = a[sortConfig.key as keyof Ingredient] ?? 0;
@@ -186,6 +192,18 @@ export const IngredientsView: React.FC = () => {
                 ))}
             </div>
 
+        </div>
+
+            {
+        !isValidOutlet ? (
+            <div className="flex flex-col items-center justify-center p-12 border-2 border-dashed border-white/10 rounded-xl bg-white/5">
+                <Store className="w-12 h-12 text-slate-500 mb-4" />
+                <h3 className="text-xl font-bold text-white mb-2">Selecciona una Cocina</h3>
+                <p className="text-slate-400 text-center max-w-md">
+                    Para gestionar el inventario, primero debes seleccionar una cocina o punto de venta activo desde el menú lateral.
+                </p>
+            </div>
+        ) : (
             <IngredientList
                 ingredients={filteredIngredients}
                 onEdit={handleEdit}
@@ -193,32 +211,36 @@ export const IngredientsView: React.FC = () => {
                 sortConfig={sortConfig}
                 onSort={handleSort}
             />
+        )
+    }
 
-            {showAddModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-                    <div className="relative w-full max-w-lg">
-                        <button
-                            onClick={closeModal}
-                            className="absolute top-4 right-4 text-slate-400 hover:text-white z-10"
-                        >
-                            <X className="w-5 h-5" />
-                        </button>
-                        <div onClick={e => e.stopPropagation()}>
-                            <IngredientForm
-                                onClose={closeModal}
-                                initialData={editingIngredient}
-                            />
-                        </div>
+    {
+        showAddModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                <div className="relative w-full max-w-lg">
+                    <button
+                        onClick={closeModal}
+                        className="absolute top-4 right-4 text-slate-400 hover:text-white z-10"
+                    >
+                        <X className="w-5 h-5" />
+                    </button>
+                    <div onClick={e => e.stopPropagation()}>
+                        <IngredientForm
+                            onClose={closeModal}
+                            initialData={editingIngredient}
+                        />
                     </div>
                 </div>
-            )}
+            </div>
+        )
+    }
 
-            <DataImportModal
-                isOpen={!!importType}
-                onClose={() => setImportType(null)}
-                type={importType || 'ingredient'}
-                onImportComplete={handleImportComplete}
-            />
-        </div>
+    <DataImportModal
+        isOpen={!!importType}
+        onClose={() => setImportType(null)}
+        type={importType || 'ingredient'}
+        onImportComplete={handleImportComplete}
+    />
+        </div >
     );
 };

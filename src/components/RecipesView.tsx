@@ -2,7 +2,8 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
-import { ChefHat, Search, Plus, X, Layers, Sparkles, Loader2, Import } from 'lucide-react';
+import { useOutletScoping } from '../hooks/useOutletScoping';
+import { ChefHat, Search, Plus, X, Layers, Sparkles, Loader2, Import, Store } from 'lucide-react';
 import { RecipeList } from './lists/RecipeList';
 import { RecipeForm } from './RecipeForm';
 import { searchRecipes } from '../api/ai';
@@ -14,7 +15,8 @@ import { convertirRecetaAFicha } from '../services/fichasTecnicasService';
 import type { Recipe } from '../types';
 
 export const RecipesView: React.FC = () => {
-    const { recipes, activeOutletId, currentUser, ingredients } = useStore();
+    const { recipes, currentUser, ingredients } = useStore();
+    const { activeOutletId, isValidOutlet } = useOutletScoping();
     const navigate = useNavigate();
     const [searchTerm, setSearchTerm] = useState('');
 
@@ -206,7 +208,13 @@ export const RecipesView: React.FC = () => {
             if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
             return 0;
         });
-    }, [displayRecipes, searchTerm, isAiSearch, aiResultIds, subCategory, sortConfig]);
+    }, [displayRecipes, searchTerm, isAiSearch, aiResultIds, subCategory, sortConfig, isValidOutlet, activeOutletId]);
+
+    // Outlet Scoping Filter
+    const scopedRecipes = useMemo(() => {
+        if (!isValidOutlet) return [];
+        return filteredRecipes.filter(r => r.outletId === activeOutletId);
+    }, [filteredRecipes, isValidOutlet, activeOutletId]);
 
     return (
         <div className="p-8 max-w-6xl mx-auto space-y-6 text-slate-200">
@@ -285,7 +293,7 @@ export const RecipesView: React.FC = () => {
                         : 'border-transparent text-slate-400 hover:text-white'
                         }`}
                 >
-                    Todas ({recipes.length})
+                    Todas ({recipes.filter(r => r.outletId === activeOutletId).length})
                 </button>
                 <button
                     onClick={() => setActiveTab('regular')}
@@ -295,7 +303,7 @@ export const RecipesView: React.FC = () => {
                         }`}
                 >
                     <ChefHat className="w-4 h-4" />
-                    Recetas ({regularRecipes.length})
+                    Recetas ({regularRecipes.filter(r => r.outletId === activeOutletId).length})
                 </button>
                 <button
                     onClick={() => setActiveTab('base')}
@@ -305,7 +313,7 @@ export const RecipesView: React.FC = () => {
                         }`}
                 >
                     <Layers className="w-4 h-4" />
-                    Bases ({baseRecipes.length})
+                    Bases ({baseRecipes.filter(r => r.outletId === activeOutletId).length})
                 </button>
             </div>
 
@@ -327,14 +335,24 @@ export const RecipesView: React.FC = () => {
                 </div>
             )}
 
-            <RecipeList
-                recipes={filteredRecipes}
-                onEdit={handleEdit}
-                onDelete={handleDelete}
-                onConvertToFicha={handleConvertToFicha}
-                sortConfig={sortConfig}
-                onSort={handleSort}
-            />
+            {!isValidOutlet ? (
+                <div className="flex flex-col items-center justify-center p-12 border-2 border-dashed border-white/10 rounded-xl bg-white/5 mt-8">
+                    <Store className="w-12 h-12 text-slate-500 mb-4" />
+                    <h3 className="text-xl font-bold text-white mb-2">Selecciona una Cocina</h3>
+                    <p className="text-slate-400 text-center max-w-md">
+                        Selecciona una cocina activa para ver y gestionar sus recetas.
+                    </p>
+                </div>
+            ) : (
+                <RecipeList
+                    recipes={scopedRecipes}
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
+                    onConvertToFicha={handleConvertToFicha}
+                    sortConfig={sortConfig}
+                    onSort={handleSort}
+                />
+            )}
 
             {showAddModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">

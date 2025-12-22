@@ -1,5 +1,6 @@
 // Basic Units & Categories
 export type Unit = 'kg' | 'g' | 'L' | 'ml' | 'un' | 'manojo';
+import { IngredientSupplierConfig } from './suppliers';
 
 export type InventoryCategory = 'meat' | 'fish' | 'produce' | 'dairy' | 'dry' | 'frozen' | 'canned' | 'cocktail' | 'sports_menu' | 'corporate_menu' | 'coffee_break' | 'restaurant' | 'other';
 
@@ -65,6 +66,7 @@ export interface Ingredient {
     optimalStock?: number; // Desired max stock level
     reorderPoint?: number; // Point at which to reorder (similar to minStock, but explicit trigger)
     supplierInfo?: IngredientSupplier[];
+    autoSupplierConfig?: IngredientSupplierConfig;
 }
 
 // Stock Movements

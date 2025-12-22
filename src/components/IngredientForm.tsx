@@ -6,6 +6,8 @@ import { enrichIngredientCallable } from '../api/ai';
 import type { IngredientEnrichment } from '../types';
 import { addDocument, updateDocument } from '../services/firestoreService';
 import { COLLECTIONS, collections } from '../firebase/collections';
+import { SupplierManager } from './ingredients/SupplierManager';
+import { SupplierSelectionSimulator } from './ingredients/SupplierSelectionSimulator';
 
 export const IngredientForm: React.FC<{ initialData?: Ingredient; onClose?: () => void }> = ({ initialData, onClose }) => {
     const { activeOutletId, suppliers } = useStore();
@@ -28,6 +30,14 @@ export const IngredientForm: React.FC<{ initialData?: Ingredient; onClose?: () =
                 protein: 0,
                 carbs: 0,
                 fat: 0
+            },
+            autoSupplierConfig: {
+                ingredientId: '',
+                suppliers: [],
+                selectionCriteria: {
+                    priorityFactor: 'price',
+                    weights: { price: 60, quality: 20, reliability: 10, leadTime: 10 }
+                }
             }
         }
     );
@@ -288,14 +298,29 @@ export const IngredientForm: React.FC<{ initialData?: Ingredient; onClose?: () =
 
                     <div className="mt-4 p-3 bg-indigo-500/5 rounded-lg border border-indigo-500/10">
                         <label className="text-xs text-indigo-300 font-medium flex items-center gap-2">
-                            <input
-                                type="checkbox"
-                                className="rounded border-indigo-500/30 bg-indigo-500/10"
-                                checked={!!formData.supplierId}
-                                readOnly
-                            />
                             El proveedor principal (selección arriba) se utilizará por defecto.
                         </label>
+                    </div>
+
+                    {/* Advanced Supplier Manager */}
+                    <div className="mt-6 border-t border-white/10 pt-6">
+                        <SupplierManager
+                            ingredientName={formData.name || 'Nuevo Ingrediente'}
+                            config={formData.autoSupplierConfig || {
+                                ingredientId: initialData?.id || 'temp',
+                                suppliers: [], // Should map from supplierInfo ideally or keep separate
+                                selectionCriteria: {
+                                    priorityFactor: 'price',
+                                    weights: { price: 60, quality: 20, reliability: 10, leadTime: 10 }
+                                }
+                            }}
+                            onSave={(newConfig) => setFormData({ ...formData, autoSupplierConfig: newConfig })}
+                        />
+                        {formData.autoSupplierConfig && (
+                            <div className="mt-4">
+                                <SupplierSelectionSimulator config={formData.autoSupplierConfig} />
+                            </div>
+                        )}
                     </div>
                 </div>
 

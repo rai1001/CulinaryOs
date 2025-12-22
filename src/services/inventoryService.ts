@@ -1,6 +1,8 @@
 import { v4 as uuidv4 } from 'uuid';
 import { TIME, INVENTORY } from '../constants';
-import type { Ingredient, IngredientBatch } from '../types';
+import type { Ingredient, IngredientBatch, Event, Menu, Recipe } from '../types';
+import { firestoreService } from './firestoreService';
+import { COLLECTIONS } from '../firebase/collections';
 
 /**
  * Consume stock using FIFO (First In, First Out) method based on expiry dates
@@ -116,9 +118,7 @@ export const getBatchesExpiringSoon = (
 };
 
 // Imports needed for deduction logic
-import { firestoreService } from './firestoreService';
-import { COLLECTIONS } from '../firebase/collections';
-import type { Event, Menu, Recipe } from '../types';
+// Imports needed for deduction logic (Moved to top)
 
 /**
  * Deducts stock for a completed event based on its menu and PAX.

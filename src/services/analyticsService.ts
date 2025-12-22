@@ -13,6 +13,22 @@ export interface Optimizacion {
     prioridad: 'high' | 'medium' | 'low';
 }
 
+export interface CambiosEscenario {
+    ingredientes?: { id: string; nuevoPrecio: number }[];
+    porciones?: number;
+    margenDeseado?: number;
+}
+
+export interface ResultadoSimulacion {
+    costoOriginal: number;
+    costoNuevo: number;
+    diferenciaCosto: number;
+    precioOriginal: number;
+    precioNuevo: number;
+    diferenciaPrecio: number;
+    impactoMargen: number;
+}
+
 export interface AnalisisPlato {
     fichaId: string;
     nombre: string;
@@ -101,7 +117,69 @@ export function detectarOptimizaciones(
         });
     }
 
+    // 3. Porciones grandes
+    if (ficha.porciones > 8) {
+        const costoSiReduce = ficha.costos.total * (6 / ficha.porciones);
+        optimizaciones.push({
+            tipo: 'porcion_grande',
+            descripcion: `Produce ${ficha.porciones} porciones, superior al estándar`,
+            impactoEstimado: ficha.costos.total - costoSiReduce,
+            sugerencia: `Ajustar a 6 porciones reduciría costo total de producción`,
+            prioridad: 'low'
+        });
+    }
+
     return optimizaciones;
+}
+
+/**
+ * Simulates a pricing/cost scenario.
+ */
+export function simularEscenario(
+    ficha: FichaTecnica,
+    cambios: CambiosEscenario
+): ResultadoSimulacion {
+    let nuevosCostos = ficha.costos.ingredientes;
+
+    // Apply ingredient price changes
+    if (cambios.ingredientes) {
+        cambios.ingredientes.forEach(({ id, nuevoPrecio }) => {
+            const ing = ficha.ingredientes.find(i => i.ingredienteId === id);
+            if (ing) {
+                const diferencia = nuevoPrecio - ing.costoUnitario;
+                nuevosCostos += diferencia * ing.cantidad;
+            }
+        });
+    }
+
+    // Apply portion change
+    // Note: Cost PER PORTION changes if portions change but total ingredients stay same? 
+    // Usually "portions" change means "yield" changes for same ingredients.
+    const nuevasPorciones = cambios.porciones || ficha.porciones;
+
+    // Total cost isn't changing just by changing yield number, but cost per portion dies.
+    // Unless we assume new cost is scaled? No, simulation usually means "what if this batch yields X instead of Y"
+
+    // However, if we change INGREDIENTS prices, total cost changes.
+    // So new total cost = nuevosCostos (calculated above)
+
+    const nuevoCostoPorPorcion = nuevosCostos / nuevasPorciones;
+    const nuevoMargen = cambios.margenDeseado !== undefined ? cambios.margenDeseado : (ficha.pricing.margenBruto || 0);
+
+    // Calculate new suggested price to maintain margin
+    // Price = Cost / (1 - Margin%)
+    // Margin is usually entered as 30 for 30%.
+    const nuevoPrecio = nuevoCostoPorPorcion / (1 - (nuevoMargen / 100));
+
+    return {
+        costoOriginal: ficha.costos.porPorcion || 0,
+        costoNuevo: nuevoCostoPorPorcion,
+        diferenciaCosto: nuevoCostoPorPorcion - (ficha.costos.porPorcion || 0),
+        precioOriginal: ficha.pricing.precioVentaSugerido || 0,
+        precioNuevo: nuevoPrecio,
+        diferenciaPrecio: nuevoPrecio - (ficha.pricing.precioVentaSugerido || 0),
+        impactoMargen: nuevoMargen - (ficha.pricing.margenBruto || 0)
+    };
 }
 
 /**
