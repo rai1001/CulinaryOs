@@ -184,12 +184,14 @@ export const PCCConfiguration: React.FC = () => {
                                 <button
                                     onClick={() => handleEdit(pcc)}
                                     className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg transition-colors"
+                                    aria-label={`Editar ${pcc.name}`}
                                 >
                                     <Edit2 className="w-4 h-4" />
                                 </button>
                                 <button
                                     onClick={() => handleDelete(pcc.id)}
                                     className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors"
+                                    aria-label={`Eliminar ${pcc.name}`}
                                 >
                                     <Trash2 className="w-4 h-4" />
                                 </button>
