@@ -31,6 +31,7 @@ export const DataView: React.FC = () => {
           recipes={filteredRecipes}
           onEdit={(recipe) => console.log('Edit recipe', recipe)}
           onDelete={(id) => console.log('Delete recipe', id)}
+          onConvertToFicha={(id) => console.log('Convert recipe to ficha', id)}
           sortConfig={{ key: 'name', direction: 'asc' }}
           onSort={() => { }}
         />;

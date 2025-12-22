@@ -1,9 +1,79 @@
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
 import { Resend } from 'resend';
+import * as PDFDocument from 'pdfkit';
 
 // Initialize Resend with API Key from environment variables
 const resend = new Resend(process.env.RESEND_API_KEY || 're_123456789'); // Valid placeholder or env var
+
+const generatePDF = (order: any, supplier: any, branchName: string): Promise<Buffer> => {
+    return new Promise((resolve, reject) => {
+        const doc = new PDFDocument({ margin: 50 });
+        const buffers: Buffer[] = [];
+
+        doc.on('data', buffers.push.bind(buffers));
+        doc.on('end', () => {
+            const pdfData = Buffer.concat(buffers);
+            resolve(pdfData);
+        });
+
+        // Header
+        doc.fontSize(20).text('PEDIDO DE COMPRA', { align: 'center' });
+        doc.fontSize(12).text(order.orderNumber, { align: 'center' });
+        doc.moveDown();
+
+        // Details
+        doc.fontSize(10).text(`Fecha: ${new Date().toLocaleDateString()}`, { align: 'right' });
+        doc.text(`De: ${branchName}`, { align: 'right' });
+        doc.moveDown();
+        doc.text(`Para: ${supplier.name}`);
+        if (supplier.email) doc.text(supplier.email);
+        doc.moveDown();
+
+        // Logistics
+        doc.fontSize(12).text('Detalles de Entrega', { underline: true });
+        doc.fontSize(10);
+        if (order.deliveryDate) doc.text(`Fecha requerida: ${order.deliveryDate}`);
+        if (order.deliveryWindow) doc.text(`Horario: ${order.deliveryWindow}`);
+        if (order.deliveryAddress) doc.text(`Dirección: ${order.deliveryAddress}`);
+        if (order.contactPerson) doc.text(`Contacto: ${order.contactPerson}`);
+        if (order.deliveryNotes) doc.text(`Notas: ${order.deliveryNotes}`);
+        doc.moveDown();
+
+        // Items Table Header
+        const startY = doc.y;
+        doc.text('Producto', 50, startY, { width: 250 });
+        doc.text('Cant', 300, startY, { width: 50, align: 'right' });
+        doc.text('Costo', 350, startY, { width: 70, align: 'right' });
+        doc.text('Total', 420, startY, { width: 80, align: 'right' });
+
+        doc.moveTo(50, startY + 15).lineTo(500, startY + 15).stroke();
+        doc.moveDown();
+
+        // Items
+        let currentY = doc.y + 10;
+        order.items.forEach((item: any) => {
+            const name = item.tempDescription || 'Ingrediente ' + item.ingredientId;
+            const quantity = `${item.quantity} ${item.unit}`;
+            const cost = `${(item.costPerUnit || 0).toFixed(2)}€`;
+            const total = `${((item.quantity || 0) * (item.costPerUnit || 0)).toFixed(2)}€`;
+
+            doc.text(name, 50, currentY, { width: 250 });
+            doc.text(quantity, 300, currentY, { width: 50, align: 'right' });
+            doc.text(cost, 350, currentY, { width: 70, align: 'right' });
+            doc.text(total, 420, currentY, { width: 80, align: 'right' });
+
+            currentY += 20; // Simple line height estimate
+        });
+
+        doc.moveTo(50, currentY + 5).lineTo(500, currentY + 5).stroke();
+
+        // Total
+        doc.fontSize(14).text(`TOTAL: ${(order.totalCost || 0).toFixed(2)}€`, 50, currentY + 20, { align: 'right' });
+
+        doc.end();
+    });
+};
 
 export const sendPurchaseOrderEmail = functions.firestore
     .document('purchaseOrders/{orderId}')
@@ -30,7 +100,7 @@ export const sendPurchaseOrderEmail = functions.firestore
                 const outlet = outletDoc.data();
                 const branchName = outlet?.name || 'ChefOS Kitchen';
 
-                // 3. Generate HTML Table for Items
+                // 3. Generate HTML Table for Items (kept for email body)
                 const itemsHtml = newData.items.map((item: any) => `
                     <tr>
                         <td style="padding: 12px 8px; border-bottom: 1px solid #eee; color: #334155; font-weight: 500;">
@@ -80,10 +150,36 @@ export const sendPurchaseOrderEmail = functions.firestore
                                     <p style="margin: 0; font-size: 14px; color: #334155;">
                                         <strong>Fecha requerida de entrega:</strong> <span style="color: #6366f1;">${newData.deliveryDate || 'Lo antes posible'}</span>
                                     </p>
-                                    ${newData.deliveryNotes ? `
-                                        <p style="margin: 12px 0 0 0; font-size: 13px; color: #64748b;">
-                                            <strong>Instrucciones:</strong> ${newData.deliveryNotes}
+                                    ${newData.deliveryWindow ? `
+                                        <p style="margin: 8px 0 0 0; font-size: 14px; color: #334155;">
+                                            <strong>Horario de entrega:</strong> ${newData.deliveryWindow}
                                         </p>
+                                    ` : ''}
+                                    ${newData.deliveryAddress ? `
+                                        <p style="margin: 8px 0 0 0; font-size: 14px; color: #334155;">
+                                            <strong>Direcci&oacute;n de entrega:</strong> ${newData.deliveryAddress}
+                                        </p>
+                                    ` : ''}
+                                    ${newData.contactPerson ? `
+                                        <p style="margin: 8px 0 0 0; font-size: 14px; color: #334155;">
+                                            <strong>Persona de contacto:</strong> ${newData.contactPerson}
+                                        </p>
+                                    ` : ''}
+                                    
+                                    ${newData.deliveryNotes ? `
+                                        <div style="margin: 12px 0 0 0; padding-top: 12px; border-top: 1px dashed #cbd5e1;">
+                                            <p style="margin: 0; font-size: 13px; color: #64748b;">
+                                                <strong>Instrucciones:</strong> ${newData.deliveryNotes}
+                                            </p>
+                                        </div>
+                                    ` : ''}
+
+                                    ${newData.logisticsNotes ? `
+                                        <div style="margin: 8px 0 0 0;">
+                                            <p style="margin: 0; font-size: 13px; color: #64748b;">
+                                                <strong>Notas Log&iacute;sticas:</strong> ${newData.logisticsNotes}
+                                            </p>
+                                        </div>
                                     ` : ''}
                                 </div>
 
@@ -121,17 +217,26 @@ export const sendPurchaseOrderEmail = functions.firestore
                     </html>
                 `;
 
-                // 4. Send Email via Resend
+                // 4. Generate PDF
+                const pdfBuffer = await generatePDF(newData, supplier, branchName);
+
+                // 5. Send Email via Resend with Attachment
                 await resend.emails.send({
                     from: 'ChefOS <orders@chefos.app>',
                     to: supplier.email,
                     subject: `Pedido ${newData.orderNumber} - ${branchName}`,
-                    html: emailHtml
+                    html: emailHtml,
+                    attachments: [
+                        {
+                            filename: `Pedido_${newData.orderNumber}.pdf`,
+                            content: pdfBuffer // Buffer works directly
+                        }
+                    ]
                 });
 
-                console.log(`Email sent to ${supplier.email} for order ${newData.orderNumber}`);
+                console.log(`Email sent to ${supplier.email} for order ${newData.orderNumber} with PDF`);
 
-                // 5. Update Order with sentAt timestamp
+                // 6. Update Order with sentAt timestamp
                 await change.after.ref.update({
                     sentAt: new Date().toISOString()
                 });

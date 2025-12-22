@@ -337,9 +337,12 @@ export type ViewType = 'dashboard' | 'schedule' | 'production' | 'data' | 'event
 
 export interface Notification {
     id: string;
-    type: 'HACCP_ALERT' | 'SYSTEM';
+    type: 'HACCP_ALERT' | 'SYSTEM' | 'ORDER_UPDATE';
+    title?: string;
     message: string;
     pccId?: string;
+    orderId?: string;
+    link?: string;
     read: boolean;
     timestamp: any; // Firestore Timestamp or Date
     outletId?: string;

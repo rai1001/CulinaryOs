@@ -1,0 +1,2 @@
+﻿src/components/DataView.tsx(30,17): error TS2741: Property 'onConvertToFicha' is missing in type '{ recipes: Recipe[]; onEdit: (recipe: Recipe) => void; onDelete: (id: string) => void; sortConfig: { key: string; direction: "asc"; }; onSort: () => void; }' but required in type 'RecipeListProps'.
+src/hooks/useFichaTecnicaForm.ts(29,5): error TS2322: Type '"entrada"' is not assignable to type 'FichaCategoria'.

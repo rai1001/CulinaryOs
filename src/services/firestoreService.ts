@@ -63,27 +63,93 @@ export const sanitizeData = <T extends object>(data: T): T => {
     return cleanFn(data);
 };
 
+// Helper for mock DB
+const getMockDB = () => {
+    if (typeof localStorage === 'undefined') return null;
+    const mock = localStorage.getItem('E2E_MOCK_DB');
+    return mock ? JSON.parse(mock) : null;
+};
+
+const saveMockDB = (data: any) => {
+    if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('E2E_MOCK_DB', JSON.stringify(data));
+    }
+};
+
 export const setDocument = async <T extends DocumentData>(collectionName: string, id: string, data: WithFieldValue<T>): Promise<void> => {
+    const mockDB = getMockDB();
+    if (mockDB) {
+        if (!mockDB[collectionName]) mockDB[collectionName] = [];
+        const index = mockDB[collectionName].findIndex((d: any) => d.id === id);
+        const docData = sanitizeData({ ...data, id }); // Ensure ID is part of data
+        if (index >= 0) {
+            mockDB[collectionName][index] = { ...mockDB[collectionName][index], ...docData };
+        } else {
+            mockDB[collectionName].push(docData);
+        }
+        saveMockDB(mockDB);
+        return;
+    }
     const docRef = doc(db, collectionName, id);
     await setDoc(docRef, sanitizeData(data as any));
 };
 
 export const addDocument = async <T extends DocumentData>(collectionRef: CollectionReference<T>, data: WithFieldValue<T>): Promise<string> => {
+    const mockDB = getMockDB();
+    if (mockDB) {
+        // We need collection name. collectionRef doesn't easily give it without parsing path.
+        // Assuming path is the collection name for simple refs.
+        const collectionName = collectionRef.path;
+        if (!mockDB[collectionName]) mockDB[collectionName] = [];
+        const id = 'mock-' + Date.now();
+        const docData = sanitizeData({ ...data, id });
+        mockDB[collectionName].push(docData);
+        saveMockDB(mockDB);
+        return id;
+    }
     const docRef = await addDoc(collectionRef, sanitizeData(data as any));
     return docRef.id;
 };
 
 export const updateDocument = async <T>(collectionName: string, id: string, data: UpdateData<T>): Promise<void> => {
+    const mockDB = getMockDB();
+    if (mockDB) {
+        if (!mockDB[collectionName]) return;
+        const index = mockDB[collectionName].findIndex((d: any) => d.id === id);
+        if (index >= 0) {
+            mockDB[collectionName][index] = { ...mockDB[collectionName][index], ...sanitizeData(data as any) };
+            saveMockDB(mockDB);
+        }
+        return;
+    }
     const docRef = doc(db, collectionName, id);
     await updateDoc(docRef, sanitizeData(data as any));
 };
 
 export const deleteDocument = async (collectionName: string, id: string): Promise<void> => {
+    const mockDB = getMockDB();
+    if (mockDB) {
+        if (mockDB[collectionName]) {
+            mockDB[collectionName] = mockDB[collectionName].filter((d: any) => d.id !== id);
+            saveMockDB(mockDB);
+        }
+        return;
+    }
     const docRef = doc(db, collectionName, id);
     await deleteDoc(docRef);
 };
 
 export const queryDocuments = async <T>(collectionRef: CollectionReference<T>, ...constraints: QueryConstraint[]): Promise<T[]> => {
+    const mockDB = getMockDB();
+    if (mockDB) {
+        const collectionName = collectionRef.path;
+        const items = mockDB[collectionName] || [];
+        // Filtering in mocks is hard to genericize perfectly without a query engine.
+        // For now, return ALL and let client filter if possible, OR generic simple filters.
+        // Ideally, we implement basic filtering if needed. 
+        // For E2E simple flows, often we just need the data.
+        return items as T[];
+    }
     const q = query(collectionRef, ...constraints);
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
@@ -104,6 +170,41 @@ export const getPurchaseOrdersPage = async ({
     pageSize: number;
     cursor: PageCursor | null;
 }): Promise<PaginatedResult<PurchaseOrder>> => {
+    const mockDB = getMockDB();
+    if (mockDB) {
+        let items = mockDB['purchaseOrders'] || [];
+
+        // Filter by Outlet
+        items = items.filter((i: any) => i.outletId === outletId);
+
+        // Filter by Status
+        if (filters.status && filters.status !== 'ALL') {
+            items = items.filter((i: any) => i.status === filters.status);
+        }
+
+        // Filter by Supplier
+        if (filters.supplierId && filters.supplierId !== 'ALL') {
+            if (filters.supplierId === 'SIN_ASIGNAR') {
+                items = items.filter((i: any) => !i.supplierId);
+            } else {
+                items = items.filter((i: any) => i.supplierId === filters.supplierId);
+            }
+        }
+
+        // Sort
+        items.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+        // Pagination (Simple slice for mock)
+        // Ignoring cursor for simplicity in E2E unless strictly needed
+        const pagedItems = items.slice(0, pageSize);
+
+        return {
+            items: pagedItems,
+            nextCursor: null,
+            hasMore: items.length > pageSize
+        };
+    }
+
     const constraints: QueryConstraint[] = [
         where("outletId", "==", outletId)
     ];
@@ -165,6 +266,16 @@ export const getEventsRange = async ({
     startDate: string;
     endDate: string;
 }): Promise<Event[]> => {
+    const mockDB = getMockDB();
+    if (mockDB) {
+        const events = mockDB['events'] || [];
+        return events.filter((e: any) =>
+            e.outletId === outletId &&
+            e.date >= startDate &&
+            e.date <= endDate
+        ).sort((a: any, b: any) => a.date.localeCompare(b.date));
+    }
+
     const constraints: QueryConstraint[] = [
         where("outletId", "==", outletId),
         where("date", ">=", startDate),
@@ -180,6 +291,10 @@ export const getEventsRange = async ({
 
 // Helper for getById
 export const getDocumentById = async <T>(collectionName: string, id: string): Promise<T | undefined> => {
+    const mockDB = getMockDB();
+    if (mockDB) {
+        return mockDB[collectionName]?.find((d: any) => d.id === id);
+    }
     const d = await getDoc(doc(db, collectionName, id));
     return d.exists() ? { id: d.id, ...d.data() } as any : undefined;
 };

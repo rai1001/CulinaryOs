@@ -62,6 +62,22 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order, onClo
                         <p className="text-slate-400 text-sm mt-1">
                             {supplier?.name || 'Proveedor Desconocido'} • {new Date(order.date).toLocaleDateString()}
                         </p>
+                        <div className="flex flex-wrap gap-4 mt-2 text-xs text-slate-400">
+                            {order.deliveryDate && (
+                                <span className="flex items-center gap-1"><span className="text-slate-500">Entrega:</span> <span className="text-white">{new Date(order.deliveryDate).toLocaleDateString()}</span></span>
+                            )}
+                            {order.deliveryWindow && (
+                                <span className="flex items-center gap-1"><span className="text-slate-500">Horario:</span> <span className="text-white">{order.deliveryWindow}</span></span>
+                            )}
+                            {order.contactPerson && (
+                                <span className="flex items-center gap-1"><span className="text-slate-500">Contacto:</span> <span className="text-white">{order.contactPerson}</span></span>
+                            )}
+                        </div>
+                        {order.deliveryAddress && (
+                            <p className="text-xs text-slate-500 mt-1">
+                                <span className="font-semibold">Dirección:</span> {order.deliveryAddress}
+                            </p>
+                        )}
                     </div>
                     <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors">
                         <X size={24} />

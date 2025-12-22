@@ -42,7 +42,7 @@ describe('AprobacionPedido Integration', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         (pedidosService.getAll as any).mockResolvedValue(mockOrders);
-        (useStore as any).mockReturnValue({ user: mockUser });
+        (useStore as any).mockReturnValue({ currentUser: mockUser });
         window.confirm = vi.fn(() => true); // Auto-confirm
         window.alert = vi.fn();
     });
@@ -65,7 +65,7 @@ describe('AprobacionPedido Integration', () => {
         });
 
         // Switch to APPROVED
-        fireEvent.click(screen.getByText('APPROVED'));
+        fireEvent.click(screen.getByText('Aprobados'));
 
         await waitFor(() => {
             expect(screen.getByText('PED-002')).toBeDefined();
@@ -83,7 +83,7 @@ describe('AprobacionPedido Integration', () => {
         fireEvent.click(screen.getByText('PED-001'));
 
         expect(screen.getByText('Tomates')).toBeDefined();
-        expect(screen.getByText('Aprobar')).toBeDefined();
+        expect(screen.getByText(/Aprobar Pedido/i)).toBeDefined();
     });
 
     it('approves an order', async () => {
@@ -92,10 +92,10 @@ describe('AprobacionPedido Integration', () => {
         await waitFor(() => expect(screen.getByText('PED-001')).toBeDefined());
         fireEvent.click(screen.getByText('PED-001'));
 
-        fireEvent.click(screen.getByText('Aprobar'));
+        fireEvent.click(screen.getByText(/Aprobar Pedido/i));
 
         await waitFor(() => {
-            expect(aprobacionService.approveOrder).toHaveBeenCalledWith('o1', 'u1');
+            expect(aprobacionService.approveOrder).toHaveBeenCalledWith('o1', 'u1', expect.anything());
         });
     });
 });

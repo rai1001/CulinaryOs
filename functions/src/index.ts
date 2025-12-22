@@ -15,4 +15,5 @@ export { monitorHACCP } from "./triggers/haccpMonitor";
 export { calculateMenuEngineering } from "./scheduled/analyticsScheduler";
 export { autoPurchaseScheduler } from "./scheduled/autoPurchaseScheduler";
 export { sendPurchaseOrderEmail } from "./triggers/sendPurchaseOrderEmail";
+export { createOrderNotification } from "./triggers/createOrderNotification";
 

@@ -44,6 +44,12 @@ export interface PurchaseOrder {
     deliveryNotes?: string;
     actualDeliveryDate?: string;
     history?: PurchaseOrderHistoryEntry[];
+
+    // Phase 2: Logistics
+    deliveryAddress?: string;
+    deliveryWindow?: string;
+    contactPerson?: string;
+    logisticsNotes?: string;
 }
 
 export interface PurchaseOrderFilters {

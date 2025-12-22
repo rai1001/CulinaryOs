@@ -114,3 +114,69 @@ export const getBatchesExpiringSoon = (
         new Date(a.expiresAt).getTime() - new Date(b.expiresAt).getTime()
     );
 };
+
+// Imports needed for deduction logic
+import { firestoreService } from './firestoreService';
+import { COLLECTIONS } from '../firebase/collections';
+import type { Event, Menu, Recipe } from '../types';
+
+/**
+ * Deducts stock for a completed event based on its menu and PAX.
+ * @param eventId - ID of the event
+ * @param userId - ID of the user performing the action (for logging, future use)
+ */
+export const deductStockForEvent = async (eventId: string, userId?: string): Promise<void> => {
+    // 1. Fetch Event
+    const event = await firestoreService.getById<Event>(COLLECTIONS.EVENTS, eventId);
+    if (!event || !event.menuId) return;
+
+    // 2. Fetch Menu
+    const menu = await firestoreService.getById<Menu>(COLLECTIONS.MENUS, event.menuId);
+    if (!menu || !menu.recipeIds || menu.recipeIds.length === 0) return;
+
+    // 3. Fetch Recipes
+    // Optimization: potentially fetch all recipes in one go if "in" query supported or fetch parallel
+    const recipes: Recipe[] = [];
+    for (const recipeId of menu.recipeIds) {
+        const recipe = await firestoreService.getById<Recipe>(COLLECTIONS.RECIPES, recipeId);
+        if (recipe) recipes.push(recipe);
+    }
+
+    if (recipes.length === 0) return;
+
+    // 4. Calculate Total Ingredient Needs
+    const ingredientNeeds: Record<string, number> = {};
+
+    recipes.forEach(recipe => {
+        const yieldPax = recipe.yieldPax || 1;
+        const multiplier = event.pax / yieldPax;
+
+        recipe.ingredients.forEach(ri => {
+            const current = ingredientNeeds[ri.ingredientId] || 0;
+            ingredientNeeds[ri.ingredientId] = current + (ri.quantity * multiplier);
+        });
+    });
+
+    // 5. Fetch Ingredients and Deduct
+    for (const [ingId, qtyNeeded] of Object.entries(ingredientNeeds)) {
+        if (qtyNeeded <= 0) continue;
+
+        const ingredient = await firestoreService.getById<Ingredient>(COLLECTIONS.INGREDIENTS, ingId);
+        if (!ingredient) continue;
+
+        // Ensure batches exist
+        const ingWithBatches = initializeBatches(ingredient);
+        const batches = ingWithBatches.batches || [];
+
+        // Consume
+        const newBatches = consumeStockFIFO(batches, qtyNeeded);
+        const newStock = calculateTotalStock(newBatches);
+
+        // Update Ingredient
+        // We only update batches and stock. (Cost might change if we tracked FIFO cost, but keeping simple for now)
+        await firestoreService.update(COLLECTIONS.INGREDIENTS, ingId, {
+            batches: newBatches,
+            stock: newStock
+        });
+    }
+};

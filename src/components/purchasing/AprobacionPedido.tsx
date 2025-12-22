@@ -16,11 +16,19 @@ export const AprobacionPedido: React.FC<AprobacionPedidoProps> = ({ outletId }) 
     const [selectedOrder, setSelectedOrder] = useState<PurchaseOrder | null>(null);
     const [deliveryDate, setDeliveryDate] = useState('');
     const [deliveryNotes, setDeliveryNotes] = useState('');
+    const [deliveryAddress, setDeliveryAddress] = useState('');
+    const [deliveryWindow, setDeliveryWindow] = useState('');
+    const [contactPerson, setContactPerson] = useState('');
+    const [logisticsNotes, setLogisticsNotes] = useState('');
 
     useEffect(() => {
         if (selectedOrder) {
             setDeliveryDate(selectedOrder.deliveryDate || '');
             setDeliveryNotes(selectedOrder.deliveryNotes || '');
+            setDeliveryAddress(selectedOrder.deliveryAddress || '');
+            setDeliveryWindow(selectedOrder.deliveryWindow || '');
+            setContactPerson(selectedOrder.contactPerson || '');
+            setLogisticsNotes(selectedOrder.logisticsNotes || '');
         }
     }, [selectedOrder]);
 
@@ -55,7 +63,11 @@ export const AprobacionPedido: React.FC<AprobacionPedidoProps> = ({ outletId }) 
         try {
             await aprobacionService.approveOrder(order.id, currentUser.id, {
                 deliveryDate,
-                deliveryNotes
+                deliveryNotes,
+                deliveryAddress,
+                deliveryWindow,
+                contactPerson,
+                logisticsNotes
             });
             await fetchOrders();
             setSelectedOrder(null);
@@ -85,7 +97,11 @@ export const AprobacionPedido: React.FC<AprobacionPedidoProps> = ({ outletId }) 
         try {
             await aprobacionService.sendOrder(order.id, currentUser.id, {
                 deliveryDate,
-                deliveryNotes
+                deliveryNotes,
+                deliveryAddress,
+                deliveryWindow,
+                contactPerson,
+                logisticsNotes
             });
             await fetchOrders();
             setSelectedOrder(null);
@@ -259,12 +275,52 @@ export const AprobacionPedido: React.FC<AprobacionPedidoProps> = ({ outletId }) 
                                                 />
                                             </div>
                                             <div className="space-y-2">
+                                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Horario de Entrega</label>
+                                                <input
+                                                    type="text"
+                                                    value={deliveryWindow}
+                                                    onChange={(e) => setDeliveryWindow(e.target.value)}
+                                                    placeholder="Ej: 08:00 - 11:00"
+                                                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Direcci&oacute;n de Entrega</label>
+                                                <input
+                                                    type="text"
+                                                    value={deliveryAddress}
+                                                    onChange={(e) => setDeliveryAddress(e.target.value)}
+                                                    placeholder="Ej: Calle Principal 123"
+                                                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Persona de Contacto</label>
+                                                <input
+                                                    type="text"
+                                                    value={contactPerson}
+                                                    onChange={(e) => setContactPerson(e.target.value)}
+                                                    placeholder="Ej: Juan P\u00e9rez"
+                                                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
+                                                />
+                                            </div>
+                                            <div className="space-y-2 sm:col-span-2">
                                                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Instrucciones / Notas</label>
                                                 <input
                                                     type="text"
                                                     value={deliveryNotes}
                                                     onChange={(e) => setDeliveryNotes(e.target.value)}
                                                     placeholder="Ej: Entrar por muelle 2..."
+                                                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
+                                                />
+                                            </div>
+                                            <div className="space-y-2 sm:col-span-2">
+                                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Notas Log&iacute;sticas Internas</label>
+                                                <input
+                                                    type="text"
+                                                    value={logisticsNotes}
+                                                    onChange={(e) => setLogisticsNotes(e.target.value)}
+                                                    placeholder="Ej: Confirmar recepci&oacute;n con seguridad"
                                                     className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
                                                 />
                                             </div>
@@ -302,10 +358,10 @@ export const AprobacionPedido: React.FC<AprobacionPedidoProps> = ({ outletId }) 
                                                             <span className="text-slate-500 text-xs">{item.unit}</span>
                                                         </td>
                                                         <td className="px-6 py-4 text-right text-slate-400 text-sm">
-                                                            {item.costPerUnit.toFixed(2)}€
+                                                            {item.costPerUnit?.toFixed(2) || '0.00'}€
                                                         </td>
                                                         <td className="px-6 py-4 text-right font-mono font-bold text-white">
-                                                            {(item.quantity * item.costPerUnit).toFixed(2)}€
+                                                            {(item.quantity * (item.costPerUnit || 0)).toFixed(2)}€
                                                         </td>
                                                     </tr>
                                                 ))}

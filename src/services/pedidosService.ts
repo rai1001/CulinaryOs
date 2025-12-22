@@ -97,6 +97,27 @@ export const pedidosService = {
         );
     },
 
+    getOrdersByStatus: async (outletId: string, statuses: PurchaseStatus[]): Promise<PurchaseOrder[]> => {
+        // E2E Mock Bypass
+        const mockDB = localStorage.getItem('E2E_MOCK_DB');
+        if (mockDB) {
+            try {
+                const db = JSON.parse(mockDB);
+                return (db.purchaseOrders || []).filter((o: PurchaseOrder) =>
+                    o.outletId === outletId && statuses.includes(o.status)
+                );
+            } catch (e) {
+                console.error("E2E Mock Read Error", e);
+            }
+        }
+
+        return firestoreService.query<PurchaseOrder>(
+            collection(db, COLLECTIONS.PURCHASE_ORDERS) as CollectionReference<PurchaseOrder>,
+            where('outletId', '==', outletId),
+            where('status', 'in', statuses)
+        );
+    },
+
     updateStatus: async (orderId: string, status: PurchaseStatus, userId?: string, extraData?: Partial<PurchaseOrder>) => {
         // E2E Mock Bypass
         const mockDBStr = localStorage.getItem('E2E_MOCK_DB');
@@ -112,6 +133,13 @@ export const pedidosService = {
                     userId: userId || 'system',
                     notes: extraData?.notes || ''
                 };
+                // Update Status
+                orders[idx].status = status;
+                // Merge extra data
+                if (extraData) {
+                    Object.assign(orders[idx], extraData);
+                }
+
                 orders[idx].history = [...(orders[idx].history || []), historyEntry];
 
                 db.purchaseOrders = orders;

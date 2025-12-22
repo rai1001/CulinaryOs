@@ -26,7 +26,7 @@ export interface FichaFormState {
 
 const initialState: FichaFormState = {
     nombre: '',
-    categoria: 'entrada',
+    categoria: 'comida',
     porciones: 1,
     ingredientes: [],
     pasos: [],

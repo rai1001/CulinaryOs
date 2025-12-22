@@ -31,8 +31,8 @@ describe('RecepcionPedido Integration', () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
-        (pedidosService.getAll as any).mockResolvedValue([mockOrder]);
-        (useStore as any).mockReturnValue({ user: { id: 'u1' } });
+        (pedidosService.getOrdersByStatus as any).mockResolvedValue([mockOrder]);
+        (useStore as any).mockReturnValue({ currentUser: { id: 'u1' } });
         window.confirm = vi.fn(() => true);
         window.alert = vi.fn();
     });

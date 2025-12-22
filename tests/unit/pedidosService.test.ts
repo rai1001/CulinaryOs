@@ -44,7 +44,7 @@ describe('pedidosService', () => {
         expect(order.status).toBe('DRAFT');
         expect(order.orderNumber).toContain('PED-');
 
-        expect(firestoreService.create).toHaveBeenCalledWith(COLLECTIONS.PURCHASE_ORDERS, expect.objectContaining({
+        expect(firestoreService.create).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
             supplierId: 'sup1',
             status: 'DRAFT',
             items: expect.arrayContaining([

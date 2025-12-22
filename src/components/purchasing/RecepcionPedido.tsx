@@ -18,9 +18,8 @@ export const RecepcionPedido: React.FC<RecepcionPedidoProps> = ({ outletId }) =>
     const [receiveData, setReceiveData] = useState<Record<string, { quantity: number, expiryDate: string }>>({});
 
     const fetchOrders = async () => {
-        const allOrders = await pedidosService.getAll(outletId);
-        // Show ORDERED and PARTIAL orders
-        setOrders(allOrders.filter(o => o.status === 'ORDERED' || o.status === 'PARTIAL'));
+        const orders = await pedidosService.getOrdersByStatus(outletId, ['ORDERED', 'PARTIAL']);
+        setOrders(orders);
     };
 
     useEffect(() => {

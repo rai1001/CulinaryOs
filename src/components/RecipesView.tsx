@@ -14,9 +14,22 @@ import { convertirRecetaAFicha } from '../services/fichasTecnicasService';
 import type { Recipe } from '../types';
 
 export const RecipesView: React.FC = () => {
-    const { recipes, activeOutletId, currentUser } = useStore();
+    const { recipes, activeOutletId, currentUser, ingredients } = useStore();
     const navigate = useNavigate();
     const [searchTerm, setSearchTerm] = useState('');
+
+    // Create Map for O(1) ingredient lookup
+    const ingredientMap = useMemo(() => new Map(ingredients.map(i => [i.id, i])), [ingredients]);
+
+    const getRecipeCost = useCallback((r: Recipe) => {
+        return r.ingredients.reduce((sum, item) => {
+            const ing = ingredientMap.get(item.ingredientId);
+            return sum + (item.quantity * (ing?.costPerUnit || 0));
+        }, 0);
+    }, [ingredientMap]);
+
+
+
     const [showAddModal, setShowAddModal] = useState(false);
     const [editingRecipe, setEditingRecipe] = useState<Recipe | undefined>(undefined);
     const [activeTab, setActiveTab] = useState<'all' | 'regular' | 'base'>('all');
@@ -185,8 +198,8 @@ export const RecipesView: React.FC = () => {
 
             // Special case for calculated fields if not in object
             if (sortConfig.key === 'cost') {
-                aValue = a.totalCost || 0;
-                bValue = b.totalCost || 0;
+                aValue = getRecipeCost(a);
+                bValue = getRecipeCost(b);
             }
 
             if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;

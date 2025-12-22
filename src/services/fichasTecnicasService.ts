@@ -42,6 +42,16 @@ export async function crearFichaTecnica(
         ultimaModificacion: now
     };
 
+    // E2E Mock Bypass for Create
+    const mockDBStr = localStorage.getItem('E2E_MOCK_DB');
+    if (mockDBStr) {
+        const db = JSON.parse(mockDBStr);
+        if (!db.fichasTecnicas) db.fichasTecnicas = [];
+        db.fichasTecnicas.push({ ...ficha, id });
+        localStorage.setItem('E2E_MOCK_DB', JSON.stringify(db));
+        return { ...ficha, id };
+    }
+
     // 2. Save to Firestore
     const generatedId = await firestoreService.create(
         collections.fichasTecnicas,
@@ -81,6 +91,29 @@ export async function actualizarFichaTecnica(
     if (!currentFicha) throw new Error('Ficha not found');
 
     const now = new Date().toISOString();
+
+    // E2E Mock Bypass for Update
+    const mockDBStr = localStorage.getItem('E2E_MOCK_DB');
+    if (mockDBStr) {
+        const db = JSON.parse(mockDBStr);
+        const index = db.fichasTecnicas.findIndex((f: any) => f.id === id);
+        if (index !== -1) {
+            const updatedData = {
+                ...currentFicha,
+                ...updates,
+                version: crearVersion ? currentFicha.version + 1 : currentFicha.version,
+                ultimaModificacion: now,
+                modificadoPor: userId
+            };
+            // Recalculate costs if needed
+            if (updates.ingredientes || updates.porciones !== undefined) {
+                updatedData.costos = await calcularCostosFicha(updatedData);
+            }
+            db.fichasTecnicas[index] = updatedData;
+            localStorage.setItem('E2E_MOCK_DB', JSON.stringify(db));
+            return updatedData;
+        }
+    }
 
     // 1. If versioning is requested, save current as a snapshot
     if (crearVersion) {
