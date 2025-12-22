@@ -1,29 +1,26 @@
 # Changelog
 
-Todos los cambios notables en el proyecto **CulinaryOs** serán documentados en este archivo.
+All notable changes to this project will be documented in this file.
 
-## [1.0.0] - 2025-12-22
-### Añadido
-- **Módulo de Fichas Técnicas**: Gestión completa de escandallos, versiones y trazabilidad de costos.
-- **Importador de Recetas**: Herramienta para migrar recetas existentes a fichas técnicas con un click.
-- **Logística de Hospitality**: Calculadora de necesidades basada en ocupación proyectada.
-- **Mapa de Rentabilidad**: Visualización interactiva (Scatter Plot) de la rentabilidad vs costo.
-- **Simulador de Escenarios**: Herramienta "What-if" para ajustar márgenes y porciones sin afectar datos reales.
-- **Tema ChefOS Dark**: Refactorización estética premium de toda la interfaz (Inventory, Dashboard, Fichas).
+## [Unreleased] - 2025-12-21
 
-### Cambiado
-- **Aislamiento Multi-Outlet**: Implementación de seguridad en Firebase para garantizar que los datos no se mezclen entre puntos de venta.
-- **Optimización de Inventario**: Nuevo flujo de escaneo de lotes con trazabilidad FIFO.
-- **README y Documentación**: Actualización total para el lanzamiento oficial.
+### 🚀 Optimizations
+- **Core Performance**: Implemented batched reads in `costosService.ts` to solve N+1 query issues during recipe cost calculation.
+- **Sync Hooks**: Optimized `useProductionSync` and `usePurchaseOrdersSync` to filter data by date (Last 7 Days and Last 30 Days respectively), significantly reducing initial load time and Firestore read costs.
+- **Database Indexing**: Updated `firestore.indexes.json` with new compound indexes (`outletId` + `date`) to support optimized queries.
 
-### Corregido
-- Errores de sincronización de datos en el cambio de outlet.
-- Warnings de build y errores de tipado TypeScript en servicios críticos.
+### ♻️ Refactoring
+- **FIFO Logic**: Unified duplicate inventory consumption logic. Removed `src/utils/inventory.ts` and centralized logic in `src/services/inventoryService.ts`.
+- **Security**: Removed "Mock DB" bypass code from `pedidosService.ts`, ensuring all production traffic goes to authenticated Firestore endpoints.
 
-## [0.1.0-alpha] - 2025-11-01
-- Versión inicial con gestión básica de ingredientes y recetas.
-- Implementación de Firebase Auth.
-- Dashboard de stock bajo.
+### 🧪 Testing
+- **Test Framework**: Established Vitest environment with `vi.mock` strategy for Firebase.
+- **Unit Tests**:
+  - `inventoryService`: Verified FIFO logic, partial consumption, and edge cases.
+  - `necesidadesService`: Verified 14-day automatic purchase planning logic.
+  - `costosService`: Verified cascade cost calculation and yield logic.
 
----
-[1.0.0]: https://github.com/user/CulinaryOs/compare/v0.1.0-alpha...v1.0.0
+### 📚 Documentation
+- **Architecture**: Added `docs/architecture/` with Schema and State Management guides.
+- **User Guides**: Added `docs/user-guides/` for "Automatic Purchases" and "Technical Sheets" (Fichas Técnicas) with Mermaid diagrams.
+- **Development**: Added `docs/development/TESTING_STRATEGY.md` with guidelines for future contributors.

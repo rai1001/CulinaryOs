@@ -32,3 +32,6 @@ dist-ssr
 /playwright/.cache/
 /playwright/.auth/
 dev-dist
+
+# Coverage
+coverage/
