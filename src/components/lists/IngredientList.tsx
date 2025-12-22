@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import type { Ingredient } from '../../types';
 import { Printer, Edit2, Trash2, Swords, TrendingDown, TrendingUp } from 'lucide-react';
 import { useStore } from '../../store/useStore';
@@ -12,14 +12,28 @@ interface IngredientListProps {
     onSort: (key: keyof Ingredient | 'stock') => void;
 }
 
-export const IngredientList: React.FC<IngredientListProps> = ({ ingredients, onEdit, onDelete, sortConfig, onSort }) => {
+export const IngredientList: React.FC<IngredientListProps> = React.memo(({ ingredients, onEdit, onDelete, sortConfig, onSort }) => {
     const { suppliers, ingredients: allIngredients } = useStore();
 
+    // Optimization: Create a map for O(1) lookup of ingredients by name
+    // This avoids the O(N*M) complexity where N is rendered ingredients and M is total ingredients
+    const priceComparisonMap = useMemo(() => {
+        const map = new Map<string, Ingredient[]>();
+        allIngredients.forEach(ing => {
+            const key = ing.name.toLowerCase();
+            if (!map.has(key)) {
+                map.set(key, []);
+            }
+            map.get(key)!.push(ing);
+        });
+        return map;
+    }, [allIngredients]);
+
     const getPriceComparison = (ing: Ingredient) => {
-        const matches = allIngredients.filter(i =>
-            i.name.toLowerCase() === ing.name.toLowerCase() &&
-            i.id !== ing.id
-        );
+        const key = ing.name.toLowerCase();
+        // Use the map for O(1) lookup instead of .filter()
+        const matches = priceComparisonMap.get(key)?.filter(i => i.id !== ing.id) || [];
+
         if (matches.length === 0) return null;
 
         const prices = [ing, ...matches].map(i => ({
@@ -33,6 +47,7 @@ export const IngredientList: React.FC<IngredientListProps> = ({ ingredients, onE
 
         return prices;
     };
+
     return (
         <div className="bg-surface border border-white/5 rounded-xl overflow-hidden shadow-sm">
             <table className="w-full text-left text-sm text-slate-300">
@@ -138,4 +153,4 @@ export const IngredientList: React.FC<IngredientListProps> = ({ ingredients, onE
             </table>
         </div>
     );
-};
+});
