@@ -19,7 +19,7 @@ export interface PriceHistoryEntry {
 
 export interface Batch {
     id: string;
-    ingredientId: string;
+    ingredientId?: string; // Optional if standalone
     batchNumber: string; // "LOT-20231222-001"
     initialQuantity: number;
     currentQuantity: number;
@@ -32,6 +32,7 @@ export interface Batch {
     outletId: string;
     status: 'ACTIVE' | 'DEPLETED' | 'EXPIRED';
     barcode?: string;
+    name?: string; // Optional name if standalone batch
 }
 
 export type IngredientBatch = Batch;
@@ -51,9 +52,9 @@ export interface Ingredient {
     yield: number; // Merma (0-1), e.g., 0.9 means 10% loss
     allergens: string[];
     nutritionalInfo?: NutritionalInfo;
-    stock?: number; // Calculated total
-    batches?: Batch[]; // New source of truth
-    minStock?: number; // Safety stock level
+    stock?: number; // Calculated total (cached/legacy)
+    batches?: Batch[]; // Batches list (legacy)
+    minStock?: number; // Safety stock level (legacy)
     supplierId?: string;
     priceHistory?: PriceHistoryEntry[];
     defaultBarcode?: string;
@@ -64,10 +65,30 @@ export interface Ingredient {
     updatedAt?: string;
 
     // Automatic Purchasing Fields
-    optimalStock?: number; // Desired max stock level
-    reorderPoint?: number; // Point at which to reorder (similar to minStock, but explicit trigger)
+    optimalStock?: number;
+    reorderPoint?: number;
     supplierInfo?: IngredientSupplier[];
     autoSupplierConfig?: IngredientSupplierConfig;
+
+    // Inventory Tracking
+    isTrackedInInventory?: boolean;
+}
+
+export interface InventoryItem {
+    id: string;
+    ingredientId?: string; // Optional link to master ingredient
+    outletId: string;
+    name: string; // Required for standalone
+    unit: Unit; // Required for standalone
+    category: InventoryCategory; // Required for standalone
+    costPerUnit: number; // Snapshot/standalone cost
+    barcode?: string; // Standalone barcode
+    stock: number;
+    minStock: number;
+    optimalStock: number;
+    batches: Batch[];
+    lastCountedAt?: string;
+    updatedAt: string;
 }
 
 // Stock Movements

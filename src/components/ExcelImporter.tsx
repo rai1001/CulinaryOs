@@ -6,7 +6,7 @@ import { getSampleData } from '../utils/sampleData';
 import { Upload, AlertCircle, CheckCircle, FileSpreadsheet, Database, Save } from 'lucide-react';
 
 export const ExcelImporter: React.FC = () => {
-    const { setRecipes, setIngredients, setMenus, setEvents } = useStore();
+    const { activeOutletId, ingredients, addInventoryItem, addIngredient, addRecipe, addMenu, setIngredients, setRecipes, setMenus, setEvents } = useStore();
 
     // Steps: 'upload' -> 'review' -> 'success'
     const [step, setStep] = useState<'upload' | 'review' | 'success'>('upload');
@@ -44,22 +44,68 @@ export const ExcelImporter: React.FC = () => {
         }
     };
 
-    const handleConfirmImport = () => {
+    const handleConfirmImport = async () => {
         if (!parseResult) return;
+        setLoading(true);
 
         try {
-            // Apply updates
-            if (parseResult.ingredients.length > 0) setIngredients(parseResult.ingredients);
-            if (parseResult.recipes.length > 0) setRecipes(parseResult.recipes);
-            if (parseResult.menus.length > 0) setMenus(parseResult.menus);
+            // 1. Persist Master Data (Ingredients, Recipes, Menus)
+            // We use Promise.all to handle multiple additions in parallel
+            const masterPromises: Promise<void>[] = [];
+
+            if (parseResult.ingredients.length > 0) {
+                parseResult.ingredients.forEach(ing => masterPromises.push(addIngredient(ing)));
+            }
+            if (parseResult.recipes.length > 0) {
+                parseResult.recipes.forEach(r => masterPromises.push(addRecipe(r)));
+            }
+            if (parseResult.menus.length > 0) {
+                parseResult.menus.forEach(m => masterPromises.push(addMenu(m)));
+            }
+
+            await Promise.all(masterPromises);
+
+            // 2. Process Inventory Counts (Outlet-Specific)
+            if (parseResult.items.length > 0 && activeOutletId) {
+                const inventoryPromises: Promise<void>[] = [];
+                parseResult.items.forEach(item => {
+                    // Try to match with an ingredient (either existing or newly imported)
+                    const master = (parseResult.ingredients || []).find(ing =>
+                        ing.name.toLowerCase() === item.name.toLowerCase()
+                    ) || ingredients.find(ing =>
+                        ing.name.toLowerCase() === item.name.toLowerCase()
+                    );
+
+                    if (master) {
+                        inventoryPromises.push(addInventoryItem({
+                            id: crypto.randomUUID(),
+                            ingredientId: master.id,
+                            outletId: activeOutletId,
+                            name: master.name,
+                            unit: master.unit,
+                            category: (master.category || 'other') as any,
+                            costPerUnit: master.costPerUnit || 0,
+                            stock: item.quantity,
+                            minStock: 5, // Default
+                            optimalStock: 10, // Default
+                            updatedAt: new Date().toISOString(),
+                            batches: []
+                        }));
+                    }
+                });
+                await Promise.all(inventoryPromises);
+            }
 
             setStep('success');
             setStatus({
                 type: 'success',
-                message: `Importación completada: ${parseResult.summary.ingredientsFound} ingredientes, ${parseResult.summary.recipesFound} recetas.`
+                message: `Importación completada: ${parseResult.summary.ingredientsFound} productos, ${parseResult.summary.recipesFound} recetas, ${parseResult.items.length} conteos de stock.`
             });
         } catch (err) {
-            setStatus({ type: 'error', message: 'Error guardando los datos.' });
+            console.error("Import failed:", err);
+            setStatus({ type: 'error', message: 'Error guardando los datos en la base de datos.' });
+        } finally {
+            setLoading(false);
         }
     };
 

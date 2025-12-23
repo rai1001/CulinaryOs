@@ -1,6 +1,7 @@
 import * as XLSX from 'xlsx';
 import { v4 as uuidv4 } from 'uuid';
 import type { Recipe, Ingredient, Menu, Unit } from '../types';
+import { ALLERGENS } from './allergenUtils';
 
 // Helper to normalize headers
 const normalize = (str: string) => str?.toLowerCase().trim().replace(/[^a-z0-9]/g, '') || '';
@@ -14,10 +15,12 @@ export type ParseResult = {
     ingredients: Ingredient[];
     recipes: Recipe[];
     menus: Menu[];
+    items: any[]; // Raw items for direct mapping (e.g. inventory counts)
     summary: {
         ingredientsFound: number;
         recipesFound: number;
         menusFound: number;
+        itemsFound: number;
         sheetsScaned: number;
     };
     errors: string[];
@@ -35,10 +38,12 @@ export const parseWorkbook = async (file: File): Promise<ParseResult> => {
                     ingredients: [],
                     recipes: [],
                     menus: [],
+                    items: [],
                     summary: {
                         ingredientsFound: 0,
                         recipesFound: 0,
                         menusFound: 0,
+                        itemsFound: 0,
                         sheetsScaned: workbook.SheetNames.length
                     },
                     errors: []
@@ -49,110 +54,222 @@ export const parseWorkbook = async (file: File): Promise<ParseResult> => {
                 const menusMap = new Map<string, Menu>();
 
                 // --- CLASSIFICATION & PARSING STRATEGY ---
-                // Sheet detection is done inline via strong titles and header detection
-
                 for (const sheetName of workbook.SheetNames) {
                     const sheet = workbook.Sheets[sheetName];
                     const range = XLSX.utils.decode_range(sheet['!ref'] || 'A1:Z100');
 
-                    // --- DETECTOR ---
-                    let type: 'INGREDIENTS' | 'RECIPE_CARD' | 'MENU' | 'UNKNOWN' = 'UNKNOWN';
+                    // Specialized Master List Detection (Trust Sheet Name)
+                    const isMasterList = sheetName.toUpperCase().includes('LIST. PRODUCTOS') ||
+                        sheetName.toUpperCase().includes('PRODUCTOS') ||
+                        sheetName.toUpperCase().includes('INGREDIENTES');
+
+                    let type: 'INGREDIENTS' | 'INVENTORY' | 'RECIPE_CARD' | 'MENU' | 'UNKNOWN' = 'UNKNOWN';
                     let headerRow = 0;
 
-                    // Scan first 50 rows (increased from 20)
-                    for (let r = range.s.r; r <= Math.min(range.e.r, 50); r++) {
-                        const rowText: string[] = [];
-                        for (let c = range.s.c; c <= range.e.c; c++) {
-                            const cell = sheet[XLSX.utils.encode_cell({ r, c })];
-                            if (cell && cell.v) rowText.push(String(cell.v).toUpperCase().trim());
-                        }
+                    if (isMasterList) {
+                        type = 'INGREDIENTS';
+                    } else {
+                        // Generic Detection Logic
+                        for (let r = range.s.r; r <= Math.min(range.e.r, 50); r++) {
+                            const rowText: string[] = [];
+                            for (let c = range.s.c; c <= range.e.c; c++) {
+                                const cell = sheet[XLSX.utils.encode_cell({ r, c })];
+                                if (cell && cell.v) rowText.push(String(cell.v).toUpperCase().trim());
+                            }
 
-                        if (rowText.length === 0) continue;
-                        const rowString = rowText.join(' '); // For multi-cell title checks
+                            if (rowText.length === 0) continue;
+                            const rowString = rowText.join(' ');
 
-                        // 1. Detect Strong Titles (Classifies the sheet, but doesn't set headerRow yet)
-                        const strongRecipeTitles = ['PROPUESTA GASTRONÓMICA', 'PROPUESTA GASTRONOMICA', 'BASES', 'FICHA TÉCNICA', 'ESCANDALLO'];
-                        const hasStrongRecipe = strongRecipeTitles.some(k => rowString.includes(k));
+                            const strongRecipeTitles = ['PROPUESTA GASTRONÓMICA', 'PROPUESTA GASTRONOMICA', 'BASES', 'FICHA TÉCNICA', 'ESCANDALLO'];
+                            const hasStrongRecipe = strongRecipeTitles.some(k => rowString.includes(k));
 
-                        const strongIngredientTitles = ['LISTA DE PRODUCTOS', 'MASTER PRODUCTOS', 'LISTADO DE PRECIOS'];
-                        const hasStrongIngredients = strongIngredientTitles.some(k => rowString.includes(k));
+                            const strongIngredientTitles = ['LISTA DE PRODUCTOS', 'MASTER PRODUCTOS', 'LISTADO DE PRECIOS'];
+                            const hasStrongIngredients = strongIngredientTitles.some(k => rowString.includes(k));
 
-                        if (type === 'UNKNOWN') {
-                            if (hasStrongRecipe) type = 'RECIPE_CARD';
-                            else if (hasStrongIngredients) type = 'INGREDIENTS';
-                        }
+                            if (type === 'UNKNOWN') {
+                                if (hasStrongRecipe) type = 'RECIPE_CARD';
+                                else if (hasStrongIngredients) type = 'INGREDIENTS';
+                            }
 
-                        // 2. Detect Header Row (The actual table start)
-                        // Heuristic: A row that contains multiple specific column headers
-                        const isRecipeHeader = rowText.some(t => ['INGREDIENTE', 'PRODUCTO', 'DESCRIPCIÓN'].some(k => t.includes(k))) &&
-                            rowText.some(t => ['CANTIDAD', 'PESO', 'NETO', 'Q'].some(k => t.includes(k)));
+                            const isRecipeHeader = rowText.some(t => ['INGREDIENTE', 'PRODUCTO', 'DESCRIPCIÓN'].some(k => t.includes(k))) &&
+                                rowText.some(t => ['CANTIDAD', 'PESO', 'NETO', 'Q'].some(k => t.includes(k)));
 
-                        const isIngredientHeader = rowText.some(t => ['PRODUCTO', 'NOMBRE', 'DESCRIPCIÓN'].some(k => t.includes(k))) &&
-                            rowText.some(t => ['PRECIO', 'COSTE', 'COST', '€'].some(k => t.includes(k)));
+                            const isIngredientHeader = rowText.some(t => ['PRODUCTO', 'NOMBRE', 'DESCRIPCIÓN'].some(k => t.includes(k))) &&
+                                rowText.some(t => ['PRECIO', 'COSTE', 'COST', '€'].some(k => t.includes(k)));
 
-                        const isMenuHeader = rowText.some(t => ['MENÚ', 'MENU', 'PLATO'].some(k => t.includes(k)));
+                            const isInventoryHeader = rowText.some(t => ['PRODUCTO', 'NOMBRE', 'DESCRIPCIÓN'].some(k => t.includes(k))) &&
+                                rowText.some(t => ['CANTIDAD', 'STOCK', 'QTY', 'CONTEO', 'UNIDADES'].some(k => t.includes(k)));
 
-                        if (isRecipeHeader) {
-                            if (type === 'UNKNOWN') type = 'RECIPE_CARD';
-                            headerRow = r;
-                            break; // Found the table!
-                        }
-                        if (isIngredientHeader) {
-                            if (type === 'UNKNOWN') type = 'INGREDIENTS';
-                            headerRow = r;
-                            break; // Found the table!
-                        }
-                        if (isMenuHeader) {
-                            type = 'MENU'; // Weak detection for menu
-                            headerRow = r;
-                            // Don't break immediately for menu, maybe look for better match? 
-                            // Actually break is fine for now.
-                            break;
+                            const isMenuHeader = rowText.some(t => ['MENÚ', 'MENU', 'PLATO'].some(k => t.includes(k)));
+
+                            if (isRecipeHeader) {
+                                if (type === 'UNKNOWN') type = 'RECIPE_CARD';
+                                headerRow = r;
+                                break;
+                            }
+                            if (isIngredientHeader) {
+                                if (type === 'UNKNOWN') type = 'INGREDIENTS';
+                                headerRow = r;
+                                break;
+                            }
+                            if (isInventoryHeader) {
+                                type = 'INVENTORY';
+                                headerRow = r;
+                                break;
+                            }
+                            if (isMenuHeader) {
+                                type = 'MENU';
+                                headerRow = r;
+                                break;
+                            }
                         }
                     }
 
                     // --- PARSER ---
                     if (type === 'INGREDIENTS') {
-                        // Pass headerRow explicitly
+                        if (isMasterList) {
+                            // 🚀 Enhanced Scoring-Based Header Detection
+                            const rows = XLSX.utils.sheet_to_json<any>(sheet, { header: 'A', defval: '' });
+
+                            let bestHeaderRowIdx = -1;
+                            let maxScore = 0;
+                            let productCol = 'B';
+                            let unitCol = 'C';
+                            let priceCol = 'D';
+                            let allergenCols: Record<string, string> = {};
+
+                            // Scan first 50 rows for the best header
+                            const scanLimit = Math.min(rows.length, 50);
+                            for (let i = 0; i < scanLimit; i++) {
+                                const row = rows[i];
+                                let currentScore = 0;
+                                let tempMap: any = {};
+
+                                Object.entries(row).forEach(([col, val]) => {
+                                    const v = normalize(String(val));
+                                    if (v.includes('producto') || v.includes('descripcion')) {
+                                        currentScore += 10;
+                                        tempMap.product = col;
+                                    } else if (v.includes('unidad') || v.includes('formato')) {
+                                        currentScore += 5;
+                                        tempMap.unit = col;
+                                    } else if (v.includes('precio') || v.includes('coste') || v === 'eur' || v === 'e' || v.includes('pvp')) {
+                                        currentScore += 5;
+                                        tempMap.price = col;
+                                    } else if (ALLERGENS.some(a => normalize(a).includes(v) && v.length > 3)) {
+                                        currentScore += 1;
+                                    }
+                                });
+
+                                if (currentScore > maxScore && tempMap.product) {
+                                    maxScore = currentScore;
+                                    bestHeaderRowIdx = i;
+                                    productCol = tempMap.product || productCol;
+                                    unitCol = tempMap.unit || unitCol;
+                                    priceCol = tempMap.price || priceCol;
+                                }
+                            }
+
+                            if (bestHeaderRowIdx !== -1) {
+                                const headerRow = rows[bestHeaderRowIdx];
+                                Object.entries(headerRow).forEach(([col, val]) => {
+                                    const v = normalize(String(val));
+                                    const matchedAllergen = ALLERGENS.find(a => normalize(a) === v || normalize(a).includes(v) && v.length > 3);
+                                    if (matchedAllergen) allergenCols[col] = matchedAllergen;
+                                });
+                            }
+
+                            const dataStartIdx = bestHeaderRowIdx !== -1 ? bestHeaderRowIdx + 1 : 0;
+                            for (let i = dataStartIdx; i < rows.length; i++) {
+                                const row = rows[i];
+                                const rawName = row[productCol];
+                                const rawUnit = row[unitCol];
+                                const rawPrice = row[priceCol];
+
+                                if (!rawName || typeof rawName !== 'string' || rawName.length < 2) continue;
+                                const nameUpper = rawName.toUpperCase();
+                                if (['PRODUCTO', 'DESCRIPCION', 'NOMBRE', 'UNIDAD', 'PRECIO'].includes(nameUpper)) continue;
+
+                                const unit = String(rawUnit || 'kg').toLowerCase().trim();
+                                const finalUnit = (unit === 'ud' || unit === 'u.' || unit === 'u' || unit === 'un' || unit === 'uni') ? 'un' : unit;
+
+                                let priceText = String(rawPrice || '0');
+                                if (typeof rawPrice === 'number') priceText = String(rawPrice);
+                                priceText = priceText.replace('€', '').trim().replace(',', '.');
+                                const price = parseFloat(priceText) || 0;
+
+                                const allergens: string[] = [];
+                                Object.entries(allergenCols).forEach(([col, label]) => {
+                                    const val = String(row[col] ?? '').toUpperCase().trim();
+                                    if (['SI', 'SÍ', 'X', 'TRAZAS', 'S', '1', 'YES'].includes(val) || val.includes('SI') || val.includes('SÍ')) {
+                                        if (!allergens.includes(label)) allergens.push(label);
+                                    }
+                                });
+
+                                const ingKey = normalize(rawName);
+                                if (!ingredientsMap.has(ingKey)) {
+                                    ingredientsMap.set(ingKey, {
+                                        id: uuidv4(),
+                                        name: rawName.trim(),
+                                        unit: finalUnit as Unit,
+                                        costPerUnit: price,
+                                        yield: 1,
+                                        allergens: allergens
+                                    });
+                                }
+                            }
+                        } else {
+                            const json = XLSX.utils.sheet_to_json<ExcelRow>(sheet, { range: headerRow });
+                            json.forEach((row) => {
+                                const keys = Object.keys(row);
+                                const findKey = (candidates: string[]) => keys.find(k => candidates.some(c => k.toUpperCase().includes(c)));
+                                const nameKey = findKey(['PRODUCTO', 'NOMBRE', 'NAME', 'DESCRIPCIÓN', 'INGREDIENTE', 'ITEM', 'DESCRIPCION']);
+                                const priceKey = findKey(['PRECIO', 'COSTE', 'COST', 'PRICE', '€']);
+                                const unitKey = findKey(['UNIDAD', 'UNIT', 'FORMATO', 'U.']);
+
+                                const name = nameKey ? String(row[nameKey] ?? '') : null;
+                                const price = priceKey ? Number(String(row[priceKey] ?? '0').replace(/[^\d,.]/g, '').replace(',', '.')) : 0;
+                                let unit = unitKey ? String(row[unitKey] ?? 'kg').toLowerCase().trim() : 'kg';
+                                if (unit === 'ud' || unit === 'u') unit = 'un';
+
+                                if (!name || String(name).toUpperCase().includes('TOTAL')) return;
+
+                                const ingKey = normalize(name);
+                                if (!ingredientsMap.has(ingKey)) {
+                                    ingredientsMap.set(ingKey, {
+                                        id: uuidv4(),
+                                        name: String(name).trim(),
+                                        unit: unit as Unit,
+                                        costPerUnit: Number(price || 0),
+                                        yield: 1,
+                                        allergens: []
+                                    });
+                                }
+                            });
+                        }
+                    } else if (type === 'INVENTORY') {
                         const json = XLSX.utils.sheet_to_json<ExcelRow>(sheet, { range: headerRow });
                         json.forEach((row) => {
-                            // Find keys case-insensitively/fuzzy
                             const keys = Object.keys(row);
                             const findKey = (candidates: string[]) => keys.find(k => candidates.some(c => k.toUpperCase().includes(c)));
+                            const nameKey = findKey(['PRODUCTO', 'NOMBRE', 'NAME', 'DESCRIPCIÓN', 'INGREDIENTE', 'ITEM']);
+                            const qtyKey = findKey(['CANTIDAD', 'STOCK', 'QTY', 'CONTEO', 'UNIDADES']);
+                            const unitKey = findKey(['UNIDAD', 'UNIT', 'FORMATO']);
 
-                            const nameKey = findKey(['PRODUCTO', 'NOMBRE', 'NAME', 'DESCRIPCIÓN', 'INGREDIENTE', 'ITEM', 'DESCRIPCION']);
-                            const priceKey = findKey(['PRECIO', 'COSTE', 'COST', 'PRICE', '€']);
-                            const unitKey = findKey(['UNIDAD', 'UNIT', 'FORMATO', 'U.']);
-                            const allergenKey = findKey(['ALÉRGENO', 'ALERGENO', 'ALLERGEN']);
-
-                            // Convert row values to appropriate types
                             const name = nameKey ? String(row[nameKey] ?? '') : null;
-                            const price = priceKey ? Number(row[priceKey] ?? 0) : 0;
-                            const unit = unitKey ? String(row[unitKey] ?? 'kg') : 'kg';
-                            const allergenStr = allergenKey ? String(row[allergenKey] ?? '') : '';
+                            const qty = qtyKey ? Number(String(row[qtyKey] ?? '0').replace(/[^\d,.]/g, '').replace(',', '.')) : 0;
+                            const unit = unitKey ? String(row[unitKey] ?? 'un').trim() : 'un';
 
-
-                            if (!name || String(name).toUpperCase().includes('TOTAL')) return;
-
-                            const ingKey = normalize(name);
-                            if (!ingredientsMap.has(ingKey)) {
-                                const ingredient: Ingredient = {
-                                    id: uuidv4(),
-                                    name: String(name).trim(),
-                                    unit: String(unit).toLowerCase() as Unit,
-                                    costPerUnit: Number(price || 0),
-                                    yield: 0,
-                                    allergens: allergenStr ? String(allergenStr).split(',').map(s => s.trim()) : []
-                                };
-                                ingredientsMap.set(ingKey, ingredient);
+                            if (name && !name.toUpperCase().includes('TOTAL')) {
+                                result.items.push({
+                                    name: name.trim(),
+                                    quantity: qty,
+                                    unit: unit
+                                });
                             }
                         });
-
                     } else if (type === 'RECIPE_CARD') {
-                        // Check if this is a "Bases" sheet
-                        const isBaseSheet = sheetName.toUpperCase().includes('BASES') ||
-                            sheetName.toUpperCase().includes('BASE');
-
+                        const isBaseSheet = sheetName.toUpperCase().includes('BASES') || sheetName.toUpperCase().includes('BASE');
                         let recipeName = '';
                         const nameRowIdx = Math.max(0, headerRow - 2);
                         for (let c = range.s.c; c <= range.e.c; c++) {
@@ -161,13 +278,9 @@ export const parseWorkbook = async (file: File): Promise<ParseResult> => {
                         }
                         recipeName = recipeName.trim() || `Receta ${sheetName}`;
                         recipeName = recipeName.replace(/ESCANDALLO/i, '').trim();
-
-                        // If it's a base sheet, clean up the name and ensure it starts with "BASE"
                         if (isBaseSheet) {
                             recipeName = recipeName.replace(/BASES?/i, '').trim();
-                            if (!recipeName.toUpperCase().startsWith('BASE')) {
-                                recipeName = 'BASE ' + recipeName;
-                            }
+                            if (!recipeName.toUpperCase().startsWith('BASE')) recipeName = 'BASE ' + recipeName;
                         }
 
                         const recipeKey = normalize(recipeName);
@@ -175,9 +288,9 @@ export const parseWorkbook = async (file: File): Promise<ParseResult> => {
                             const recipe: Recipe = {
                                 id: uuidv4(),
                                 name: recipeName,
-                                station: 'hot', // Default
+                                station: 'hot',
                                 ingredients: [],
-                                isBase: isBaseSheet, // Mark as base if from Bases sheet
+                                isBase: isBaseSheet,
                                 totalCost: 0
                             };
                             recipesMap.set(recipeKey, recipe);
@@ -187,27 +300,23 @@ export const parseWorkbook = async (file: File): Promise<ParseResult> => {
                                 const rawName = row['DESCRIPCIÓN PRODUCTO PROVEEDOR'] || row['DESCRIPCIÓN'] || row['PRODUCTO'];
                                 const rawQty = row['CANTIDAD NETA'] || row['CANTIDAD'] || row['NETO'];
                                 const rawUnit = row['UNIDADES'] || row['UNIDAD'];
-                                const rawCost = row['PRECIO POR UNIDAD'] || row['PRECIO'];
-
                                 if (!rawName) return;
                                 const ingName = String(rawName).trim();
                                 if (ingName.toUpperCase().includes('TOTAL') || ingName.length < 2) return;
 
                                 const ingKey = normalize(ingName);
                                 let ingredient = ingredientsMap.get(ingKey);
-
                                 if (!ingredient) {
                                     ingredient = {
                                         id: uuidv4(),
                                         name: ingName,
                                         unit: (String(rawUnit || 'kg').toLowerCase()) as Unit,
-                                        costPerUnit: Number(rawCost || 0),
+                                        costPerUnit: 0,
                                         yield: 0,
                                         allergens: []
                                     };
                                     ingredientsMap.set(ingKey, ingredient);
                                 }
-
                                 recipe.ingredients.push({
                                     ingredientId: ingredient.id,
                                     ingredient: ingredient,
@@ -216,15 +325,12 @@ export const parseWorkbook = async (file: File): Promise<ParseResult> => {
                             });
                         }
                     } else if (type === 'MENU') {
-                        // Simple Menu Parser
                         const json = XLSX.utils.sheet_to_json<ExcelRow>(sheet, { range: headerRow });
                         json.forEach((row) => {
                             const menuName = row['Menu'] || row['Nombre Menú'] || row['MENU'];
                             const dishName = row['Plato'] || row['Receta'] || row['RECETA'] || row['PLATO'];
                             const price = row['Precio'] || row['Price'] || 0;
-
                             if (!menuName || !dishName) return;
-
                             const menuKey = normalize(String(menuName));
                             let menu = menusMap.get(menuKey);
                             if (!menu) {
@@ -237,11 +343,6 @@ export const parseWorkbook = async (file: File): Promise<ParseResult> => {
                                 };
                                 menusMap.set(menuKey, menu);
                             }
-
-                            // Note: This requires recipes to be found/created?
-                            // Ideally we link to *existing* recipes found in this import or DB.
-                            // For now we just check if it matches a recipe found in *this* import.
-                            // (Advanced logic would check useStore state too, but let's keep it scoped to import file for now)
                             const foundRecipe = Array.from(recipesMap.values()).find(r => normalize(r.name) === normalize(String(dishName)));
                             if (foundRecipe) {
                                 menu.recipeIds.push(foundRecipe.id);
@@ -258,6 +359,7 @@ export const parseWorkbook = async (file: File): Promise<ParseResult> => {
                 result.summary.ingredientsFound = result.ingredients.length;
                 result.summary.recipesFound = result.recipes.length;
                 result.summary.menusFound = result.menus.length;
+                result.summary.itemsFound = result.items.length;
 
                 resolve(result);
 
@@ -270,7 +372,3 @@ export const parseWorkbook = async (file: File): Promise<ParseResult> => {
         reader.readAsArrayBuffer(file);
     });
 };
-
-// Legacy placeholders if you want to keep them to avoid breaking other files?
-// Actually, I am overwriting, so I should NOT export them unless needed.
-// Based on my check, only ExcelImporter used them, and I updated it.

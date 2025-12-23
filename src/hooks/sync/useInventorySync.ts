@@ -1,43 +1,51 @@
 import { useEffect, useState } from 'react';
-import { query } from 'firebase/firestore';
+import { query, where } from 'firebase/firestore';
 import { onSnapshotMockable } from '../../services/mockSnapshot';
 import { collections } from '../../firebase/collections';
 import { useStore } from '../../store/useStore';
-import type { Ingredient } from '../../types';
+import type { InventoryItem } from '../../types';
 
-export const useIngredientsSync = () => {
-    const { setIngredients } = useStore();
+export const useInventorySync = () => {
+    const { activeOutletId, setInventory } = useStore();
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<Error | null>(null);
 
     useEffect(() => {
+        if (!activeOutletId) {
+            setInventory([]);
+            setLoading(false);
+            return;
+        }
+
         setLoading(true);
+        // We fetch all inventory for now, or could filter by outletId here if we wanted strict firestore filtering
         const q = query(
-            collections.ingredients
+            collections.inventory,
+            where('outletId', '==', activeOutletId)
         );
 
         const unsubscribe = onSnapshotMockable(
             q,
-            'ingredients',
+            'inventory',
             (snapshot) => {
                 const data = snapshot.docs.map(doc => ({
                     id: doc.id,
                     ...doc.data()
-                })) as Ingredient[];
+                })) as InventoryItem[];
 
-                setIngredients(data);
+                setInventory(data);
                 setLoading(false);
             },
             (err) => {
-                console.error("Error syncing ingredients:", err);
+                console.error("Error syncing inventory:", err);
                 setError(err);
                 setLoading(false);
             },
-            'global'
+            activeOutletId
         );
 
         return () => unsubscribe();
-    }, [setIngredients]);
+    }, [activeOutletId, setInventory]);
 
     return { loading, error };
 };

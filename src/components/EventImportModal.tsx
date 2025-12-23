@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import * as XLSX from 'xlsx';
-import { Upload, X, Check, FileSpreadsheet, Loader2, AlertCircle, Camera, FileText, Calendar, RefreshCw, Users } from 'lucide-react';
+import { Upload, X, Check, FileSpreadsheet, Loader2, AlertCircle, Camera, FileText, Calendar, RefreshCw, Users, Trash2 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { calendarIntegrationService } from '../services/calendarIntegrationService';
 import { format, parse, isValid } from 'date-fns';

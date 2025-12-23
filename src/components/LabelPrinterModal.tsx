@@ -1,24 +1,17 @@
 import React, { useState, useRef } from 'react';
-import { useStore } from '../store/useStore';
 import Barcode from 'react-barcode';
 import { X, Printer, Snowflake, Leaf, ThermometerSnowflake, Package } from 'lucide-react';
-import type { Ingredient, IngredientBatch, Batch } from '../types';
-import { v4 as uuidv4 } from 'uuid';
-import { firestoreService } from '../services/firestoreService';
-import { COLLECTIONS } from '../firebase/collections';
-import { collection } from 'firebase/firestore';
-import { db } from '../firebase/config';
+import type { Ingredient, InventoryItem } from '../types';
 
 interface LabelPrinterModalProps {
-    ingredient?: Ingredient;
-    batch?: IngredientBatch; // Optional: if not provided, print generic item label or new batch
+    ingredient?: Ingredient | InventoryItem;
+    batch?: any; // Flexible for now
     onClose: () => void;
 }
 
 type LabelType = 'congelado' | 'fresco' | 'pasteurizado' | 'elaborado' | 'abatido';
 
 export const LabelPrinterModal: React.FC<LabelPrinterModalProps> = ({ ingredient, batch, onClose }) => {
-    const { activeOutletId, addIngredient } = useStore();
     const [selectedTypes, setSelectedTypes] = useState<LabelType[]>(['congelado']);
     const [expiryDate, setExpiryDate] = useState(
         batch?.expiresAt ? new Date(batch.expiresAt).toISOString().split('T')[0] :
@@ -72,62 +65,11 @@ export const LabelPrinterModal: React.FC<LabelPrinterModalProps> = ({ ingredient
         }).join(' + ');
     };
 
-    // Use batch barcode or ingredient default or generate one
-    const barcodeValue = batch?.barcode || ingredient?.defaultBarcode || `GEN-${Date.now().toString().slice(-8)}`;
+    // Use batch barcode or ingredient/item default or generate one
+    const barcodeValue = batch?.barcode || (ingredient as any)?.defaultBarcode || (ingredient as any)?.barcode || `GEN-${Date.now().toString().slice(-8)}`;
     const colors = getDominantColorClass();
 
     const handlePrint = async () => {
-        // Auto-create in inventory if simplified/ad-hoc mode
-        if (!ingredient && customName && Number(quantity) > 0) {
-            try {
-                const newIngredientId = uuidv4();
-                const newBatchId = uuidv4();
-                const now = new Date().toISOString();
-
-                // 1. Create the Batch Object
-                const newBatch: Batch = {
-                    id: newBatchId,
-                    ingredientId: newIngredientId,
-                    batchNumber: batch?.batchNumber || `LOT-${Date.now().toString().slice(-6)}`,
-                    initialQuantity: Number(quantity),
-                    currentQuantity: Number(quantity),
-                    unit: 'un',
-                    costPerUnit: 0,
-                    receivedAt: now,
-                    expiresAt: new Date(expiryDate).toISOString(),
-                    outletId: activeOutletId || 'default',
-                    status: 'ACTIVE',
-                    barcode: barcodeValue
-                };
-
-                // 2. Create the Ingredient Object
-                const newIngredient: Ingredient = {
-                    id: newIngredientId,
-                    name: customName,
-                    unit: 'un',
-                    costPerUnit: 0,
-                    yield: 1,
-                    allergens: [],
-                    category: 'preparation',
-                    stock: Number(quantity),
-                    batches: [newBatch],
-                    createdAt: now,
-                    updatedAt: now,
-                    outletId: activeOutletId || 'default'
-                };
-
-                // 3. Save to Firestore
-                await firestoreService.create(collection(db, COLLECTIONS.INGREDIENTS), newIngredient);
-
-                // 4. Update Local Store
-                addIngredient(newIngredient);
-
-                console.log('Created new preparation inventory item:', customName);
-            } catch (error) {
-                console.error("Error creating inventory item:", error);
-            }
-        }
-
         // Create a hidden iframe for printing
         const iframe = document.createElement('iframe');
         iframe.style.position = 'fixed';

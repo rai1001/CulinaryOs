@@ -10,6 +10,7 @@ import { useEventsSync } from '../hooks/sync/useEventsSync';
 import { usePurchaseOrdersSync } from '../hooks/sync/usePurchaseOrdersSync';
 import { useWasteSync } from '../hooks/sync/useWasteSync';
 import { useHaccpSync } from '../hooks/sync/useHaccpSync';
+import { useInventorySync } from '../hooks/sync/useInventorySync';
 
 interface SyncProviderProps {
     children: React.ReactNode;
@@ -33,6 +34,7 @@ export const SyncProvider: React.FC<SyncProviderProps> = ({ children }) => {
     usePurchaseOrdersSync();
     useWasteSync();
     useHaccpSync();
+    useInventorySync();
 
     return <>{children}</>;
 };

@@ -1,23 +1,21 @@
 import React, { useState } from 'react';
 import { useStore } from '../store/useStore';
-import { useOutletScoping } from '../hooks/useOutletScoping';
-import { Package, Search, Plus, X, Import, Store } from 'lucide-react';
+import { Package, Search, Plus, X, Import } from 'lucide-react';
 import { IngredientList } from './lists/IngredientList';
 import { IngredientForm } from './IngredientForm';
-import { deleteDocument, addDocument } from '../services/firestoreService';
+import { deleteDocument, batchSetDocuments } from '../services/firestoreService';
 import { DataImportModal, type ImportType } from './common/DataImportModal';
-import { COLLECTIONS, collections } from '../firebase/collections';
-import type { Ingredient, Unit } from '../types';
+import { COLLECTIONS } from '../firebase/collections';
+import type { Ingredient } from '../types';
 
 export const IngredientsView: React.FC = () => {
     const { ingredients } = useStore();
-    const { activeOutletId, isValidOutlet } = useOutletScoping();
     const [searchTerm, setSearchTerm] = useState('');
     const [showAddModal, setShowAddModal] = useState(false);
     const [editingIngredient, setEditingIngredient] = useState<Ingredient | undefined>(undefined);
     const [importType, setImportType] = useState<ImportType | null>(null);
     const [activeCategory, setActiveCategory] = useState<string>('all');
-    const [sortConfig, setSortConfig] = useState<{ key: keyof Ingredient | 'stock'; direction: 'asc' | 'desc' }>({
+    const [sortConfig, setSortConfig] = useState<{ key: keyof Ingredient; direction: 'asc' | 'desc' }>({
         key: 'name',
         direction: 'asc'
     });
@@ -36,25 +34,22 @@ export const IngredientsView: React.FC = () => {
 
     const handleImportComplete = async (data: any) => {
         if (data.ingredients && Array.isArray(data.ingredients)) {
-            // Excel Bulk Import
+            // Excel Bulk Import - Master List
             await handleImport(data.ingredients);
         } else if (data.name) {
             // OCR Single Import
-            // Pre-fill form
             setEditingIngredient({
                 ...data,
                 id: crypto.randomUUID(),
-                // Ensure unit/cost exist
                 unit: data.unit || 'kg',
-                costPerUnit: data.costPerUnit || 0,
-                outletId: activeOutletId
+                costPerUnit: data.costPerUnit || 0
             } as Ingredient);
             setShowAddModal(true);
         }
         setImportType(null);
     };
 
-    const handleSort = (key: keyof Ingredient | 'stock') => {
+    const handleSort = (key: keyof Ingredient) => {
         setSortConfig(prev => ({
             key,
             direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
@@ -64,16 +59,12 @@ export const IngredientsView: React.FC = () => {
     const filteredIngredients = React.useMemo(() => {
         let result = ingredients.filter(i =>
             i.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
-            (activeCategory === 'all' || i.category === activeCategory) &&
-            (isValidOutlet ? i.outletId === activeOutletId : true) // If invalid outlet, showing global/mixed is risky. Better to show nothing? Or just filter if valid.
+            (activeCategory === 'all' || i.category === activeCategory)
         );
 
-        // Stricter: If no valid outlet, show empty to force selection (safer for multi-tenant feel)
-        if (!isValidOutlet) return [];
-
         return [...result].sort((a, b) => {
-            const aValue = a[sortConfig.key as keyof Ingredient] ?? 0;
-            const bValue = b[sortConfig.key as keyof Ingredient] ?? 0;
+            const aValue = a[sortConfig.key] ?? 0;
+            const bValue = b[sortConfig.key] ?? 0;
 
             if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
             if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
@@ -82,7 +73,7 @@ export const IngredientsView: React.FC = () => {
     }, [ingredients, searchTerm, activeCategory, sortConfig]);
 
     const handleDelete = async (id: string) => {
-        if (confirm('¿Estás seguro de que quieres eliminar este ingrediente?')) {
+        if (confirm('¿Estás seguro de que quieres eliminar este ingrediente de la biblioteca maestra?')) {
             try {
                 await deleteDocument(COLLECTIONS.INGREDIENTS, id);
             } catch (error) {
@@ -92,41 +83,30 @@ export const IngredientsView: React.FC = () => {
         }
     };
 
-    const handleImport = async (data: any[]) => {
-        if (!activeOutletId) {
-            alert("No hay cocina activa seleccionada.");
+    const handleImport = async (parsedIngredients: Ingredient[]) => {
+        const count = parsedIngredients.length;
+        if (count === 0) {
+            alert("No se encontraron ingredientes válidos en el archivo.");
             return;
         }
 
-        const count = data.length;
-        if (!confirm(`Se importarán ${count} ingredientes. ¿Continuar?`)) return;
+        if (!confirm(`Se importarán ${count} ingredientes a la biblioteca maestra. ¿Continuar?`)) return;
 
-        let successCount = 0;
-        for (const row of data) {
-            try {
-                // Map columns - try to be flexible with case
-                const name = row['Nombre'] || row['Name'] || row['nombre'] || row['name'];
-                const unitRaw = row['Unidad'] || row['Unit'] || row['unidad'] || row['unit'];
-                const cost = row['Coste'] || row['Cost'] || row['coste'] || row['cost'] || row['Precio'] || 0;
+        try {
+            const documents = parsedIngredients.map(ing => ({
+                id: ing.id || crypto.randomUUID(),
+                data: {
+                    ...ing,
+                    updatedAt: new Date().toISOString()
+                }
+            }));
 
-                if (!name) continue;
-
-                const newIngredient: Partial<Ingredient> = {
-                    name: String(name),
-                    unit: (unitRaw as Unit) || 'kg',
-                    costPerUnit: Number(cost) || 0,
-                    yield: 1, // Default yield
-                    allergens: [],
-                    outletId: activeOutletId
-                };
-
-                await addDocument(collections.ingredients, newIngredient);
-                successCount++;
-            } catch (e) {
-                console.error("Error importing row", row, e);
-            }
+            await batchSetDocuments(COLLECTIONS.INGREDIENTS, documents);
+            alert(`Importación completada: ${count} ingredientes añadidos.`);
+        } catch (e) {
+            console.error("Error bulk importing ingredients", e);
+            alert("Error al realizar la importación masiva.");
         }
-        alert(`Importación completada: ${successCount}/${count} ingredientes añadidos.`);
     };
 
     const handleEdit = (ingredient: Ingredient) => {
@@ -194,23 +174,13 @@ export const IngredientsView: React.FC = () => {
             </div>
 
             {
-                !isValidOutlet ? (
-                    <div className="flex flex-col items-center justify-center p-12 border-2 border-dashed border-white/10 rounded-xl bg-white/5">
-                        <Store className="w-12 h-12 text-slate-500 mb-4" />
-                        <h3 className="text-xl font-bold text-white mb-2">Selecciona una Cocina</h3>
-                        <p className="text-slate-400 text-center max-w-md">
-                            Para gestionar el inventario, primero debes seleccionar una cocina o punto de venta activo desde el menú lateral.
-                        </p>
-                    </div>
-                ) : (
-                    <IngredientList
-                        ingredients={filteredIngredients}
-                        onEdit={handleEdit}
-                        onDelete={handleDelete}
-                        sortConfig={sortConfig}
-                        onSort={handleSort}
-                    />
-                )
+                <IngredientList
+                    ingredients={filteredIngredients}
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
+                    sortConfig={sortConfig}
+                    onSort={handleSort}
+                />
             }
 
             {

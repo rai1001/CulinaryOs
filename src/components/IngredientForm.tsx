@@ -8,6 +8,7 @@ import { addDocument, updateDocument } from '../services/firestoreService';
 import { COLLECTIONS, collections } from '../firebase/collections';
 import { SupplierManager } from './ingredients/SupplierManager';
 import { SupplierSelectionSimulator } from './ingredients/SupplierSelectionSimulator';
+import { ALLERGENS } from '../utils/allergenUtils';
 
 export const IngredientForm: React.FC<{ initialData?: Ingredient; onClose?: () => void }> = ({ initialData, onClose }) => {
     const { activeOutletId, suppliers } = useStore();
@@ -25,6 +26,7 @@ export const IngredientForm: React.FC<{ initialData?: Ingredient; onClose?: () =
             supplierId: '',
             category: 'other',
             supplierInfo: [],
+            isTrackedInInventory: true, // Default to true for existing logic
             nutritionalInfo: {
                 calories: 0,
                 protein: 0,
@@ -76,22 +78,28 @@ export const IngredientForm: React.FC<{ initialData?: Ingredient; onClose?: () =
 
         setIsSubmitting(true);
         try {
+            // Data Cleaning: Ensure allergens are strictly strings and no nulls
+            const cleanedAllergens = (formData.allergens || []).filter(Boolean).map(a => String(a).trim()).filter(a => a.length > 0);
+
+            const { stock, minStock, outletId, batches, isTrackedInInventory, ...masterData } = formData;
+
+            const dataToSave = {
+                ...masterData,
+                allergens: cleanedAllergens,
+                updatedAt: new Date().toISOString()
+            };
+
             if (initialData) {
                 // Update
-                const updateData = { ...formData, outletId: activeOutletId };
-                await updateDocument(COLLECTIONS.INGREDIENTS, initialData.id, updateData);
+                await updateDocument(COLLECTIONS.INGREDIENTS, initialData.id, dataToSave);
                 if (onClose) onClose();
             } else {
                 // Create
                 const newData = {
-                    ...formData,
-                    outletId: activeOutletId,
-                    // Ensure defaults
+                    ...dataToSave,
                     category: formData.category || 'other'
                 };
                 await addDocument(collections.ingredients, newData);
-
-                // Reset form - simplified
                 if (onClose) onClose();
             }
         } catch (error) {
@@ -200,6 +208,35 @@ export const IngredientForm: React.FC<{ initialData?: Ingredient; onClose?: () =
                         value={formData.shelfLife || ''}
                         onChange={e => setFormData({ ...formData, shelfLife: Number(e.target.value) })}
                     />
+                </div>
+
+                {/* HIGH PRIORITY ALLERGENS SECTION */}
+                <div className="col-span-2 border-t border-white/10 pt-4 mt-2">
+                    <h4 className="text-md font-semibold text-white mb-3">Alérgenos</h4>
+                    <div className="flex flex-wrap gap-2">
+                        {ALLERGENS.map(allergen => {
+                            const isSelected = formData.allergens?.includes(allergen);
+                            return (
+                                <button
+                                    key={allergen}
+                                    type="button"
+                                    onClick={() => {
+                                        const current = formData.allergens || [];
+                                        const next = isSelected
+                                            ? current.filter(a => a !== allergen)
+                                            : [...current, allergen];
+                                        setFormData({ ...formData, allergens: next });
+                                    }}
+                                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all border ${isSelected
+                                        ? 'bg-red-500/20 border-red-500/50 text-red-400'
+                                        : 'bg-white/5 border-white/10 text-slate-400 hover:border-white/20'
+                                        }`}
+                                >
+                                    {allergen}
+                                </button>
+                            );
+                        })}
+                    </div>
                 </div>
 
                 <div className="space-y-1">
@@ -407,6 +444,22 @@ export const IngredientForm: React.FC<{ initialData?: Ingredient; onClose?: () =
                         value={formData.minStock}
                         onChange={e => setFormData({ ...formData, minStock: Number(e.target.value) })}
                     />
+                </div>
+
+                <div className="col-span-2 border-t border-white/10 pt-4 mt-2 flex items-center gap-3">
+                    <input
+                        type="checkbox"
+                        id="isTrackedInInventory"
+                        className="w-4 h-4 rounded border-white/10 bg-black/20 text-primary focus:ring-primary"
+                        checked={formData.isTrackedInInventory ?? true}
+                        onChange={e => setFormData({ ...formData, isTrackedInInventory: e.target.checked })}
+                    />
+                    <label htmlFor="isTrackedInInventory" className="text-sm text-slate-200 font-medium cursor-pointer">
+                        Trackear en Inventario
+                        <span className="block text-[10px] text-slate-500 font-normal mt-0.5">
+                            Si se desmarca, el ingrediente aparecerá en recetas pero no en la lista de inventario.
+                        </span>
+                    </label>
                 </div>
             </div>
 

@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import type { Ingredient } from '../../types';
-import { Printer, Edit2, Trash2, Swords, TrendingDown, TrendingUp } from 'lucide-react';
+import { Printer, Edit2, Trash2, Swords, TrendingDown, TrendingUp, Package, Zap } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { printLabel, formatLabelData } from '../printing/PrintService';
 
@@ -58,6 +58,7 @@ export const IngredientList: React.FC<IngredientListProps> = React.memo(({ ingre
                                 Nombre {sortConfig.key === 'name' && (sortConfig.direction === 'asc' ? <TrendingUp size={14} /> : <TrendingDown size={14} />)}
                             </div>
                         </th>
+                        <th className="p-4">Seguimiento</th>
                         <th className="p-4">Unidad</th>
                         <th className="p-4 text-right cursor-pointer hover:text-white transition-colors" onClick={() => onSort('stock')}>
                             <div className="flex items-center justify-end gap-2">
@@ -70,6 +71,7 @@ export const IngredientList: React.FC<IngredientListProps> = React.memo(({ ingre
                                 Coste/Ud. {sortConfig.key === 'costPerUnit' && (sortConfig.direction === 'asc' ? <TrendingUp size={14} /> : <TrendingDown size={14} />)}
                             </div>
                         </th>
+                        <th className="p-4 text-left">Alérgenos</th>
                         <th className="p-4 text-right">Rendimiento</th>
                         <th className="p-4 text-center">Acciones</th>
                     </tr>
@@ -78,6 +80,17 @@ export const IngredientList: React.FC<IngredientListProps> = React.memo(({ ingre
                     {ingredients.map(ing => (
                         <tr key={ing.id} className="hover:bg-white/[0.02]">
                             <td className="p-4 font-medium text-white">{ing.name}</td>
+                            <td className="p-4">
+                                {ing.isTrackedInInventory !== false ? (
+                                    <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 w-fit">
+                                        <Package size={10} /> Inventario
+                                    </span>
+                                ) : (
+                                    <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] bg-amber-500/10 text-amber-400 border border-amber-500/20 w-fit">
+                                        <Zap size={10} /> Directo
+                                    </span>
+                                )}
+                            </td>
                             <td className="p-4 opacity-70">{ing.unit}</td>
                             <td className={`p-4 text-right font-medium ${(ing.stock || 0) < (ing.minStock || 0) ? 'text-red-400' : 'text-slate-300'}`}>
                                 {ing.stock || 0}
@@ -116,6 +129,19 @@ export const IngredientList: React.FC<IngredientListProps> = React.memo(({ ingre
                                             </div>
                                         </div>
                                     )}
+                                </div>
+                            </td>
+                            <td className="p-4 text-left">
+                                <div className="flex flex-wrap gap-1">
+                                    {ing.allergens?.map(a => {
+                                        if (!a || typeof a !== 'string') return null;
+                                        return (
+                                            <span key={a} className="px-1.5 py-0.5 bg-red-500/10 text-red-400 text-[10px] rounded border border-red-500/20" title={a}>
+                                                {a.substring(0, 3)}
+                                            </span>
+                                        );
+                                    })}
+                                    {(!ing.allergens || ing.allergens.length === 0) && <span className="text-slate-600">-</span>}
                                 </div>
                             </td>
                             <td className="p-4 text-right opacity-70">{(ing.yield * 100).toFixed(0)}%</td>

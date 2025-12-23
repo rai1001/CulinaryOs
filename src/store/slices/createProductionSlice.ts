@@ -1,13 +1,14 @@
 import type { StateCreator } from 'zustand';
 import type { AppState, ProductionSlice } from '../types';
 import type { KanbanTask } from '../../types';
+import { setDocument, deleteDocument } from '../../services/firestoreService';
 
 export const createProductionSlice: StateCreator<
     AppState,
     [],
     [],
     ProductionSlice
-> = (set) => ({
+> = (set, get) => ({
     selectedProductionEventId: null,
     productionTasks: {}, // { eventId: [task1, task2] }
 
@@ -15,28 +16,21 @@ export const createProductionSlice: StateCreator<
 
     replaceAllProductionTasks: (tasksByEvent: Record<string, import('../../types').KanbanTask[]>) => set({ productionTasks: tasksByEvent }),
 
-    generateProductionTasks: (event: import('../../types').Event) => {
+    generateProductionTasks: async (event: import('../../types').Event) => {
         if (!event.menu || !event.menu.recipes) return;
 
-        const { id: eventId, pax } = event;
-        // const currentTasks = get().productionTasks[eventId] || [];
-
-        // If tasks already exist, do NOT overwrite them unless manual clear?
-        // User behavior: "Generate Tasks" should likely be idempotent or explicit re-gen.
-        // For now, if empty, generate. If not empty, maybe alert? 
-        // Let's implement safe generation: only if empty or explicitly called (which this is).
-        // Actually, to preserve status of existing tasks if re-generated, we need smart merge or just full overwrite (reset).
-        // User request says "Generate Tasks (once)", so likely full generation.
+        const { id: eventId, pax, outletId } = event;
 
         const newTasks: KanbanTask[] = event.menu.recipes.map((recipe, index) => ({
-            id: `${eventId}_${recipe.id}_${index}`, // Stable ID if recipes array order doesn't change drastically
+            id: `${eventId}_${recipe.id}_${index}`,
             eventId: eventId,
             title: recipe.name,
             description: `Partida: ${recipe.station}`,
-            quantity: pax, // Logic: 1 portion per pax? Or total portions
+            quantity: pax,
             unit: 'raciones',
             status: 'todo',
-            recipeId: recipe.id
+            recipeId: recipe.id,
+            outletId: outletId || 'unknown'
         }));
 
         set((state) => ({
@@ -45,13 +39,26 @@ export const createProductionSlice: StateCreator<
                 [eventId]: newTasks
             }
         }));
+
+        try {
+            // We save each task as a separate document in 'productionTasks' collection
+            const promises = newTasks.map(task => setDocument('productionTasks', task.id, task));
+            await Promise.all(promises);
+        } catch (error) {
+            console.error("Failed to persist generated production tasks", error);
+        }
     },
 
-    updateTaskStatus: (eventId: string, taskId: string, status: import('../../types').KanbanTaskStatus) => {
+    updateTaskStatus: async (eventId: string, taskId: string, status: import('../../types').KanbanTaskStatus) => {
+        const tasks = get().productionTasks[eventId] || [];
+        const task = tasks.find(t => t.id === taskId);
+        if (!task) return;
+
+        const updatedTask = { ...task, status };
+
         set((state) => {
-            const eventTasks = state.productionTasks[eventId] || [];
-            const updatedTasks = eventTasks.map(t =>
-                t.id === taskId ? { ...t, status } : t
+            const updatedTasks = tasks.map(t =>
+                t.id === taskId ? updatedTask : t
             );
             return {
                 productionTasks: {
@@ -60,13 +67,28 @@ export const createProductionSlice: StateCreator<
                 }
             };
         });
+
+        try {
+            await setDocument('productionTasks', taskId, updatedTask);
+        } catch (error) {
+            console.error("Failed to update task status", error);
+        }
     },
 
-    clearProductionTasks: (eventId: string) => {
+    clearProductionTasks: async (eventId: string) => {
+        const tasks = get().productionTasks[eventId] || [];
+
         set((state) => {
             const { [eventId]: removed, ...rest } = state.productionTasks;
             return { productionTasks: rest };
         });
+
+        try {
+            const promises = tasks.map(task => deleteDocument('productionTasks', task.id));
+            await Promise.all(promises);
+        } catch (error) {
+            console.error("Failed to clear production tasks", error);
+        }
     },
 
     setProductionTasks: (eventId: string, tasks: import('../../types').KanbanTask[]) => {
@@ -78,63 +100,91 @@ export const createProductionSlice: StateCreator<
         }));
     },
 
-    toggleTaskTimer: (eventId, taskId) => {
+    toggleTaskTimer: async (eventId, taskId) => {
+        const tasks = get().productionTasks[eventId] || [];
+        const task = tasks.find(t => t.id === taskId);
+        if (!task) return;
+
+        const isRunning = !!task.timerStart;
+        const now = Date.now();
+        let updatedTask: KanbanTask;
+
+        if (isRunning) {
+            const elapsed = Math.floor((now - task.timerStart!) / 1000);
+            updatedTask = {
+                ...task,
+                timerStart: undefined,
+                totalTimeSpent: (task.totalTimeSpent || 0) + elapsed
+            };
+        } else {
+            updatedTask = {
+                ...task,
+                timerStart: now
+            };
+        }
+
         set((state) => {
-            const tasks = state.productionTasks[eventId] || [];
-            const updatedTasks = tasks.map(task => {
-                if (task.id !== taskId) return task;
-
-                const isRunning = !!task.timerStart;
-                const now = Date.now();
-
-                if (isRunning) {
-                    // Pause: Add elapsed time to total
-                    const elapsed = Math.floor((now - task.timerStart!) / 1000); // seconds
-                    return {
-                        ...task,
-                        timerStart: undefined, // Stop
-                        totalTimeSpent: (task.totalTimeSpent || 0) + elapsed
-                    };
-                } else {
-                    // Start
-                    return {
-                        ...task,
-                        timerStart: now
-                    };
-                }
-            });
-
+            const updatedTasks = tasks.map(t => t.id === taskId ? updatedTask : t);
             return {
                 productionTasks: { ...state.productionTasks, [eventId]: updatedTasks }
             };
         });
+
+        try {
+            await setDocument('productionTasks', taskId, updatedTask);
+        } catch (error) {
+            console.error("Failed to toggle task timer", error);
+        }
     },
 
-    updateTaskSchedule: (eventId, taskId, updates) => {
+    updateTaskSchedule: async (eventId, taskId, updates) => {
+        const tasks = get().productionTasks[eventId] || [];
+        const task = tasks.find(t => t.id === taskId);
+        if (!task) return;
+
+        const updatedTask = { ...task, ...updates };
+
         set((state) => {
-            const tasks = state.productionTasks[eventId] || [];
-            const updatedTasks = tasks.map(task =>
-                task.id === taskId ? { ...task, ...updates } : task
+            const updatedTasks = tasks.map(t =>
+                t.id === taskId ? updatedTask : t
             );
             return {
                 productionTasks: { ...state.productionTasks, [eventId]: updatedTasks }
             };
         });
+
+        try {
+            await setDocument('productionTasks', taskId, updatedTask);
+        } catch (error) {
+            console.error("Failed to update task schedule", error);
+        }
     },
-    addProductionTask: (eventId, task) => {
+
+    addProductionTask: async (eventId, task) => {
         set((state) => ({
             productionTasks: {
                 ...state.productionTasks,
                 [eventId]: [...(state.productionTasks[eventId] || []), task]
             }
         }));
+        try {
+            await setDocument('productionTasks', task.id, task);
+        } catch (error) {
+            console.error("Failed to add production task", error);
+        }
     },
-    deleteProductionTask: (eventId, taskId) => {
+
+    deleteProductionTask: async (eventId, taskId) => {
         set((state) => ({
             productionTasks: {
                 ...state.productionTasks,
                 [eventId]: (state.productionTasks[eventId] || []).filter(t => t.id !== taskId)
             }
         }));
+        try {
+            await deleteDocument('productionTasks', taskId);
+        } catch (error) {
+            console.error("Failed to delete production task", error);
+        }
     }
 });

@@ -22,28 +22,45 @@ export const createPurchaseSlice: StateCreator<
     // Supplier actions
     setSuppliers: (suppliers: import('../../types').Supplier[]) => set({ suppliers }),
 
-    addSupplier: (supplier: import('../../types').Supplier) => set((state: AppState) => ({
-        suppliers: [...state.suppliers, supplier]
-    })),
+    addSupplier: async (supplier: import('../../types').Supplier) => {
+        set((state: AppState) => ({
+            suppliers: [...state.suppliers, supplier]
+        }));
+        try {
+            await setDocument("suppliers", supplier.id, supplier);
+        } catch (error) {
+            console.error("Failed to add supplier", error);
+        }
+    },
 
-    updateSupplier: (updatedSupplier: import('../../types').Supplier) => set((state: AppState) => ({
-        suppliers: state.suppliers.map((s: import('../../types').Supplier) => s.id === updatedSupplier.id ? updatedSupplier : s)
-    })),
+    updateSupplier: async (updatedSupplier: import('../../types').Supplier) => {
+        set((state: AppState) => ({
+            suppliers: state.suppliers.map((s: import('../../types').Supplier) => s.id === updatedSupplier.id ? updatedSupplier : s)
+        }));
+        try {
+            await setDocument("suppliers", updatedSupplier.id, updatedSupplier);
+        } catch (error) {
+            console.error("Failed to update supplier", error);
+        }
+    },
 
-    deleteSupplier: (id: string) => set((state: AppState) => ({
-        suppliers: state.suppliers.filter((s: import('../../types').Supplier) => s.id !== id)
-    })),
+    deleteSupplier: async (id: string) => {
+        set((state: AppState) => ({
+            suppliers: state.suppliers.filter((s: import('../../types').Supplier) => s.id !== id)
+        }));
+        try {
+            await deleteDocument("suppliers", id);
+        } catch (error) {
+            console.error("Failed to delete supplier", error);
+        }
+    },
 
     // Purchase Order actions
     setPurchaseOrders: (purchaseOrders: import('../../types').PurchaseOrder[]) => set({ purchaseOrders }),
 
     addPurchaseOrder: async (order: import('../../types').PurchaseOrder) => {
-        // No optimistic update for now, as requested.
-        // We set document then refresh the list.
         try {
-            await setDocument("purchaseOrders", order.id, order); // Assuming ID is pre-generated
-            // If ID is not pre-generated, we should use addDocument, but existing code passed ID.
-            // Refresh list
+            await setDocument("purchaseOrders", order.id, order);
             get().fetchPurchaseOrders({ reset: true });
         } catch (error) {
             console.error("Failed to add purchase order", error);
@@ -52,10 +69,7 @@ export const createPurchaseSlice: StateCreator<
 
     updatePurchaseOrder: async (updatedOrder: import('../../types').PurchaseOrder) => {
         try {
-            // Update in Firestore
-            // Note: Since we are using setDocument (overwrite) for everything in this codebase so far:
             await setDocument("purchaseOrders", updatedOrder.id, updatedOrder);
-            // Refresh list
             get().fetchPurchaseOrders({ reset: true });
         } catch (error) {
             console.error("Failed to update purchase order", error);
@@ -65,7 +79,6 @@ export const createPurchaseSlice: StateCreator<
     deletePurchaseOrder: async (id: string) => {
         try {
             await deleteDocument("purchaseOrders", id);
-            // Refresh list
             get().fetchPurchaseOrders({ reset: true });
         } catch (error) {
             console.error("Failed to delete purchase order", error);
@@ -77,8 +90,6 @@ export const createPurchaseSlice: StateCreator<
         const { reset = false } = options;
         const { purchaseOrdersFilters, purchaseOrdersCursor, activeOutletId, purchaseOrdersLoading } = get();
 
-        // Prevent valid Outlet check? 
-        // If no outlet selected, maybe clear list
         if (!activeOutletId) {
             set({ purchaseOrders: [], purchaseOrdersHasMore: false });
             return;
@@ -159,22 +170,16 @@ export const createPurchaseSlice: StateCreator<
                 const item = updatedItems.find((i: import('../../types').PurchaseOrderItem) => i.ingredientId === ingId);
                 const cost = item?.costPerUnit || 0;
 
-                // Use the store action to update state logic
-                get().addBatch(ingId, {
-                    quantity: qty,
+                // Call addBatch which handles both local state and Firestore persistence to the 'inventory' collection
+                await get().addBatch(ingId, {
+                    initialQuantity: qty,
+                    currentQuantity: qty,
                     costPerUnit: cost,
-                    expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // Default 30 days
-                    receivedDate: new Date().toISOString()
+                    expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+                    unit: item?.unit || 'un'
                 });
-
-                // Get updated ingredient from state to persist
-                const updatedIngredient = get().ingredients.find((i: import('../../types').Ingredient) => i.id === ingId);
-                if (updatedIngredient) {
-                    await setDocument("ingredients", ingId, updatedIngredient);
-                }
             }
 
-            // Refresh orders list
             get().fetchPurchaseOrders({ reset: true });
 
         } catch (error) {

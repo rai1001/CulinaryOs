@@ -2,7 +2,8 @@ import type {
     Ingredient, IngredientBatch, Event, Employee, DailySchedule,
     Recipe, Menu, Supplier, PurchaseOrder, WasteRecord,
     PCC, HACCPLog, HACCPTask, HACCPTaskCompletion, MenuItemAnalytics,
-    KanbanTask, KanbanTaskStatus, HospitalityService, OccupancyData, Integration
+    KanbanTask, KanbanTaskStatus, HospitalityService, OccupancyData, Integration,
+    InventoryItem
 } from '../types';
 import type { NotificationSlice } from './slices/createNotificationSlice';
 
@@ -18,10 +19,8 @@ export interface HospitalitySlice {
 export interface IngredientSlice {
     ingredients: Ingredient[];
     setIngredients: (items: Ingredient[]) => void;
-    addIngredient: (ingredient: Ingredient) => void;
-    updateIngredient: (ingredient: Ingredient) => void;
-    addBatch: (ingredientId: string, batch: Omit<IngredientBatch, 'id' | 'ingredientId'>) => void;
-    consumeStock: (ingredientId: string, quantity: number) => void;
+    addIngredient: (ingredient: Ingredient) => Promise<void>;
+    updateIngredient: (ingredient: Ingredient) => Promise<void>;
 }
 
 export interface EventSlice {
@@ -43,29 +42,29 @@ export interface ProductionSlice {
     selectedProductionEventId: string | null;
     productionTasks: Record<string, KanbanTask[]>; // { eventId: [tasks] }
     setSelectedProductionEventId: (id: string | null) => void;
-    generateProductionTasks: (event: Event) => void;
-    updateTaskStatus: (eventId: string, taskId: string, status: KanbanTaskStatus) => void;
+    generateProductionTasks: (event: Event) => Promise<void>;
+    updateTaskStatus: (eventId: string, taskId: string, status: KanbanTaskStatus) => Promise<void>;
     todayProductionStats?: { total: number; completed: number; pending: number; }; // Computed?
-    clearProductionTasks: (eventId: string) => void;
+    clearProductionTasks: (eventId: string) => Promise<void>;
     setProductionTasks: (eventId: string, tasks: KanbanTask[]) => void;
     replaceAllProductionTasks: (tasksByEvent: Record<string, KanbanTask[]>) => void;
-    toggleTaskTimer: (eventId: string, taskId: string) => void;
+    toggleTaskTimer: (eventId: string, taskId: string) => Promise<void>;
     updateTaskSchedule: (eventId: string, taskId: string, updates: {
         assignedDate?: string;
         shift?: import('../types').ShiftType;
         assignedEmployeeId?: string;
-    }) => void;
-    addProductionTask: (eventId: string, task: import('../types').KanbanTask) => void;
-    deleteProductionTask: (eventId: string, taskId: string) => void;
+    }) => Promise<void>;
+    addProductionTask: (eventId: string, task: import('../types').KanbanTask) => Promise<void>;
+    deleteProductionTask: (eventId: string, taskId: string) => Promise<void>;
 }
 
 export interface StaffSlice {
     staff: Employee[];
     schedule: Record<string, DailySchedule>;
     setStaff: (items: Employee[]) => void;
-    addEmployee: (employee: Employee) => void;
-    updateEmployee: (employee: Employee) => void;
-    deleteEmployee: (id: string) => void;
+    addEmployee: (employee: Employee) => Promise<void>;
+    updateEmployee: (employee: Employee) => Promise<void>;
+    deleteEmployee: (id: string) => Promise<void>;
     updateSchedule: (month: string, schedule: DailySchedule) => void;
     updateShift: (dateStr: string, employeeId: string, type: import('../types').ShiftType) => void;
     removeShift: (dateStr: string, employeeId: string) => void;
@@ -76,17 +75,17 @@ export interface StaffSlice {
 export interface RecipeSlice {
     recipes: Recipe[];
     setRecipes: (recipes: Recipe[]) => void;
-    addRecipe: (recipe: Recipe) => void;
-    updateRecipe: (recipe: Recipe) => void;
-    deleteRecipe: (id: string) => void;
+    addRecipe: (recipe: Recipe) => Promise<void>;
+    updateRecipe: (recipe: Recipe) => Promise<void>;
+    deleteRecipe: (id: string) => Promise<void>;
 }
 
 export interface MenuSlice {
     menus: Menu[];
     setMenus: (menus: Menu[]) => void;
-    addMenu: (menu: Menu) => void;
-    updateMenu: (menu: Menu) => void;
-    deleteMenu: (id: string) => void;
+    addMenu: (menu: Menu) => Promise<void>;
+    updateMenu: (menu: Menu) => Promise<void>;
+    deleteMenu: (id: string) => Promise<void>;
 }
 
 export interface PurchaseSlice {
@@ -123,8 +122,8 @@ export interface PurchaseSlice {
 export interface WasteSlice {
     wasteRecords: WasteRecord[];
     setWasteRecords: (records: WasteRecord[]) => void;
-    addWasteRecord: (record: WasteRecord) => void;
-    deleteWasteRecord: (id: string) => void;
+    addWasteRecord: (record: WasteRecord) => Promise<void>;
+    deleteWasteRecord: (id: string) => Promise<void>;
 }
 
 export interface HACCPSlice {
@@ -146,6 +145,15 @@ export interface HACCPSlice {
     completeHACCPTask: (completion: HACCPTaskCompletion) => void;
 }
 
+export interface InventorySlice {
+    inventory: InventoryItem[];
+    setInventory: (items: InventoryItem[]) => void;
+    addInventoryItem: (item: InventoryItem) => Promise<void>;
+    updateInventoryItem: (item: InventoryItem) => Promise<void>;
+    addBatch: (itemId: string, batch: Partial<IngredientBatch>, standaloneData?: { name: string; unit: any; category: any; costPerUnit: number }) => Promise<void>;
+    consumeStock: (itemId: string, quantity: number) => Promise<void>;
+}
+
 export interface AnalyticsSlice {
     calculateMenuAnalytics: (startDate: string, endDate: string) => MenuItemAnalytics[];
 }
@@ -161,11 +169,11 @@ export interface OutletSlice {
     outlets: import('../types').Outlet[];
     activeOutletId: string | null;
     setOutlets: (outlets: import('../types').Outlet[]) => void;
-    addOutlet: (outlet: import('../types').Outlet) => void;
-    updateOutlet: (id: string, updates: Partial<import('../types').Outlet>) => void;
+    addOutlet: (outlet: import('../types').Outlet) => Promise<void>;
+    updateOutlet: (id: string, updates: Partial<import('../types').Outlet>) => Promise<void>;
     setActiveOutlet: (id: string | null) => void;
-    deleteOutlet: (id: string) => void;
-    toggleOutletActive: (id: string) => void;
+    deleteOutlet: (id: string) => Promise<void>;
+    toggleOutletActive: (id: string) => Promise<void>;
     getOutlet: (id: string) => import('../types').Outlet | undefined;
 }
 export interface AuthSlice {
@@ -188,7 +196,8 @@ export interface AppState extends
     HospitalitySlice,
     NotificationSlice,
     IntegrationSlice,
-    AuthSlice {
+    AuthSlice,
+    InventorySlice {
     // activeOutletId is inherited from OutletSlice
     setActiveOutletId: (id: string | null) => void;
 }

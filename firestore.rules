@@ -36,11 +36,12 @@ service cloud.firestore {
     
     function isAdmin() {
       let userData = getUserData();
+      let hasAdminClaim = request.auth.token.admin == true;
       let isExplicitAdmin = request.auth != null && (
         request.auth.uid == 'KHOxOqvfW9QRAvVdanb8UTpEMsl2' || 
         request.auth.uid == 'j9hrlnFKHYXQf54fuhVFV7Ywfnl2'
       );
-      return isExplicitAdmin || (
+      return hasAdminClaim || isExplicitAdmin || (
         isAuthenticated() && 
         userData != null && 
         userData.role != null &&
@@ -96,6 +97,11 @@ service cloud.firestore {
       allow read: if isAuthenticated() && isUserActive();
       allow write: if isManager(); // Only Admin/Manager can manage Global Suppliers
     }
+
+    match /ingredients/{id} {
+      allow read: if isAuthenticated() && isUserActive();
+      allow write: if isManager() || hasRole('chef'); // Allow chefs to manage master library too
+    }
     
     match /outlets/{outletId} {
       allow read: if isAuthenticated() && isUserActive();
@@ -113,14 +119,14 @@ service cloud.firestore {
        return hasOutletAccess(resource.data.outletId);
     }
 
-    // Ingredients (Inventory)
-    match /ingredients/{id} {
+    // Inventory (Outlet-specific stock)
+    match /inventory/{id} {
       allow read: if isAuthenticated() && hasOutletAccess(resource.data.outletId);
       allow create: if isAuthenticated() && isScopedWrite(request.resource) &&
                     (hasRole('chef') || hasRole('storekeeper') || isManager());
       allow update: if isAuthenticated() && hasOutletAccess(resource.data.outletId) &&
                     isScopedWrite(request.resource) &&
-                    request.resource.data.outletId == resource.data.outletId &&
+                    (request.resource.data.outletId == resource.data.outletId || (!('outletId' in resource.data) && isAdmin())) &&
                     (hasRole('chef') || hasRole('storekeeper') || isManager());
       allow delete: if isManager() && isScopedDelete();
     }
@@ -297,7 +303,7 @@ service cloud.firestore {
 
     // --- BREAKFAST & OCCUPANCY ---
 
-    match /breakfastServices/{id} {
+    match /hospitalityServices/{id} {
       allow read: if isAuthenticated() && hasOutletAccess(resource.data.outletId);
       allow create: if isAuthenticated() && isScopedWrite(request.resource) &&
                     (hasRole('chef') || isManager());

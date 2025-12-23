@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { useStore } from '../store/useStore';
 import { AlertTriangle, Search, Plus, ChevronRight, Calculator, Calendar, Scan, Filter, Sparkles, Upload } from 'lucide-react';
-import type { Ingredient } from '../types';
+import type { Ingredient, InventoryItem, IngredientBatch } from '../types';
 import { BarcodeScanner } from './scanner/BarcodeScanner';
 import { ExpiryDateScanner } from './scanner/ExpiryDateScanner';
 import { DataImportModal, type ImportType } from './common/DataImportModal';
-import { addDocument, updateDocument, firestoreService } from '../services/firestoreService';
-import { collections, COLLECTIONS } from '../firebase/collections';
+import { updateDocument } from '../services/firestoreService';
+import { COLLECTIONS } from '../firebase/collections';
 import { lookupProductByBarcode, type ProductLookupResult } from '../services/productLookupService';
 import { AIInventoryAdvisor } from './inventory/AIInventoryAdvisor';
 import { LabelPrinterModal } from './LabelPrinterModal';
@@ -22,22 +22,48 @@ const getDaysUntilExpiry = (dateStr: string) => {
 };
 
 export const InventoryView: React.FC = () => {
-    const { ingredients, addBatch, addIngredient, activeOutletId, setIngredients } = useStore();
+    const {
+        ingredients,
+        activeOutletId,
+        inventory,
+        addBatch,
+        addInventoryItem,
+        updateInventoryItem
+    } = useStore();
     const [searchTerm, setSearchTerm] = useState('');
     const [isDeleting, setIsDeleting] = useState(false);
 
     const handleClearData = async () => {
-        if (!window.confirm('¿ESTÁS SEGURO? Esto borrará TODO el inventario permanentemente. Esta acción no se puede deshacer.')) {
+        if (!activeOutletId) {
+            alert("No hay cocina activa seleccionada.");
+            return;
+        }
+
+        if (!window.confirm('¿ESTÁS SEGURO? Esto borrará el stock de todos los productos en ESTA cocina. Los ingredientes no se eliminarán, solo su existencia en inventario.')) {
             return;
         }
 
         setIsDeleting(true);
         try {
-            await firestoreService.deleteAll(COLLECTIONS.INGREDIENTS);
-            setIngredients([]); // Clear local store
-            console.log('Inventory cleared');
+            // Only clear ingredients that belong to the active outlet
+            // or ingredients that have batches in this outlet.
+            // But since we want to clear "Inventory", we zero out stock/batches for items visible here.
+            const scopedInventory = inventory.filter(item =>
+                !activeOutletId || item.outletId === activeOutletId
+            );
+
+            for (const item of scopedInventory) {
+                await updateDocument(COLLECTIONS.INVENTORY, item.id, {
+                    stock: 0,
+                    batches: []
+                });
+            }
+
+            console.log('Inventory stock cleared for outlet', activeOutletId);
+            alert('Inventario puesto a cero correctamente.');
         } catch (err) {
             console.error('Error clearing inventory:', err);
+            alert('Error al limpiar el inventario.');
         } finally {
             setIsDeleting(false);
         }
@@ -61,7 +87,7 @@ export const InventoryView: React.FC = () => {
     });
 
     const [isAIAdvisorOpen, setIsAIAdvisorOpen] = useState(false);
-    const [printingItem, setPrintingItem] = useState<{ ingredient: Ingredient, batch?: any } | null>(null);
+    const [printingItem, setPrintingItem] = useState<{ ingredient: Ingredient | InventoryItem, batch?: any } | null>(null);
 
     // Determine alerts
 
@@ -144,105 +170,41 @@ export const InventoryView: React.FC = () => {
             return;
         }
 
-        // If ingredient doesn't exist, create it first
-        const existingIngredient = ingredients.find(ing => ing.defaultBarcode === scannedBarcode);
-
         try {
-            if (!existingIngredient && productLookup.found) {
-                const newIngredientId = crypto.randomUUID();
-                const newIngredient: Ingredient = {
-                    id: newIngredientId,
-                    name: productLookup.name || 'Producto sin nombre',
-                    unit: 'un', // Default unit, maybe ask user?
-                    costPerUnit: parseFloat(batchForm.costPerUnit) || 0,
-                    yield: 1.0,
-                    allergens: productLookup.allergens || [],
-                    nutritionalInfo: productLookup.nutritionalInfo,
-                    batches: [],
-                    stock: 0,
-                    defaultBarcode: scannedBarcode,
-                    outletId: activeOutletId, // Important
-                    minStock: 5, // Default
-                    category: 'other' // Default
-                };
+            // Find existing InventoryItem for this outlet
+            // We look up by the name found in product lookup OR ingredient name if linked
+            const existingInventoryItem = inventory.find(
+                inv => (inv.name === productLookup.name || inv.id === scannedBarcode) && inv.outletId === activeOutletId
+            );
 
-                // Local update
-                addIngredient(newIngredient);
-                // Firestore update
-                await addDocument(collections.ingredients, newIngredient);
+            const itemId = existingInventoryItem?.id || crypto.randomUUID();
 
-                const newBatch = {
-                    initialQuantity: parseFloat(batchForm.quantity),
-                    currentQuantity: parseFloat(batchForm.quantity),
-                    expiresAt: new Date(batchForm.expiryDate).toISOString(),
-                    receivedAt: new Date().toISOString(),
-                    costPerUnit: parseFloat(batchForm.costPerUnit) || 0,
-                    barcode: scannedBarcode,
-                    id: crypto.randomUUID(),
-                    ingredientId: newIngredientId,
-                    unit: 'un' as any, // Default
-                    batchNumber: `LOT-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}`,
-                    outletId: activeOutletId,
-                    status: 'ACTIVE' as const
-                };
+            const batchData: Partial<IngredientBatch> = {
+                id: crypto.randomUUID(),
+                batchNumber: `LOT-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}`,
+                initialQuantity: parseFloat(batchForm.quantity),
+                currentQuantity: parseFloat(batchForm.quantity),
+                expiresAt: new Date(batchForm.expiryDate).toISOString(),
+                receivedAt: new Date().toISOString(),
+                costPerUnit: parseFloat(batchForm.costPerUnit) || 0,
+                barcode: scannedBarcode,
+                outletId: activeOutletId,
+                status: 'ACTIVE' as const
+            };
 
-                // Local update
-                addBatch(newIngredientId, newBatch);
+            const standaloneData = {
+                name: productLookup.name || 'Producto sin nombre',
+                unit: 'un' as any, // Default to 'un' if not found
+                category: 'other' as any,
+                costPerUnit: parseFloat(batchForm.costPerUnit) || 0
+            };
 
-                // Firestore update (Add batch to array)
-                // Since we just created the doc, we can't use arrayUnion easily on a field that might be mapped differently or just update the doc again.
-                // But wait, the newIngredient we just sent has batches: []. 
-                // We need to add the batch. 
-                // Simplest: Read doc -> Update. Or just use the fact we know it has 1 batch.
-                // Better: Update the 'batches' field.
-                // We need to fetch the existing batches (empty) and add one. 
-                // Actually, if we just added the document, we can just update it.
-                // NOTE: Creating ingredient with the batch inside is cleaner if we constructed it that way, but existing logic splits it.
-                // Let's just update the doc with the new batch list.
-                const updatedBatches = [newBatch];
-                await updateDocument(COLLECTIONS.INGREDIENTS, newIngredientId, {
-                    batches: updatedBatches,
-                    stock: newBatch.currentQuantity
-                });
+            // ⚡ Bolt: Using the refactored addBatch which handles standalone data
+            await addBatch(itemId, batchData, standaloneData);
 
-            } else if (existingIngredient) {
-                const newBatch = {
-                    initialQuantity: parseFloat(batchForm.quantity),
-                    currentQuantity: parseFloat(batchForm.quantity),
-                    expiresAt: new Date(batchForm.expiryDate).toISOString(),
-                    receivedAt: new Date().toISOString(),
-                    costPerUnit: parseFloat(batchForm.costPerUnit) || existingIngredient.costPerUnit,
-                    barcode: scannedBarcode,
-                    id: crypto.randomUUID(),
-                    ingredientId: existingIngredient.id,
-                    unit: existingIngredient.unit,
-                    batchNumber: `LOT-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}`,
-                    outletId: activeOutletId,
-                    status: 'ACTIVE' as const
-                };
-
-                // Local update
-                addBatch(existingIngredient.id, newBatch);
-
-                // Firestore update
-                // Need to append to existing batches.
-                // Ideally use arrayUnion, but 'batches' is an array of objects. Firestore arrayUnion works if object is exact.
-                // Here we constructed a new unique object.
-                // But simpler/safer for now: Get current batches from local state (which is synced usually) + new one.
-                // existingIngredient from useStore is reliable enough?
-                // If we assume single user or optimistic:
-                const currentBatches = existingIngredient.batches || [];
-                const updatedBatches = [...currentBatches, newBatch];
-                const newStock = updatedBatches.reduce((sum, b) => sum + b.currentQuantity, 0);
-
-                await updateDocument(COLLECTIONS.INGREDIENTS, existingIngredient.id, {
-                    batches: updatedBatches,
-                    stock: newStock
-                });
-            }
         } catch (error) {
             console.error("Error saving batch:", error);
-            alert("Error al guardar en base de datos. Los cambios pueden no persistir.");
+            alert("Error al guardar en base de datos.");
         }
 
         resetScanWorkflow();
@@ -261,44 +223,58 @@ export const InventoryView: React.FC = () => {
 
     // Filter logic
     const filteredIngredients = React.useMemo(() => {
-        let filtered = ingredients;
+        // 1. Filter inventory by outlet
+        let items = inventory.filter(item => !activeOutletId || item.outletId === activeOutletId);
+
+        // 2. Search filter
         if (searchTerm.trim()) {
-            filtered = filtered.filter(ing => ing.name.toLowerCase().includes(searchTerm.toLowerCase()) || ing.category?.toLowerCase().includes(searchTerm.toLowerCase()));
+            const lowSearch = searchTerm.toLowerCase();
+            items = items.filter(item =>
+                item.name?.toLowerCase().includes(lowSearch) ||
+                item.category?.toLowerCase().includes(lowSearch)
+            );
         }
+
+        // 3. Tab filters
         if (activeFilter !== 'all') {
             if (activeFilter === 'low-stock') {
-                filtered = filtered.filter(ing => {
-                    const totalStock = (ing.batches || []).reduce((sum, batch) => sum + batch.currentQuantity, 0);
-                    return totalStock < (ing.minStock || 0);
-                });
+                items = items.filter(item => (item.stock || 0) <= (item.minStock || 0));
             } else if (activeFilter === 'expiring') {
-                filtered = filtered.filter(ing => {
-                    const batches = ing.batches || [];
+                items = items.filter(item => {
+                    const batches = item.batches || [];
                     return batches.some(batch => {
                         const daysUntilExpiry = Math.floor((new Date(batch.expiresAt).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
                         return daysUntilExpiry <= 7 && daysUntilExpiry >= 0;
                     });
                 });
             } else {
-                filtered = filtered.filter(ing => ing.category === activeFilter);
+                items = items.filter(item => item.category === activeFilter);
             }
         }
-        return filtered;
-    }, [ingredients, searchTerm, activeFilter]);
+        return items;
+    }, [inventory, searchTerm, activeFilter, activeOutletId]);
 
     // Count for badges
-    // Count for badges
-    // ⚡ Bolt: Memoized to prevent unnecessary recalculation on search/typing
-    const expiringCount = React.useMemo(() => ingredients.filter(ing => {
-        const nearExpiryBatches = ing.batches?.filter(b => getDaysUntilExpiry(b.expiresAt) <= 7) || [];
-        return nearExpiryBatches.length > 0;
-    }).length, [ingredients]);
+    const expiringCount = React.useMemo(() => {
+        const outletInventory = inventory.filter(item => !activeOutletId || item.outletId === activeOutletId);
+        return outletInventory.filter(item => {
+            const batches = item.batches || [];
+            return batches.some(batch => {
+                const diff = new Date(batch.expiresAt).getTime() - new Date().getTime();
+                const days = Math.ceil(diff / (1000 * 3600 * 24));
+                return days <= 7 && days >= 0;
+            });
+        }).length;
+    }, [inventory, activeOutletId]);
 
-    const lowStockCount = React.useMemo(() => ingredients.filter(ing => {
-        const totalStock = ing.stock || 0;
-        const minStock = ing.minStock || 0;
-        return totalStock <= minStock;
-    }).length, [ingredients]);
+    const lowStockCount = React.useMemo(() => {
+        const outletInventory = inventory.filter(item => !activeOutletId || item.outletId === activeOutletId);
+        return outletInventory.filter(item => {
+            const totalStock = item.stock || 0;
+            const minStock = item.minStock || 0;
+            return totalStock <= minStock;
+        }).length;
+    }, [inventory, activeOutletId]);
 
     // Handle Import/OCR
     const handleImportComplete = async (data: any) => {
@@ -322,63 +298,93 @@ export const InventoryView: React.FC = () => {
 
                 if (match) {
                     try {
-                        // Create a "Count Adjustment" batch or just add stock?
-                        // If it's a count sheet, usually it sets the stock.
-                        // But here we only have 'addBatch'.
-                        // Let's assume we are ADDING stock or treating it as a received batch for simplicity in Phase 2.
-                        // Ideally "Inventory Count" should overwrite stock, but that requires diffing.
-                        // For now: Add as new batch (Received today).
-
                         const newBatch = {
                             id: crypto.randomUUID(),
                             ingredientId: match.id,
                             initialQuantity: Number(item.quantity) || 0,
                             currentQuantity: Number(item.quantity) || 0,
-                            expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // Default 30 days if not scanned
+                            expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
                             receivedAt: new Date().toISOString(),
-                            costPerUnit: match.costPerUnit, // Assume same cost
-                            barcode: match.defaultBarcode || '',
+                            costPerUnit: match.costPerUnit,
+                            barcode: (match as any).defaultBarcode || '',
                             unit: match.unit,
                             batchNumber: 'LOT-IMPORT',
                             outletId: activeOutletId,
                             status: 'ACTIVE' as const
                         };
 
-                        // Local
-                        addBatch(match.id, newBatch);
+                        // Find or create InventoryItem
+                        const existingInventoryItem = inventory.find(
+                            inv => inv.ingredientId === match.id && inv.outletId === activeOutletId
+                        );
 
-                        // Persistence
-                        // Re-fetch current (local state might have updated if we did it sequentially but pure state might not)
-                        // Safer to refer to 'match' which is from render scope.
-                        // CAUTION: If we update multiple times, 'match' is stale?
-                        // Yes, 'match' is from 'ingredients' prop.
-                        // But since we are inside an async loop, 'ingredients' doesn't change until re-render.
-                        // We must be careful.
-                        // Solution: Read the LATEST batches from the 'ingredients' array we have (which is stale) PLUS any we just added?
-                        // Or just simplistic append. "append to what we think is there".
-                        // Firestore race condition risk? Yes. But single user...
-
-                        const currentBatches = match.batches || [];
-                        // We can't easily see previous updates in this loop without tracking them.
-                        // Let's ignore race within the loop for different ingredients.
-                        // For SAME ingredient appearing twice? Unlikely in scan.
-
-                        const updatedBatches = [...currentBatches, newBatch];
-                        const newStock = updatedBatches.reduce((sum, b) => sum + b.currentQuantity, 0);
-
-                        await updateDocument(COLLECTIONS.INGREDIENTS, match.id, {
-                            batches: updatedBatches,
-                            stock: newStock
-                        });
+                        if (existingInventoryItem) {
+                            const updatedBatches = [...existingInventoryItem.batches, newBatch];
+                            const newStock = updatedBatches.reduce((sum, b) => sum + b.currentQuantity, 0);
+                            await updateInventoryItem({
+                                ...existingInventoryItem,
+                                batches: updatedBatches,
+                                stock: newStock,
+                                updatedAt: new Date().toISOString()
+                            });
+                        } else {
+                            const newInventoryItem: InventoryItem = {
+                                id: crypto.randomUUID(),
+                                ingredientId: match.id,
+                                outletId: activeOutletId,
+                                name: match.name,
+                                unit: match.unit,
+                                category: (match.category || 'other') as any,
+                                costPerUnit: match.costPerUnit || 0,
+                                stock: newBatch.currentQuantity,
+                                minStock: 5,
+                                optimalStock: 10,
+                                batches: [newBatch],
+                                updatedAt: new Date().toISOString()
+                            };
+                            await addInventoryItem(newInventoryItem);
+                        }
 
                         updatedCount++;
                     } catch (e) {
                         console.error("Error updating stock for", item.name, e);
                     }
                 } else {
-                    missedCount++;
-                    // Optional: Create new ingredient?
-                    // Skipping for now to avoid pollution.
+                    // CREATE STANDALONE ITEM FOR UNMATCHED INGREDIENTS
+                    try {
+                        const newBatch = {
+                            id: crypto.randomUUID(),
+                            initialQuantity: Number(item.quantity) || 0,
+                            currentQuantity: Number(item.quantity) || 0,
+                            expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+                            receivedAt: new Date().toISOString(),
+                            costPerUnit: 0,
+                            unit: item.unit || 'uds',
+                            batchNumber: 'LOT-IMPORT-NEW',
+                            outletId: activeOutletId,
+                            status: 'ACTIVE' as const
+                        };
+
+                        const newInventoryItem: InventoryItem = {
+                            id: crypto.randomUUID(),
+                            outletId: activeOutletId,
+                            name: item.name.toUpperCase(),
+                            unit: item.unit || 'uds',
+                            category: 'other',
+                            costPerUnit: 0,
+                            stock: newBatch.currentQuantity,
+                            minStock: 5,
+                            optimalStock: 10,
+                            batches: [newBatch],
+                            updatedAt: new Date().toISOString()
+                        };
+
+                        await addInventoryItem(newInventoryItem);
+                        updatedCount++;
+                    } catch (e) {
+                        console.error("Error creating standalone item for", item.name, e);
+                        missedCount++;
+                    }
                 }
             }
 
@@ -461,7 +467,7 @@ export const InventoryView: React.FC = () => {
                     <Filter size={14} />
                     Todo
                     <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${activeFilter === 'all' ? 'bg-primary/20 text-primary' : 'bg-white/5 text-slate-500'}`}>
-                        {ingredients.length}
+                        {inventory.filter(item => !activeOutletId || item.outletId === activeOutletId).length}
                     </span>
                     {activeFilter === 'all' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-t-full" />}
                 </button>
@@ -617,10 +623,10 @@ export const InventoryView: React.FC = () => {
                                                     onClick={() => {
                                                         setProductLookup({
                                                             found: true,
-                                                            barcode: ing.defaultBarcode || '',
+                                                            barcode: '', // Clear barcode for manual or use item's if available
                                                             name: ing.name,
                                                         });
-                                                        setScannedBarcode(ing.defaultBarcode || '');
+                                                        setScannedBarcode(ing.id); // Use item ID as barcode reference if needed
                                                         setBatchForm({
                                                             quantity: '',
                                                             expiryDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
@@ -635,7 +641,7 @@ export const InventoryView: React.FC = () => {
                                                 <button
                                                     onClick={(e) => {
                                                         e.stopPropagation();
-                                                        setPrintingItem({ ingredient: ing });
+                                                        setPrintingItem({ ingredient: ing as any });
                                                     }}
                                                     className="inline-flex items-center gap-2 bg-white/5 text-slate-400 px-3 py-2 rounded-lg font-bold text-xs hover:bg-white/10 hover:text-white transition-all active:scale-95 ml-2"
                                                     title="Imprimir Etiqueta Genérica"

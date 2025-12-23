@@ -1,7 +1,6 @@
 import type { StateCreator } from 'zustand';
-
 import type { AppState, StaffSlice } from '../types';
-import { setDocument, getDocumentById } from '../../services/firestoreService';
+import { setDocument, deleteDocument, getDocumentById, updateDocument } from '../../services/firestoreService';
 import { COLLECTIONS } from '../../firebase/collections';
 
 export const createStaffSlice: StateCreator<
@@ -13,17 +12,43 @@ export const createStaffSlice: StateCreator<
     staff: [],
     schedule: {},
     setStaff: (staff) => set({ staff }),
-    addEmployee: (employee) => set((state) => ({ staff: [...state.staff, employee] })),
-    updateEmployee: (employee) => set((state) => ({
-        staff: state.staff.map(e => e.id === employee.id ? employee : e)
-    })),
-    deleteEmployee: (id) => set((state) => ({ staff: state.staff.filter(e => e.id !== id) })),
+
+    addEmployee: async (employee) => {
+        set((state) => ({ staff: [...state.staff, employee] }));
+        try {
+            await setDocument(COLLECTIONS.STAFF, employee.id, employee);
+        } catch (error) {
+            console.error("Failed to add employee", error);
+        }
+    },
+
+    updateEmployee: async (employee) => {
+        set((state) => ({
+            staff: state.staff.map(e => e.id === employee.id ? employee : e)
+        }));
+        try {
+            await updateDocument(COLLECTIONS.STAFF, employee.id, employee);
+        } catch (error) {
+            console.error("Failed to update employee", error);
+        }
+    },
+
+    deleteEmployee: async (id) => {
+        set((state) => ({ staff: state.staff.filter(e => e.id !== id) }));
+        try {
+            await deleteDocument(COLLECTIONS.STAFF, id);
+        } catch (error) {
+            console.error("Failed to delete employee", error);
+        }
+    },
+
     updateSchedule: (month, data) => set((state) => ({
         schedule: {
             ...state.schedule,
             [month]: data
         }
     })),
+
     updateShift: (dateStr, employeeId, type) => set((state) => {
         const date = new Date(dateStr);
         const monthKey = date.toISOString().slice(0, 7);
@@ -48,6 +73,7 @@ export const createStaffSlice: StateCreator<
             }
         };
     }),
+
     removeShift: (dateStr, employeeId) => set((state) => {
         const date = new Date(dateStr);
         const monthKey = date.toISOString().slice(0, 7);
@@ -65,6 +91,7 @@ export const createStaffSlice: StateCreator<
             }
         };
     }),
+
     saveSchedule: async (month) => {
         const { schedule, activeOutletId } = get();
         if (!activeOutletId) return;
@@ -83,6 +110,7 @@ export const createStaffSlice: StateCreator<
             throw error;
         }
     },
+
     fetchSchedule: async (month) => {
         const { activeOutletId } = get();
         if (!activeOutletId) return;

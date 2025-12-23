@@ -5,7 +5,7 @@ import type { WasteReason } from '../types';
 import { AIWasteAdvisor } from './waste/AIWasteAdvisor';
 
 export const WasteView = () => {
-    const { ingredients, wasteRecords, addWasteRecord } = useStore();
+    const { ingredients, wasteRecords, addWasteRecord, inventory, activeOutletId } = useStore();
     const [activeTab, setActiveTab] = useState<'log' | 'dashboard'>('log');
 
     // Form State
@@ -15,9 +15,21 @@ export const WasteView = () => {
     const [notes, setNotes] = useState('');
     const [searchTerm, setSearchTerm] = useState('');
 
-    const filteredIngredients = ingredients.filter(ing =>
-        ing.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filteredIngredients = React.useMemo(() => {
+        // Only show ingredients that exist in the current outlet's inventory
+        return inventory
+            .filter(item => !activeOutletId || item.outletId === activeOutletId)
+            .map(item => {
+                const master = ingredients.find(ing => ing.id === item.ingredientId);
+                return {
+                    ...master,
+                    ...item,
+                    name: master?.name || 'Desconocido',
+                    unit: master?.unit || 'un'
+                };
+            })
+            .filter(ing => ing.name.toLowerCase().includes(searchTerm.toLowerCase()));
+    }, [inventory, ingredients, activeOutletId, searchTerm]);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -113,7 +125,7 @@ export const WasteView = () => {
                                                     className="w-full text-left px-4 py-2 hover:bg-white/5 border-b border-white/5 last:border-0 flex justify-between"
                                                 >
                                                     <span>{ing.name}</span>
-                                                    <span className="text-xs text-slate-500">{ing.stock} {ing.unit} disponibles</span>
+                                                    <span className="text-xs text-slate-500">{ing.stock ?? 0} {ing.unit} disponibles</span>
                                                 </button>
                                             ))}
                                         </div>

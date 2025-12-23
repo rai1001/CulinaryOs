@@ -77,6 +77,13 @@ const saveMockDB = (data: any) => {
     }
 };
 
+// Helper to dispatch mock update event
+const dispatchMockUpdate = (collection: string) => {
+    if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('MOCK_DB_UPDATED', { detail: { collection } }));
+    }
+};
+
 export const setDocument = async <T extends DocumentData>(collectionName: string, id: string, data: WithFieldValue<T>): Promise<void> => {
     const mockDB = getMockDB();
     if (mockDB) {
@@ -89,6 +96,7 @@ export const setDocument = async <T extends DocumentData>(collectionName: string
             mockDB[collectionName].push(docData);
         }
         saveMockDB(mockDB);
+        dispatchMockUpdate(collectionName);
         return;
     }
     const docRef = doc(db, collectionName, id);
@@ -106,6 +114,7 @@ export const addDocument = async <T extends DocumentData>(collectionRef: Collect
         const docData = sanitizeData({ ...data, id });
         mockDB[collectionName].push(docData);
         saveMockDB(mockDB);
+        dispatchMockUpdate(collectionName);
         return id;
     }
     const docRef = await addDoc(collectionRef, sanitizeData(data as any));
@@ -120,6 +129,7 @@ export const updateDocument = async <T>(collectionName: string, id: string, data
         if (index >= 0) {
             mockDB[collectionName][index] = { ...mockDB[collectionName][index], ...sanitizeData(data as any) };
             saveMockDB(mockDB);
+            dispatchMockUpdate(collectionName);
         }
         return;
     }
@@ -133,6 +143,7 @@ export const deleteDocument = async (collectionName: string, id: string): Promis
         if (mockDB[collectionName]) {
             mockDB[collectionName] = mockDB[collectionName].filter((d: any) => d.id !== id);
             saveMockDB(mockDB);
+            dispatchMockUpdate(collectionName);
         }
         return;
     }
@@ -154,6 +165,7 @@ export const batchSetDocuments = async <T extends DocumentData>(collectionName: 
             }
         });
         saveMockDB(mockDB);
+        dispatchMockUpdate(collectionName);
         return;
     }
 
@@ -339,6 +351,7 @@ export const deleteAllDocuments = async (collectionName: string): Promise<void> 
         if (mockDB[collectionName]) {
             mockDB[collectionName] = [];
             saveMockDB(mockDB);
+            dispatchMockUpdate(collectionName);
         }
         return;
     }
@@ -362,6 +375,7 @@ export const batchDeleteDocuments = async (collectionName: string, ids: string[]
         if (mockDB[collectionName]) {
             mockDB[collectionName] = mockDB[collectionName].filter((d: any) => !ids.includes(d.id));
             saveMockDB(mockDB);
+            dispatchMockUpdate(collectionName);
         }
         return;
     }

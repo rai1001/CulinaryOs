@@ -60,6 +60,7 @@ describe('IngredientList Performance Optimization', () => {
         const { getByText } = render(<IngredientList {...props} />);
         expect(getByText('Tomato')).toBeDefined();
         expect(getByText('Onion')).toBeDefined();
+        expect(getByText('Seguimiento')).toBeDefined();
     });
 
     // We can't easily test internal complexity (O(N*M)) here without rendering large lists and timing it,
@@ -88,5 +89,24 @@ describe('IngredientList Performance Optimization', () => {
         // Class: "absolute right-0 bottom-full mb-2 hidden group-hover/price:block z-50"
 
         expect(container.textContent).toContain('Guerra de Precios');
+    });
+
+    it('displays the correct tracking status', () => {
+        const { getByText, getAllByText } = render(<IngredientList {...props} />);
+
+        // Since both mockIngredients have no isTrackedInInventory property, 
+        // they should default to 'Inventario' in the component logic (ing.isTrackedInInventory !== false).
+        expect(getAllByText('Inventario').length).toBeGreaterThan(0);
+
+        // Add a direct ingredient to verify it shows 'Directo'
+        const directIngredient: Ingredient = {
+            ...mockIngredients[0],
+            id: '4',
+            name: 'Special Spice',
+            isTrackedInInventory: false
+        };
+
+        const { getByText: getByTextDirect } = render(<IngredientList {...props} ingredients={[directIngredient]} />);
+        expect(getByTextDirect('Directo')).toBeDefined();
     });
 });

@@ -1,5 +1,11 @@
 import type { RecipeIngredient, Ingredient } from '../types';
 
+export const ALLERGENS = [
+    'Huevo', 'Leche', 'Gluten', 'Frutos de cáscara', 'Cacahuete',
+    'Sésamo', 'Altramuz', 'Pescado', 'Crustáceos', 'Moluscos',
+    'Soja', 'Apio', 'Mostaza', 'Sulfitos'
+];
+
 /**
  * Aggregates allergens from a list of recipe ingredients.
  * @param ingredients List of recipe ingredients

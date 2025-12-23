@@ -2,7 +2,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { TIME, INVENTORY } from '../constants';
 import type { Ingredient, IngredientBatch, Event, Menu, Recipe } from '../types';
 import { firestoreService } from './firestoreService';
-import { COLLECTIONS } from '../firebase/collections';
+import { COLLECTIONS, collections } from '../firebase/collections';
+import { where } from 'firebase/firestore';
 
 /**
  * Consume stock using FIFO (First In, First Out) method based on expiry dates
@@ -78,7 +79,8 @@ export const createDefaultBatch = (ingredient: Ingredient): IngredientBatch => {
 export const createMigrationBatch = (
     ingredientId: string,
     currentStock: number,
-    costPerUnit: number
+    costPerUnit: number,
+    outletId: string
 ): IngredientBatch => {
     return {
         id: crypto.randomUUID(),
@@ -90,7 +92,7 @@ export const createMigrationBatch = (
         expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
         receivedAt: new Date().toISOString(),
         costPerUnit: costPerUnit,
-        outletId: 'unknown',
+        outletId: outletId,
         status: 'ACTIVE'
     };
 };
@@ -153,7 +155,7 @@ export const getBatchesExpiringSoon = (
 export const deductStockForEvent = async (eventId: string, _userId?: string): Promise<void> => {
     // 1. Fetch Event
     const event = await firestoreService.getById<Event>(COLLECTIONS.EVENTS, eventId);
-    if (!event || !event.menuId) return;
+    if (!event || !event.menuId || !event.outletId) return;
 
     // 2. Fetch Menu
     const menu = await firestoreService.getById<Menu>(COLLECTIONS.MENUS, event.menuId);
@@ -181,25 +183,31 @@ export const deductStockForEvent = async (eventId: string, _userId?: string): Pr
         });
     });
 
-    // 5. Fetch Ingredients and Deduct
+    // 5. Fetch InventoryItems and Deduct
     for (const [ingId, qtyNeeded] of Object.entries(ingredientNeeds)) {
         if (qtyNeeded <= 0) continue;
 
-        const ingredient = await firestoreService.getById<Ingredient>(COLLECTIONS.INGREDIENTS, ingId);
-        if (!ingredient) continue;
+        // Find InventoryItem for this ingredient at this outlet
+        const inventoryItems = await firestoreService.query<any>(collections.inventory,
+            where('ingredientId', '==', ingId),
+            where('outletId', '==', event.outletId)
+        );
 
-        // Ensure batches exist
-        const ingWithBatches = initializeBatches(ingredient);
-        const batches = ingWithBatches.batches || [];
+        if (inventoryItems.length === 0) continue;
+        const inventoryItem = inventoryItems[0];
+
+        const batches = inventoryItem.batches || [];
+        if (batches.length === 0) continue;
 
         // Consume
         const { newBatches } = consumeStockFIFO(batches, qtyNeeded);
         const newStock = calculateTotalStock(newBatches);
 
-        // Update Ingredient
-        await firestoreService.update(COLLECTIONS.INGREDIENTS, ingId, {
+        // Update InventoryItem
+        await firestoreService.update(COLLECTIONS.INVENTORY, inventoryItem.id, {
             batches: newBatches,
-            stock: newStock
+            stock: newStock,
+            updatedAt: new Date().toISOString()
         });
     }
 };
