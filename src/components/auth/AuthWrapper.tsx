@@ -31,36 +31,38 @@ export const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
     const { setActiveOutletId, setCurrentUser } = useStore();
 
     useEffect(() => {
-        // E2E Bypass for Testing
-        const e2eUserStr = localStorage.getItem('E2E_TEST_USER');
-        if (e2eUserStr) {
-            try {
-                const userData = JSON.parse(e2eUserStr);
-                // Mock Firebase User
-                setUser({
-                    uid: userData.id,
-                    email: userData.email,
-                    displayName: userData.name,
-                    photoURL: userData.photoURL
-                } as any);
-                // Mock Firestore Profile
-                setUserProfile({
-                    uid: userData.id,
-                    email: userData.email,
-                    role: userData.role,
-                    active: true,
-                    allowedOutlets: userData.allowedOutlets,
-                    defaultOutletId: userData.activeOutletId
-                });
-                // Set Global Store
-                setCurrentUser(userData);
-                if (userData.activeOutletId) {
-                    setActiveOutletId(userData.activeOutletId);
+        // E2E Bypass for Testing - Only available in DEV environment
+        if (import.meta.env.DEV) {
+            const e2eUserStr = localStorage.getItem('E2E_TEST_USER');
+            if (e2eUserStr) {
+                try {
+                    const userData = JSON.parse(e2eUserStr);
+                    // Mock Firebase User
+                    setUser({
+                        uid: userData.id,
+                        email: userData.email,
+                        displayName: userData.name,
+                        photoURL: userData.photoURL
+                    } as any);
+                    // Mock Firestore Profile
+                    setUserProfile({
+                        uid: userData.id,
+                        email: userData.email,
+                        role: userData.role,
+                        active: true,
+                        allowedOutlets: userData.allowedOutlets,
+                        defaultOutletId: userData.activeOutletId
+                    });
+                    // Set Global Store
+                    setCurrentUser(userData);
+                    if (userData.activeOutletId) {
+                        setActiveOutletId(userData.activeOutletId);
+                    }
+                    setLoading(false);
+                    return;
+                } catch (e) {
+                    console.error("E2E Bypass Failed", e);
                 }
-                setLoading(false);
-                return;
-            } catch (e) {
-                console.error("E2E Bypass Failed", e);
             }
         }
 
