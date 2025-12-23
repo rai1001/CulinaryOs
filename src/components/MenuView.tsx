@@ -3,7 +3,8 @@ import React, { useState } from 'react';
 import {
     addDocument,
     updateDocument,
-    deleteDocument
+    deleteDocument,
+    firestoreService
 } from '../services/firestoreService';
 import { COLLECTIONS, collections } from '../firebase/collections';
 import { useStore } from '../store/useStore';
@@ -23,6 +24,21 @@ export const MenuView: React.FC = () => {
     const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; id: string | null }>({ isOpen: false, id: null });
     const [isSaving, setIsSaving] = useState(false);
     const [importType, setImportType] = useState<ImportType | null>(null);
+    const [isDeletingAll, setIsDeletingAll] = useState(false);
+
+    const handleClearData = async () => {
+        if (!window.confirm('¿ESTÁS SEGURO? Esto borrará TODOS los menús permanentemente.')) return;
+        setIsDeletingAll(true);
+        try {
+            await firestoreService.deleteAll(COLLECTIONS.MENUS);
+            window.location.reload();
+        } catch (e) {
+            console.error(e);
+            alert('Error al borrar datos');
+        } finally {
+            setIsDeletingAll(false);
+        }
+    };
     const [activeCategory, setActiveCategory] = useState<string>('all');
     const [activeStatus, setActiveStatus] = useState<string>('all');
     const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({
@@ -468,21 +484,30 @@ export const MenuView: React.FC = () => {
                     </h1>
                     <p className="text-slate-400 mt-1">Crea y organiza tus propuestas gastronómicas</p>
                 </div>
-                <button
-                    onClick={() => setImportType('menu')}
-                    className="bg-surface hover:bg-white/10 text-slate-300 border border-white/10 px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 mr-2"
-                >
-                    <Utensils className="w-4 h-4" /> Importar / Escanear Carta
-                </button>
-                <button
-                    onClick={() => {
-                        setFormData({ name: '', description: '', recipeIds: [], variations: [], sellPrice: 0 });
-                        setIsEditing(true);
-                    }}
-                    className="bg-primary hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-all shadow-lg hover:shadow-primary/25"
-                >
-                    <Plus size={20} /> Nuevo Menú
-                </button>
+                <div className="flex items-center">
+                    <button
+                        onClick={handleClearData}
+                        disabled={isDeletingAll}
+                        className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 mr-2"
+                    >
+                        <Trash2 className="w-4 h-4" /> {isDeletingAll ? '...' : 'Borrar Todo'}
+                    </button>
+                    <button
+                        onClick={() => setImportType('menu')}
+                        className="bg-surface hover:bg-white/10 text-slate-300 border border-white/10 px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 mr-2"
+                    >
+                        <Utensils className="w-4 h-4" /> Importar / Escanear Carta
+                    </button>
+                    <button
+                        onClick={() => {
+                            setFormData({ name: '', description: '', recipeIds: [], variations: [], sellPrice: 0 });
+                            setIsEditing(true);
+                        }}
+                        className="bg-primary hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-all shadow-lg hover:shadow-primary/25"
+                    >
+                        <Plus size={20} /> Nuevo Menú
+                    </button>
+                </div>
             </div>
 
             {/* Search */}

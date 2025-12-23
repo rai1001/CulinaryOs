@@ -11,7 +11,15 @@ export const createIngredientSlice: StateCreator<
 > = (set, get) => ({
     ingredients: [],
     setIngredients: (ingredients) => set({ ingredients }),
-    addIngredient: (ingredient) => set((state) => ({ ingredients: [...state.ingredients, ingredient] })),
+    addIngredient: (ingredient) => set((state) => {
+        const exists = state.ingredients.some(i => i.id === ingredient.id);
+        if (exists) {
+            return {
+                ingredients: state.ingredients.map(i => i.id === ingredient.id ? ingredient : i)
+            };
+        }
+        return { ingredients: [...state.ingredients, ingredient] };
+    }),
 
     updateIngredient: (updatedIngredient) => set((state) => {
         const current = state.ingredients.find(i => i.id === updatedIngredient.id);

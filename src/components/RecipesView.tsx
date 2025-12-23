@@ -3,13 +3,13 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import { useOutletScoping } from '../hooks/useOutletScoping';
-import { ChefHat, Search, Plus, X, Layers, Sparkles, Loader2, Import, Store } from 'lucide-react';
+import { ChefHat, Search, Plus, X, Layers, Sparkles, Loader2, Import, Store, Trash2 } from 'lucide-react';
 import { RecipeList } from './lists/RecipeList';
 import { RecipeForm } from './RecipeForm';
 import { searchRecipes } from '../api/ai';
 import { DataImportModal, type ImportType } from './common/DataImportModal';
 
-import { deleteDocument, addDocument } from '../services/firestoreService';
+import { deleteDocument, addDocument, firestoreService } from '../services/firestoreService';
 import { COLLECTIONS, collections } from '../firebase/collections';
 import { convertirRecetaAFicha } from '../services/fichasTecnicasService';
 import type { Recipe } from '../types';
@@ -37,6 +37,21 @@ export const RecipesView: React.FC = () => {
     const [activeTab, setActiveTab] = useState<'all' | 'regular' | 'base'>('all');
     const [importType, setImportType] = useState<ImportType | null>(null);
     const [subCategory, setSubCategory] = useState<string>('all');
+    const [isDeletingAll, setIsDeletingAll] = useState(false);
+
+    const handleClearData = async () => {
+        if (!window.confirm('¿ESTÁS SEGURO? Esto borrará TODAS las recetas permanentemente.')) return;
+        setIsDeletingAll(true);
+        try {
+            await firestoreService.deleteAll(COLLECTIONS.RECIPES);
+            window.location.reload();
+        } catch (e) {
+            console.error(e);
+            alert('Error al borrar datos');
+        } finally {
+            setIsDeletingAll(false);
+        }
+    };
     const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({
         key: 'name',
         direction: 'asc'
@@ -267,6 +282,13 @@ export const RecipesView: React.FC = () => {
                         {isAiSearch ? 'IA Activa' : 'IA'}
                     </button>
                     <button
+                        onClick={handleClearData}
+                        disabled={isDeletingAll}
+                        className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 mr-2"
+                    >
+                        <Trash2 className="w-4 h-4" /> {isDeletingAll ? '...' : 'Borrar Todo'}
+                    </button>
+                    <button
                         onClick={() => setImportType('recipe')}
                         className="bg-surface hover:bg-white/10 text-slate-300 border border-white/10 px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 mr-2"
                     >
@@ -315,63 +337,69 @@ export const RecipesView: React.FC = () => {
                     <Layers className="w-4 h-4" />
                     Bases ({baseRecipes.filter(r => r.outletId === activeOutletId).length})
                 </button>
-            </div>
+            </div >
 
             {/* Sub-Category Pills (only if not searching with AI) */}
-            {!isAiSearch && (
-                <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
-                    {RECIPE_CATEGORIES.map(cat => (
-                        <button
-                            key={cat.id}
-                            onClick={() => setSubCategory(cat.id)}
-                            className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all border ${subCategory === cat.id
-                                ? 'bg-primary/20 border-primary text-primary'
-                                : 'bg-surface border-white/5 text-slate-500 hover:border-white/10 hover:text-white'
-                                }`}
-                        >
-                            {cat.label}
-                        </button>
-                    ))}
-                </div>
-            )}
+            {
+                !isAiSearch && (
+                    <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
+                        {RECIPE_CATEGORIES.map(cat => (
+                            <button
+                                key={cat.id}
+                                onClick={() => setSubCategory(cat.id)}
+                                className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all border ${subCategory === cat.id
+                                    ? 'bg-primary/20 border-primary text-primary'
+                                    : 'bg-surface border-white/5 text-slate-500 hover:border-white/10 hover:text-white'
+                                    }`}
+                            >
+                                {cat.label}
+                            </button>
+                        ))}
+                    </div>
+                )
+            }
 
-            {!isValidOutlet ? (
-                <div className="flex flex-col items-center justify-center p-12 border-2 border-dashed border-white/10 rounded-xl bg-white/5 mt-8">
-                    <Store className="w-12 h-12 text-slate-500 mb-4" />
-                    <h3 className="text-xl font-bold text-white mb-2">Selecciona una Cocina</h3>
-                    <p className="text-slate-400 text-center max-w-md">
-                        Selecciona una cocina activa para ver y gestionar sus recetas.
-                    </p>
-                </div>
-            ) : (
-                <RecipeList
-                    recipes={scopedRecipes}
-                    onEdit={handleEdit}
-                    onDelete={handleDelete}
-                    onConvertToFicha={handleConvertToFicha}
-                    sortConfig={sortConfig}
-                    onSort={handleSort}
-                />
-            )}
+            {
+                !isValidOutlet ? (
+                    <div className="flex flex-col items-center justify-center p-12 border-2 border-dashed border-white/10 rounded-xl bg-white/5 mt-8">
+                        <Store className="w-12 h-12 text-slate-500 mb-4" />
+                        <h3 className="text-xl font-bold text-white mb-2">Selecciona una Cocina</h3>
+                        <p className="text-slate-400 text-center max-w-md">
+                            Selecciona una cocina activa para ver y gestionar sus recetas.
+                        </p>
+                    </div>
+                ) : (
+                    <RecipeList
+                        recipes={scopedRecipes}
+                        onEdit={handleEdit}
+                        onDelete={handleDelete}
+                        onConvertToFicha={handleConvertToFicha}
+                        sortConfig={sortConfig}
+                        onSort={handleSort}
+                    />
+                )
+            }
 
-            {showAddModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-                    <div className="relative w-full max-w-lg">
-                        <button
-                            onClick={closeModal}
-                            className="absolute top-4 right-4 text-slate-400 hover:text-white z-10"
-                        >
-                            <X className="w-5 h-5" />
-                        </button>
-                        <div onClick={e => e.stopPropagation()}>
-                            <RecipeForm
-                                onClose={closeModal}
-                                initialData={editingRecipe}
-                            />
+            {
+                showAddModal && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                        <div className="relative w-full max-w-lg">
+                            <button
+                                onClick={closeModal}
+                                className="absolute top-4 right-4 text-slate-400 hover:text-white z-10"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                            <div onClick={e => e.stopPropagation()}>
+                                <RecipeForm
+                                    onClose={closeModal}
+                                    initialData={editingRecipe}
+                                />
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             <DataImportModal
                 isOpen={!!importType}
@@ -379,6 +407,6 @@ export const RecipesView: React.FC = () => {
                 type={importType || 'recipe'}
                 onImportComplete={handleImportComplete}
             />
-        </div>
+        </div >
     );
 };

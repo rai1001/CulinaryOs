@@ -1,7 +1,7 @@
 import React, { Suspense } from 'react';
 import { Routes, Route, Navigate, NavLink, useLocation } from 'react-router-dom';
 import { Dashboard } from './components/Dashboard';
-import { LayoutDashboard, Calendar, ShoppingCart, Database, CalendarDays, ChefHat, Package, Truck, ClipboardList, ShoppingBag, Trash2, ShieldCheck, TrendingUp, Search, BookOpen, Sparkles, Coffee, Menu as MenuIcon, X, Briefcase, Settings, LogOut, FileText } from 'lucide-react';
+import { LayoutDashboard, Calendar, ShoppingCart, Database, CalendarDays, ChefHat, Package, Truck, ClipboardList, ShoppingBag, Trash2, ShieldCheck, TrendingUp, Search, BookOpen, Sparkles, Coffee, Menu as MenuIcon, X, Briefcase, Settings, LogOut, FileText, ChevronDown, Activity, Layers, Zap } from 'lucide-react';
 import { getAuth } from 'firebase/auth';
 import { useStore } from './store/useStore';
 import { OutletSelector } from './components/OutletSelector';
@@ -112,50 +112,64 @@ function App() {
 
         <OutletSelector />
 
-        <nav className="flex-1 px-4 space-y-2 py-4">
-          <NavItem to="/dashboard" icon={<LayoutDashboard />} label="Inicio" />
-          <NavItem to="/schedule" icon={<Calendar />} label="Horario" />
-          <NavItem to="/events" icon={<CalendarDays />} label="Eventos" />
-          <NavItem to="/hospitality" icon={<Coffee />} label="Logística Hotel" />
-          <NavItem to="/breakfast" icon={<Coffee />} label="Servicio Diario" />
-          <NavItem to="/purchasing" icon={<ShoppingBag />} label="Compras Auto" />
-          <NavItem to="/waste" icon={<Trash2 />} label="Mermas" />
-          <NavItem to="/haccp" icon={<ShieldCheck />} label="HACCP Digital" />
-          <NavItem to="/analytics" icon={<TrendingUp />} label="Ingeniería Menú" />
+        <nav className="flex-1 px-4 space-y-4 py-4">
+          <NavGroup
+            label="Logística / Operaciones"
+            icon={<Layers />}
+            activePaths={['/dashboard', '/schedule', '/events', '/hospitality', '/breakfast', '/purchasing', '/waste', '/haccp', '/analytics']}
+          >
+            <NavItem to="/dashboard" icon={<LayoutDashboard />} label="Inicio" />
+            <NavItem to="/schedule" icon={<Calendar />} label="Horario" />
+            <NavItem to="/events" icon={<CalendarDays />} label="Eventos" />
+            <NavItem to="/hospitality" icon={<Coffee />} label="Logística Hotel" />
+            <NavItem to="/breakfast" icon={<Coffee />} label="Servicio Diario" />
+            <NavItem to="/purchasing" icon={<ShoppingBag />} label="Compras Auto" />
+            <NavItem to="/waste" icon={<Trash2 />} label="Mermas" />
+            <NavItem to="/haccp" icon={<ShieldCheck />} label="HACCP Digital" />
+            <NavItem to="/analytics" icon={<TrendingUp />} label="Ingeniería Menú" />
+          </NavGroup>
 
-          <div className="pt-4 pb-2">
-            <p className="px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Menús</p>
-          </div>
+          <NavGroup
+            label="Estrategia Menús"
+            icon={<BookOpen />}
+            activePaths={['/menus', '/fichas-tecnicas', '/ai-menu']}
+          >
+            <NavItem to="/menus" icon={<BookOpen />} label="Mis Menús" />
+            <NavItem to="/fichas-tecnicas" icon={<FileText />} label="Fichas Técnicas" />
+            <NavItem to="/ai-menu" icon={<Sparkles />} label="Generador IA" />
+          </NavGroup>
 
-          <NavItem to="/menus" icon={<BookOpen />} label="Mis Menús" />
-          <NavItem to="/fichas-tecnicas" icon={<FileText />} label="Fichas Técnicas" />
-          <NavItem to="/ai-menu" icon={<Sparkles />} label="Generador IA" />
+          <NavGroup
+            label="Inteligencia AI"
+            icon={<Sparkles />}
+            activePaths={['/ai-search']}
+          >
+            <NavItem to="/ai-search" icon={<Search />} label="Asistente Chef" />
+          </NavGroup>
 
-          <div className="pt-4 pb-2">
-            <p className="px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Chef AI</p>
-          </div>
+          <NavGroup
+            label="Gestión Base"
+            icon={<Database />}
+            activePaths={['/ingredients', '/inventory', '/recipes', '/suppliers', '/staff']}
+          >
+            <NavItem to="/ingredients" icon={<Package />} label="Ingredientes" />
+            <NavItem to="/inventory" icon={<ClipboardList />} label="Inventario" />
+            <NavItem to="/recipes" icon={<ChefHat />} label="Recetas" />
+            <NavItem to="/suppliers" icon={<Truck />} label="Proveedores" />
+            <NavItem to="/staff" icon={<Briefcase />} label="Personal" />
+          </NavGroup>
 
-          <NavItem to="/ai-search" icon={<Search />} label="Asistente Chef" />
+          <NavGroup
+            label="Producción / Modo KDS"
+            icon={<Zap />}
+            activePaths={['/production', '/kds', '/data']}
+          >
+            <NavItem to="/production" icon={<ShoppingCart />} label="Producción" />
+            <NavItem to="/kds" icon={<ChefHat />} label="Modo KDS (Tablet)" />
+            <NavItem to="/data" icon={<Database />} label="Datos" />
+          </NavGroup>
 
-          <div className="pt-4 pb-2">
-            <p className="px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Gestión</p>
-          </div>
-
-          <NavItem to="/ingredients" icon={<Package />} label="Ingredientes" />
-          <NavItem to="/inventory" icon={<ClipboardList />} label="Inventario" />
-          <NavItem to="/recipes" icon={<ChefHat />} label="Recetas" />
-          <NavItem to="/suppliers" icon={<Truck />} label="Proveedores" />
-          <NavItem to="/staff" icon={<Briefcase />} label="Personal" />
-
-          <div className="pt-4 pb-2">
-            <p className="px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Producción</p>
-          </div>
-
-          <NavItem to="/production" icon={<ShoppingCart />} label="Producción" />
-          <NavItem to="/kds" icon={<ChefHat />} label="Modo KDS (Tablet)" />
-          <NavItem to="/data" icon={<Database />} label="Datos" />
-
-          <div className="pt-4 pb-2 border-t border-white/5 mt-4">
+          <div className="pt-4 border-t border-white/5">
             <NavItem to="/integrations" icon={<Settings />} label="Integraciones" />
           </div>
         </nav>
@@ -253,14 +267,56 @@ const NavItem = ({ icon, label, to }: NavItemProps) => {
   return (
     <NavLink
       to={to}
-      className={({ isActive }) => `w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${isActive
+      className={({ isActive }) => `w-full flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all ${isActive
         ? 'bg-primary text-white shadow-lg shadow-primary/20'
         : 'text-slate-400 hover:bg-white/5 hover:text-white'
         }`}
     >
-      {React.cloneElement(icon, { size: 20 })}
+      {React.cloneElement(icon, { size: 18 })}
       <span className="font-medium text-sm">{label}</span>
     </NavLink>
+  );
+};
+
+interface NavGroupProps {
+  label: string;
+  icon: React.ReactElement;
+  children: React.ReactNode;
+  activePaths: string[];
+}
+
+const NavGroup = ({ label, icon, children, activePaths }: NavGroupProps) => {
+  const location = useLocation();
+  const isAnyChildActive = activePaths.some(path => location.pathname.startsWith(path));
+  const [isOpen, setIsOpen] = React.useState(isAnyChildActive);
+
+  // Auto-expand if a child becomes active
+  React.useEffect(() => {
+    if (isAnyChildActive) setIsOpen(true);
+  }, [isAnyChildActive]);
+
+  return (
+    <div className="space-y-1">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className={`w-full flex items-center justify-between px-4 py-2 rounded-xl transition-all hover:bg-white/5 group ${isAnyChildActive ? 'text-white' : 'text-slate-500'
+          }`}
+      >
+        <div className="flex items-center gap-3">
+          {React.cloneElement(icon as React.ReactElement, { size: 18, className: isAnyChildActive ? 'text-primary' : '' })}
+          <span className={`font-semibold text-[10px] uppercase tracking-[0.1em] ${isAnyChildActive ? 'text-slate-200' : 'text-slate-500'}`}>{label}</span>
+        </div>
+        <ChevronDown
+          size={14}
+          className={`transition-transform duration-200 ${isOpen ? 'rotate-180' : ''} ${isAnyChildActive ? 'text-primary' : 'text-slate-600'}`}
+        />
+      </button>
+      {isOpen && (
+        <div className="pl-3 space-y-1 mt-1 border-l border-white/5 ml-4 animate-in fade-in slide-in-from-left-2 duration-200">
+          {children}
+        </div>
+      )}
+    </div>
   );
 };
 

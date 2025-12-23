@@ -2,7 +2,7 @@
 export type Unit = 'kg' | 'g' | 'L' | 'ml' | 'un' | 'manojo';
 import type { IngredientSupplierConfig } from './suppliers';
 
-export type InventoryCategory = 'meat' | 'fish' | 'produce' | 'dairy' | 'dry' | 'frozen' | 'canned' | 'cocktail' | 'sports_menu' | 'corporate_menu' | 'coffee_break' | 'restaurant' | 'other';
+export type InventoryCategory = 'meat' | 'fish' | 'produce' | 'dairy' | 'dry' | 'frozen' | 'canned' | 'cocktail' | 'sports_menu' | 'corporate_menu' | 'coffee_break' | 'restaurant' | 'other' | 'preparation';
 
 export interface NutritionalInfo {
     calories: number; // kcal per 100g/ml
@@ -31,6 +31,7 @@ export interface Batch {
     purchaseOrderId?: string;
     outletId: string;
     status: 'ACTIVE' | 'DEPLETED' | 'EXPIRED';
+    barcode?: string;
 }
 
 export type IngredientBatch = Batch;

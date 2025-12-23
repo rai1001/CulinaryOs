@@ -11,7 +11,8 @@ import {
     limit,
     startAfter,
     collection,
-    getDoc
+    getDoc,
+    writeBatch
 } from "firebase/firestore";
 import type {
     CollectionReference,
@@ -299,6 +300,30 @@ export const getDocumentById = async <T>(collectionName: string, id: string): Pr
     return d.exists() ? { id: d.id, ...d.data() } as any : undefined;
 };
 
+// Batch delete helper
+export const deleteAllDocuments = async (collectionName: string): Promise<void> => {
+    const mockDB = getMockDB();
+    if (mockDB) {
+        if (mockDB[collectionName]) {
+            mockDB[collectionName] = [];
+            saveMockDB(mockDB);
+        }
+        return;
+    }
+
+    const colRef = collection(db, collectionName);
+    const snapshot = await getDocs(colRef);
+
+    if (snapshot.empty) return;
+
+    const batch = writeBatch(db);
+    snapshot.docs.forEach((doc) => {
+        batch.delete(doc.ref);
+    });
+
+    await batch.commit();
+};
+
 // Unified Service Export
 export const firestoreService = {
     getAll: getAllDocuments,
@@ -306,5 +331,6 @@ export const firestoreService = {
     update: updateDocument,
     create: addDocument,
     delete: deleteDocument,
+    deleteAll: deleteAllDocuments,
     query: queryDocuments
 };

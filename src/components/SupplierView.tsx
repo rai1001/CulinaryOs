@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { useStore } from '../store/useStore';
-import { Plus, Camera, Loader2 } from 'lucide-react';
+import { Plus, Camera, Loader2, Trash2 } from 'lucide-react';
 import type { Supplier } from '../types/suppliers';
 import { proveedoresService } from '../services/proveedoresService';
+import { firestoreService } from '../services/firestoreService';
+import { COLLECTIONS } from '../firebase/collections';
 
 import { ExcelImporter } from './common/ExcelImporter';
 import { ProveedoresList } from './proveedores/ProveedoresList';
@@ -18,6 +20,35 @@ export const SupplierView: React.FC = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isDeletingAll, setIsDeletingAll] = useState(false);
+
+    const handleClearData = async () => {
+        if (!window.confirm('¿ESTÁS SEGURO? Esto borrará TODOS los proveedores permanentemente.')) return;
+        setIsDeletingAll(true);
+        try {
+            await firestoreService.deleteAll(COLLECTIONS.SUPPLIERS);
+            // Clear local store
+            useStore.setState({ suppliers: [] });
+            // Note: Since we are inside the component, we can't easily set state via store generic setter unless exposed. 
+            // store.useStore.setState is a direct way if imported, but useStore hook returns selectors.
+            // Let's check updateSupplier/deleteSupplier action. 
+            // Usually we might need a 'setSuppliers' action. 
+            // For now, I'll attempt to use a direct reload or assume the user accepts a refresh, 
+            // BUT better: iterate and delete locally OR expose setSuppliers.
+            // Looking at the useStore definitions, usually there is a setSuppliers or similar.
+            // Returning to simplicity: just reload or use deleteSupplier in a loop if internal logic forbids wipe.
+            // Actually, I can just reload window or assume firestore listener updates it?
+            // "suppliers" from useStore is likely synced if there is a listener.
+            // Use window.location.reload() as fallback if sync keeps it.
+            // Ideally:
+            window.location.reload();
+        } catch (e) {
+            console.error(e);
+            alert('Error al borrar datos');
+        } finally {
+            setIsDeletingAll(false);
+        }
+    };
 
     // Ingredient View State
     const [viewingIngredientsSupplier, setViewingIngredientsSupplier] = useState<Supplier | null>(null);
@@ -231,6 +262,14 @@ export const SupplierView: React.FC = () => {
                         />
 
                         <ExcelImporter onImport={handleImport} />
+                        <button
+                            onClick={handleClearData}
+                            disabled={isDeletingAll}
+                            className="flex items-center gap-2 bg-red-100 text-red-600 border border-red-200 px-4 py-2 rounded-lg hover:bg-red-200 transition-colors"
+                        >
+                            <Trash2 className="w-4 h-4" />
+                            <span>{isDeletingAll ? 'Borrando...' : 'Borrar Todo'}</span>
+                        </button>
                         <button
                             onClick={() => handleOpenModal()}
                             className="flex items-center gap-2 bg-primary hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors"

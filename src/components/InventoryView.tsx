@@ -5,13 +5,15 @@ import type { Ingredient } from '../types';
 import { BarcodeScanner } from './scanner/BarcodeScanner';
 import { ExpiryDateScanner } from './scanner/ExpiryDateScanner';
 import { DataImportModal, type ImportType } from './common/DataImportModal';
-import { addDocument, updateDocument } from '../services/firestoreService';
-import { collections, COLLECTION_NAMES } from '../firebase/collections';
+import { addDocument, updateDocument, firestoreService } from '../services/firestoreService';
+import { collections, COLLECTIONS } from '../firebase/collections';
 import { lookupProductByBarcode, type ProductLookupResult } from '../services/productLookupService';
 import { AIInventoryAdvisor } from './inventory/AIInventoryAdvisor';
+import { LabelPrinterModal } from './LabelPrinterModal';
+import { Printer, Trash2 } from 'lucide-react';
 
 type ScanStep = 'idle' | 'scanning-barcode' | 'product-found' | 'scanning-expiry' | 'confirm-batch';
-type FilterTab = 'all' | 'expiring' | 'low-stock' | 'meat' | 'fish' | 'produce' | 'dairy' | 'dry' | 'frozen' | 'canned' | 'cocktail' | 'sports_menu' | 'corporate_menu' | 'coffee_break' | 'restaurant' | 'cleaning' | 'other';
+type FilterTab = 'all' | 'expiring' | 'low-stock' | 'meat' | 'fish' | 'produce' | 'dairy' | 'dry' | 'frozen' | 'canned' | 'cocktail' | 'sports_menu' | 'corporate_menu' | 'coffee_break' | 'restaurant' | 'cleaning' | 'preparation' | 'other';
 
 // ⚡ Bolt: Moved outside to prevent recreation on every render
 const getDaysUntilExpiry = (dateStr: string) => {
@@ -20,8 +22,29 @@ const getDaysUntilExpiry = (dateStr: string) => {
 };
 
 export const InventoryView: React.FC = () => {
-    const { ingredients, addBatch, addIngredient, activeOutletId } = useStore();
+    const { ingredients, addBatch, addIngredient, activeOutletId, setIngredients } = useStore();
     const [searchTerm, setSearchTerm] = useState('');
+    const [error, setError] = useState<string | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
+
+    const handleClearData = async () => {
+        if (!window.confirm('¿ESTÁS SEGURO? Esto borrará TODO el inventario permanentemente. Esta acción no se puede deshacer.')) {
+            return;
+        }
+
+        setIsDeleting(true);
+        try {
+            await firestoreService.deleteAll(COLLECTIONS.INGREDIENTS);
+            setIngredients([]); // Clear local store
+            console.log('Inventory cleared');
+        } catch (err) {
+            console.error('Error clearing inventory:', err);
+            setError('Error al borrar los datos');
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
     const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
     const [activeFilter, setActiveFilter] = useState<FilterTab>('all');
     const [importType, setImportType] = useState<ImportType | null>(null);
@@ -40,6 +63,7 @@ export const InventoryView: React.FC = () => {
     });
 
     const [isAIAdvisorOpen, setIsAIAdvisorOpen] = useState(false);
+    const [printingItem, setPrintingItem] = useState<{ ingredient: Ingredient, batch?: any } | null>(null);
 
     // Determine alerts
 
@@ -403,6 +427,21 @@ export const InventoryView: React.FC = () => {
                         Importar Albarán
                     </button>
                     <button
+                        onClick={handleClearData}
+                        disabled={isDeleting}
+                        className="bg-red-500/10 text-red-400 border border-red-500/20 px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-red-500/20 transition-all active:scale-95"
+                    >
+                        <Trash2 size={18} />
+                        {isDeleting ? 'Borrando...' : 'Borrar Todo'}
+                    </button>
+                    <button
+                        onClick={() => setPrintingItem({ ingredient: undefined as any })}
+                        className="bg-surface text-slate-300 border border-white/10 px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-white/10 transition-all active:scale-95"
+                    >
+                        <Printer size={18} />
+                        Etiqueta Rápida
+                    </button>
+                    <button
                         onClick={startScanningWorkflow}
                         className="bg-primary text-white px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-primary/90 transition-all active:scale-95 shadow-lg shadow-primary/20"
                     >
@@ -476,6 +515,7 @@ export const InventoryView: React.FC = () => {
                     { id: 'canned', label: 'Latas' },
                     { id: 'cocktail', label: 'Cóctel' },
                     { id: 'cleaning', label: 'Limpieza' },
+                    { id: 'preparation', label: 'Elaboraciones' },
                     { id: 'other', label: 'Otros' }
                 ].map(cat => (
                     <button
@@ -542,7 +582,9 @@ export const InventoryView: React.FC = () => {
                                             </td>
                                             <td className="px-6 py-4">
                                                 <div className="font-bold text-slate-200 group-hover:text-primary transition-colors">{ing.name}</div>
-                                                <div className="text-[10px] text-slate-500 font-bold uppercase tracking-wide mt-1">{ing.category || 'Sin categoría'} • {ing.unit}</div>
+                                                <div className="text-[10px] text-slate-500 font-bold uppercase tracking-wide mt-1">
+                                                    {ing.category === 'preparation' ? 'Elaboración' : (ing.category || 'Sin categoría')} • {ing.unit}
+                                                </div>
                                             </td>
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-2">
@@ -592,6 +634,16 @@ export const InventoryView: React.FC = () => {
                                                 >
                                                     <Plus size={14} strokeWidth={3} /> Registrar Lote
                                                 </button>
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setPrintingItem({ ingredient: ing });
+                                                    }}
+                                                    className="inline-flex items-center gap-2 bg-white/5 text-slate-400 px-3 py-2 rounded-lg font-bold text-xs hover:bg-white/10 hover:text-white transition-all active:scale-95 ml-2"
+                                                    title="Imprimir Etiqueta Genérica"
+                                                >
+                                                    <Printer size={14} />
+                                                </button>
                                             </td>
                                         </tr>
                                         {/* Expanded Batch Details */}
@@ -611,6 +663,7 @@ export const InventoryView: React.FC = () => {
                                                                     <th className="px-6 py-3 text-left">Stock Actual</th>
                                                                     <th className="px-6 py-3 text-left">Val. Unitario</th>
                                                                     <th className="px-6 py-3 text-center w-24">Estado</th>
+                                                                    <th className="px-6 py-3 text-right">Acciones</th>
                                                                 </tr>
                                                             </thead>
                                                             <tbody className="divide-y divide-white/[0.02]">
@@ -644,12 +697,24 @@ export const InventoryView: React.FC = () => {
                                                                                     <span className="inline-flex px-2 py-0.5 rounded-full text-[9px] font-black bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 uppercase">Activo</span>
                                                                                 )}
                                                                             </td>
+                                                                            <td className="px-6 py-4 text-right">
+                                                                                <button
+                                                                                    onClick={(e) => {
+                                                                                        e.stopPropagation();
+                                                                                        setPrintingItem({ ingredient: ing, batch });
+                                                                                    }}
+                                                                                    className="p-2 bg-white/5 text-slate-400 rounded-lg hover:bg-primary hover:text-white transition-colors"
+                                                                                    title="Imprimir Etiqueta Lote"
+                                                                                >
+                                                                                    <Printer size={14} />
+                                                                                </button>
+                                                                            </td>
                                                                         </tr>
                                                                     );
                                                                 })}
                                                                 {(!ing.batches || ing.batches.length === 0) && (
                                                                     <tr>
-                                                                        <td colSpan={5} className="px-6 py-10 text-center text-slate-600 text-xs italic">
+                                                                        <td colSpan={6} className="px-6 py-10 text-center text-slate-600 text-xs italic">
                                                                             No hay lotes activos para este producto.
                                                                         </td>
                                                                     </tr>
@@ -682,6 +747,14 @@ export const InventoryView: React.FC = () => {
             </div>
 
             {/* Scanner Workflow Modals */}
+
+            {printingItem && (
+                <LabelPrinterModal
+                    ingredient={printingItem.ingredient}
+                    batch={printingItem.batch}
+                    onClose={() => setPrintingItem(null)}
+                />
+            )}
 
             {/* Barcode Scanner */}
             {
