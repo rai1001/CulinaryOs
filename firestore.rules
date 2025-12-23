@@ -27,7 +27,11 @@ service cloud.firestore {
     // 2. Role Checks
     function hasRole(role) {
       let userData = getUserData();
-      return userData != null && userData.role == role;
+      return userData != null && userData.role != null && (
+        userData.role == role || 
+        userData.role.lower() == role.lower() ||
+        (role == 'chef' && (userData.role == 'HEAD_CHEF' || userData.role == 'head_chef'))
+      );
     }
     
     function isAdmin() {
@@ -36,7 +40,13 @@ service cloud.firestore {
         request.auth.uid == 'KHOxOqvfW9QRAvVdanb8UTpEMsl2' || 
         request.auth.uid == 'j9hrlnFKHYXQf54fuhVFV7Ywfnl2'
       );
-      return isExplicitAdmin || (isAuthenticated() && userData != null && userData.role == 'admin' && userData.active == true);
+      return isExplicitAdmin || (
+        isAuthenticated() && 
+        userData != null && 
+        userData.role != null &&
+        (userData.role == 'admin' || userData.role.lower() == 'admin' || userData.role == 'ADMIN') && 
+        userData.active == true
+      );
     }
 
     function isManager() {
