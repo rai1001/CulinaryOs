@@ -4,7 +4,11 @@ import { ExcelImporter } from '../common/ExcelImporter';
 import { parseOccupancyImport, saveOccupancyData } from '../../services/occupancyService';
 import { CheckCircle, AlertCircle } from 'lucide-react';
 
-export const OccupancyImport: React.FC = () => {
+interface OccupancyImportProps {
+    onSuccess?: () => void;
+}
+
+export const OccupancyImport: React.FC<OccupancyImportProps> = ({ onSuccess }) => {
     const [importStatus, setImportStatus] = useState<'idle' | 'success' | 'error'>('idle');
     const [importedCount, setImportedCount] = useState(0);
 
@@ -17,6 +21,7 @@ export const OccupancyImport: React.FC = () => {
             await saveOccupancyData(parsed);
             setImportedCount(parsed.length);
             setImportStatus('success');
+            if (onSuccess) onSuccess();
         } catch (err) {
             console.error(err);
             setImportStatus('error');
@@ -29,13 +34,13 @@ export const OccupancyImport: React.FC = () => {
 
             <div className="space-y-4">
                 <p className="text-sm text-slate-600">
-                    Sube un archivo Excel con las columnas: Date, Total Rooms, Occupied Rooms, Pax (opcional).
+                    Sube un archivo Excel con las columnas: Fecha, Desayunos, Comidas, Cenas (o columna PAX genérica).
                 </p>
 
                 <ExcelImporter
                     onImport={handleImport}
                     buttonLabel="Subir Excel Ocupación"
-                    template={{ date: 'Date', occupied: 'Occupied Rooms', pax: 'Pax' }}
+                    template={{ date: 'Fecha', breakfast: 'Desayunos', lunch: 'Comidas', dinner: 'Cenas' }}
                 />
 
                 {importStatus === 'success' && (

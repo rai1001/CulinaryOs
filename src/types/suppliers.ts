@@ -1,3 +1,13 @@
+export interface AISample {
+    rawTextSnippet: string; // Part of the original OCR text
+    verifiedData: any;      // User-corrected data
+}
+
+export interface SupplierAIConfig {
+    hints?: string;          // e.g., "VAT appears as 'Impuesto 21%'"
+    samples?: AISample[];    // Few-Shot samples for the model
+}
+
 export interface Supplier {
     id: string;
     name: string;
@@ -14,6 +24,7 @@ export interface Supplier {
     taxId?: string; // NIF/CIF
     paymentTerms?: string; // e.g., "Net 30", "Immediate"
     deliveryWindows?: { start: string; end: string }[]; // e.g., "08:00"-"12:00"
+    aiConfig?: SupplierAIConfig;
 }
 
 export interface SupplierOption {

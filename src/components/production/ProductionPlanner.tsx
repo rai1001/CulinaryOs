@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { format, addDays, startOfWeek } from 'date-fns';
-import { CalendarDays, ArrowRight, ArrowLeft } from 'lucide-react';
+import { CalendarDays, ArrowRight, ArrowLeft, Plus, X, Trash2 } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import type { KanbanTask, ShiftType } from '../../types';
 
@@ -10,8 +10,10 @@ interface PlannerProps {
 }
 
 export const ProductionPlanner: React.FC<PlannerProps> = ({ tasks, eventId }) => {
-    const { updateTaskSchedule } = useStore();
+    const { updateTaskSchedule, addProductionTask, deleteProductionTask } = useStore();
     const [weekStart, setWeekStart] = useState(startOfWeek(new Date(), { weekStartsOn: 1 }));
+    const [isNewTaskModalOpen, setIsNewTaskModalOpen] = useState(false);
+    const [newTaskTitle, setNewTaskTitle] = useState('');
 
     const handlePreviousWeek = () => setWeekStart(prev => addDays(prev, -7));
     const handleNextWeek = () => setWeekStart(prev => addDays(prev, 7));
@@ -32,6 +34,25 @@ export const ProductionPlanner: React.FC<PlannerProps> = ({ tasks, eventId }) =>
 
     const handleDragOver = (e: React.DragEvent) => {
         e.preventDefault();
+    };
+
+    const handleCreateTask = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newTaskTitle.trim()) return;
+
+        const newTask: import('../../types').KanbanTask = {
+            id: crypto.randomUUID(),
+            title: newTaskTitle,
+            quantity: 1,
+            unit: 'serv',
+            description: 'Tarea manual',
+            status: 'todo',
+            eventId
+        };
+
+        addProductionTask(eventId, newTask);
+        setNewTaskTitle('');
+        setIsNewTaskModalOpen(false);
     };
 
     const getTasksForSlot = (date: string, shift: ShiftType) => {
@@ -63,8 +84,15 @@ export const ProductionPlanner: React.FC<PlannerProps> = ({ tasks, eventId }) =>
             <div className="flex flex-col md:flex-row gap-6 h-auto md:h-[600px]">
                 {/* Unassigned Tasks (Sidebar) */}
                 <div className="w-full md:w-64 flex flex-col bg-surface border border-white/5 rounded-xl overflow-hidden shadow-lg flex-none h-64 md:h-auto">
-                    <div className="p-3 bg-white/5 border-b border-white/5 font-semibold text-slate-300 text-sm">
-                        Tareas Sin Asignar ({unassignedTasks.length})
+                    <div className="p-3 bg-white/5 border-b border-white/5 font-semibold text-slate-300 text-sm flex justify-between items-center">
+                        <span>Tareas Disponibles ({unassignedTasks.length})</span>
+                        <button
+                            onClick={() => setIsNewTaskModalOpen(true)}
+                            className="p-1 hover:bg-primary/20 text-primary rounded-lg transition-colors"
+                            title="Nueva Tarea Manual"
+                        >
+                            <Plus size={16} />
+                        </button>
                     </div>
                     <div className="flex-1 p-2 space-y-2 overflow-y-auto bg-black/20">
                         {unassignedTasks.map(task => (
@@ -74,7 +102,15 @@ export const ProductionPlanner: React.FC<PlannerProps> = ({ tasks, eventId }) =>
                                 onDragStart={e => handleDragStart(e, task.id)}
                                 className="bg-surface p-3 rounded border border-white/5 hover:border-primary cursor-grab active:cursor-grabbing shadow-sm"
                             >
-                                <p className="text-sm font-medium text-white truncate">{task.title}</p>
+                                <div className="flex justify-between items-start">
+                                    <p className="text-sm font-medium text-white truncate flex-1">{task.title}</p>
+                                    <button
+                                        onClick={() => deleteProductionTask(eventId, task.id)}
+                                        className="text-slate-600 hover:text-red-400 p-1 rounded opacity-0 group-hover:opacity-100 transition-all"
+                                    >
+                                        <Trash2 size={12} />
+                                    </button>
+                                </div>
                                 <p className="text-xs text-slate-500">{task.quantity} {task.unit}</p>
                             </div>
                         ))}
@@ -144,6 +180,40 @@ export const ProductionPlanner: React.FC<PlannerProps> = ({ tasks, eventId }) =>
                     </div>
                 </div>
             </div>
+
+            {/* New Task Modal */}
+            {isNewTaskModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                    <div className="bg-surface border border-white/10 rounded-xl p-6 w-full max-w-sm shadow-2xl">
+                        <div className="flex justify-between items-center mb-4">
+                            <h4 className="text-lg font-bold text-white">Nueva Tarea</h4>
+                            <button onClick={() => setIsNewTaskModalOpen(false)} className="text-slate-400 hover:text-white">
+                                <X size={20} />
+                            </button>
+                        </div>
+                        <form onSubmit={handleCreateTask} className="space-y-4">
+                            <div>
+                                <label className="block text-sm text-slate-400 mb-1">Título de la tarea</label>
+                                <input
+                                    type="text"
+                                    autoFocus
+                                    value={newTaskTitle}
+                                    onChange={(e) => setNewTaskTitle(e.target.value)}
+                                    placeholder="Ej: Limpieza de campana..."
+                                    className="w-full bg-black/20 border border-white/10 rounded-lg px-4 py-2 text-white outline-none focus:border-primary transition-colors"
+                                />
+                            </div>
+                            <button
+                                type="submit"
+                                disabled={!newTaskTitle.trim()}
+                                className="w-full bg-primary hover:bg-blue-600 disabled:opacity-50 text-white font-bold py-2 rounded-lg transition-colors"
+                            >
+                                Crear Tarea
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

@@ -12,6 +12,7 @@ import { MonthlyEventsWidget } from './dashboard/MonthlyEventsWidget';
 import { WeeklyProductionWidget } from './dashboard/WeeklyProductionWidget';
 import { OrdersWidget } from './dashboard/OrdersWidget';
 import { HACCPWidget } from './dashboard/HACCPWidget';
+import { PurchasingNotesWidget } from './dashboard/PurchasingNotesWidget';
 
 export const Dashboard: React.FC = () => {
     const { currentUser } = useStore();
@@ -84,25 +85,30 @@ export const Dashboard: React.FC = () => {
             {/* Main Grid Layout */}
             <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-4 gap-6 min-h-0 overflow-y-auto lg:overflow-visible">
 
-                {/* Column 1: Roster (Wide) */}
-                <div className="lg:col-span-2 xl:col-span-2 h-[400px] lg:h-full min-h-[400px]">
-                    <WeeklyRosterWidget />
-                </div>
-
-                {/* Column 2: Events & Production */}
-                <div className="flex flex-col gap-6 h-[800px] lg:h-full lg:col-span-1">
-                    <div className="flex-1 min-h-[300px]">
-                        <MonthlyEventsWidget />
+                {/* Column 1: Roster & Production (Wide) */}
+                <div className="lg:col-span-2 xl:col-span-2 flex flex-col gap-6 h-full">
+                    <div className="flex-[2] min-h-[400px]">
+                        <WeeklyRosterWidget />
                     </div>
                     <div className="flex-1 min-h-[300px]">
                         <WeeklyProductionWidget />
                     </div>
                 </div>
 
+                {/* Column 2: Events */}
+                <div className="flex flex-col gap-6 h-[400px] lg:h-full lg:col-span-1">
+                    <div className="flex-1 min-h-[300px]">
+                        <MonthlyEventsWidget />
+                    </div>
+                </div>
+
                 {/* Column 3: Orders & Backup/Tools */}
                 <div className="flex flex-col gap-6 h-[800px] lg:h-full lg:col-span-1">
-                    <div className="flex-1 min-h-[300px]">
+                    <div className="flex-1 min-h-[400px]">
                         <OrdersWidget />
+                    </div>
+                    <div className="flex-1 min-h-[300px]">
+                        <PurchasingNotesWidget />
                     </div>
 
                     {/* Backup & System Info Widget */}

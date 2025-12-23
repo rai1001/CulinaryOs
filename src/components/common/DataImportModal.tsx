@@ -186,8 +186,8 @@ export const DataImportModal: React.FC<DataImportModalProps> = ({ isOpen, onClos
                                         <ImageIcon className="w-10 h-10 text-slate-400 group-hover:text-purple-400 mb-3" />
                                         <Camera className="w-4 h-4 text-white absolute -bottom-[-2px] -right-[-2px] bg-black rounded-full p-0.5" />
                                     </div>
-                                    <span className="font-medium text-white">Foto / Imagen</span>
-                                    <span className="text-xs text-slate-400 mt-1">JPG, PNG</span>
+                                    <span className="font-medium text-white">Foto / PDF / Imagen</span>
+                                    <span className="text-xs text-slate-400 mt-1">PDF, JPG, PNG</span>
                                 </button>
                             </div>
                         </div>
@@ -205,12 +205,12 @@ export const DataImportModal: React.FC<DataImportModalProps> = ({ isOpen, onClos
                         type="file"
                         ref={cameraInputRef}
                         className="hidden"
-                        accept="image/*"
+                        accept="image/*,application/pdf"
                         capture="environment"
                         onChange={handleFileChange}
                     />
                 </div>
             </div>
-        </div>
+        </div >
     );
 };

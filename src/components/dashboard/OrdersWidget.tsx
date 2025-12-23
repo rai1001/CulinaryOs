@@ -2,13 +2,15 @@ import React, { useMemo, useState } from 'react';
 import { useStore } from '../../store/useStore';
 import { format, startOfWeek, endOfWeek, isWithinInterval, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Truck, ShoppingBag, AlertCircle, FileText } from 'lucide-react';
+import { Truck, ShoppingBag, AlertCircle, FileText, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { ManualPurchaseModal } from './ManualPurchaseModal';
 
 export const OrdersWidget: React.FC = () => {
     const { purchaseOrders, suppliers } = useStore();
     const navigate = useNavigate();
     const [tab, setTab] = useState<'incoming' | 'pending'>('incoming');
+    const [isManualModalOpen, setIsManualModalOpen] = useState(false);
     const today = new Date();
     const weekStart = startOfWeek(today, { weekStartsOn: 1 });
     const weekEnd = endOfWeek(today, { weekStartsOn: 1 });
@@ -59,6 +61,16 @@ export const OrdersWidget: React.FC = () => {
                         <span className="bg-amber-500 text-black text-[10px] font-bold px-1.5 rounded-full">{pendingOrders.length}</span>
                     )}
                     {tab === 'pending' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-amber-500" />}
+                </button>
+                <button
+                    onClick={() => setIsManualModalOpen(true)}
+                    className="p-3 text-primary hover:bg-white/5 transition-colors border-l border-white/10"
+                    title="Añadir Compra Manual (A)"
+                >
+                    <div className="flex items-center gap-1 font-bold">
+                        <Plus className="w-4 h-4" />
+                        <span className="text-xs">A</span>
+                    </div>
                 </button>
             </div>
 
@@ -120,6 +132,11 @@ export const OrdersWidget: React.FC = () => {
                     Ir a Compras →
                 </button>
             </div>
+
+            <ManualPurchaseModal
+                isOpen={isManualModalOpen}
+                onClose={() => setIsManualModalOpen(false)}
+            />
         </div>
     );
 };

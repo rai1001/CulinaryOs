@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { History, Download, AlertTriangle, CheckCircle } from 'lucide-react';
+import { History, Download, AlertTriangle, CheckCircle, FileText } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { format, subDays } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -174,6 +174,7 @@ export const HACCPHistory: React.FC = () => {
                                 <th className="px-4 py-3 text-center">Valor</th>
                                 <th className="px-4 py-3 text-center">Estado</th>
                                 <th className="px-4 py-3 text-left">Notas</th>
+                                <th className="px-4 py-3 text-center">Docs</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-white/5">
@@ -204,6 +205,19 @@ export const HACCPHistory: React.FC = () => {
                                     </td>
                                     <td className="px-4 py-3 text-slate-400 text-xs max-w-[200px] truncate">
                                         {log.notes || '—'}
+                                    </td>
+                                    <td className="px-4 py-3 text-center">
+                                        {log.pdfUrl ? (
+                                            <a
+                                                href={log.pdfUrl}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="text-primary hover:text-blue-400 transition-colors inline-block"
+                                                title="Ver PDF"
+                                            >
+                                                <FileText size={16} />
+                                            </a>
+                                        ) : '—'}
                                     </td>
                                 </tr>
                             ))}

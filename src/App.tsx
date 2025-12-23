@@ -34,7 +34,7 @@ const KitchenDisplayView = React.lazy(() => import('./components/KitchenDisplayV
 const AIMenuView = React.lazy(() => import('./components/AIFeatures').then(m => ({ default: m.AIMenuGenerator })));
 const AISearchView = React.lazy(() => import('./components/AIFeatures').then(m => ({ default: m.AIChefAssistant }))); // Search/Assistant
 const MenuView = React.lazy(() => import('./components/MenuView').then(m => ({ default: m.MenuView }))); // New Manual Menu View
-const BreakfastView = React.lazy(() => import('./components/BreakfastView').then(m => ({ default: m.BreakfastView })));
+const HospitalityLogisticsView = React.lazy(() => import('./components/HospitalityLogisticsView').then(m => ({ default: m.HospitalityLogisticsView })));
 const StaffView = React.lazy(() => import('./components/StaffView').then(m => ({ default: m.StaffView })));
 const IntegrationsView = React.lazy(() => import('./components/IntegrationsView').then(m => ({ default: m.IntegrationsView })));
 const FichasTecnicasDashboard = React.lazy(() => import('./pages/FichasTecnicasDashboard').then(m => ({ default: m.FichasTecnicasDashboard })));
@@ -116,10 +116,8 @@ function App() {
           <NavItem to="/dashboard" icon={<LayoutDashboard />} label="Inicio" />
           <NavItem to="/schedule" icon={<Calendar />} label="Horario" />
           <NavItem to="/events" icon={<CalendarDays />} label="Eventos" />
-          <NavItem to="/schedule" icon={<Calendar />} label="Horario" />
-          <NavItem to="/events" icon={<CalendarDays />} label="Eventos" />
           <NavItem to="/hospitality" icon={<Coffee />} label="Logística Hotel" />
-          <NavItem to="/breakfast" icon={<Coffee />} label="Servicio Diaria" />
+          <NavItem to="/breakfast" icon={<Coffee />} label="Servicio Diario" />
           <NavItem to="/purchasing" icon={<ShoppingBag />} label="Compras Auto" />
           <NavItem to="/waste" icon={<Trash2 />} label="Mermas" />
           <NavItem to="/haccp" icon={<ShieldCheck />} label="HACCP Digital" />
@@ -231,7 +229,7 @@ function App() {
                 <Route path="/menus" element={<MenuView />} />
                 <Route path="/fichas-tecnicas" element={<FichasTecnicasDashboard />} />
                 <Route path="/analytics/fichas" element={<AnalisisRentabilidad />} />
-                <Route path="/breakfast" element={<BreakfastView />} />
+                <Route path="/breakfast" element={<HospitalityLogisticsView />} />
                 <Route path="/hospitality" element={<HospitalityDashboard />} />
                 <Route path="/integrations" element={<IntegrationsView />} />
                 {/* Fallback */}

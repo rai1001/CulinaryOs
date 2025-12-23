@@ -20,7 +20,9 @@ export const StaffView: React.FC = () => {
         vacationDaysTotal: 30,
         consecutiveWorkDays: 0,
         daysOffInLast28Days: 0,
-        vacationDates: []
+        vacationDates: [],
+        status: 'ACTIVE',
+        qualificationDocs: []
     });
 
     const handleImport = async (data: any[]) => {
@@ -74,7 +76,9 @@ export const StaffView: React.FC = () => {
                 vacationDaysTotal: 30,
                 consecutiveWorkDays: 0,
                 daysOffInLast28Days: 0,
-                vacationDates: []
+                vacationDates: [],
+                status: 'ACTIVE',
+                qualificationDocs: []
             });
         }
         setIsModalOpen(true);
@@ -158,6 +162,7 @@ export const StaffView: React.FC = () => {
                         <tr>
                             <th className="px-6 py-3">Nombre</th>
                             <th className="px-6 py-3">Rol</th>
+                            <th className="px-6 py-3 text-center">Estado</th>
                             <th className="px-6 py-3 text-center">Vacaciones</th>
                             <th className="px-6 py-3 text-right">Acciones</th>
                         </tr>
@@ -177,6 +182,11 @@ export const StaffView: React.FC = () => {
                                     <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-white/10 text-slate-200">
                                         <Briefcase size={12} />
                                         {getRoleLabel(emp.role)}
+                                    </span>
+                                </td>
+                                <td className="px-6 py-4 text-center">
+                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${emp.status === 'ACTIVE' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>
+                                        {emp.status === 'ACTIVE' ? 'Activo' : 'Baja'}
                                     </span>
                                 </td>
                                 <td className="px-6 py-4 text-center">
@@ -214,6 +224,40 @@ export const StaffView: React.FC = () => {
                     </tbody>
                 </table>
             </div>
+
+            {/* Qualifications Summary Section */}
+            <div className="mt-8 bg-surface/30 border border-white/5 rounded-xl p-6 backdrop-blur-sm shadow-xl">
+                <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                    <Briefcase className="w-5 h-5 text-primary" />
+                    Documentación y Títulos
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {staff.map(emp => (
+                        <div key={emp.id} className="bg-black/20 rounded-lg p-4 border border-white/5">
+                            <div className="font-bold text-slate-200 mb-2">{emp.name}</div>
+                            {emp.qualificationDocs && emp.qualificationDocs.length > 0 ? (
+                                <div className="space-y-2">
+                                    {emp.qualificationDocs.map((doc, i) => (
+                                        <div key={i} className="flex items-center justify-between text-xs bg-white/5 p-2 rounded">
+                                            <a href={doc.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline truncate mr-2">
+                                                {doc.name}
+                                            </a>
+                                            {doc.expiryDate && (
+                                                <span className={`px-1.5 py-0.5 rounded ${new Date(doc.expiryDate) < new Date() ? 'bg-red-500/20 text-red-300' : 'text-slate-500 font-mono italic'}`}>
+                                                    Exp: {doc.expiryDate}
+                                                </span>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="text-xs text-slate-600 italic">Sin documentos registrados</div>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            </div>
+
 
             {/* Modal */}
             {isModalOpen && (
@@ -257,6 +301,70 @@ export const StaffView: React.FC = () => {
                                     value={formData.vacationDaysTotal}
                                     onChange={e => setFormData({ ...formData, vacationDaysTotal: parseInt(e.target.value) || 0 })}
                                 />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-slate-300 mb-1">Estado</label>
+                                <select
+                                    className="w-full px-3 py-2 bg-black/20 border border-white/10 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all text-white"
+                                    value={formData.status}
+                                    onChange={e => setFormData({ ...formData, status: e.target.value as 'ACTIVE' | 'INACTIVE' })}
+                                >
+                                    <option value="ACTIVE">Activo</option>
+                                    <option value="INACTIVE">Baja / Inactivo</option>
+                                </select>
+                            </div>
+
+                            <div className="pt-2">
+                                <label className="block text-sm font-medium text-slate-300 mb-2">Títulos y Documentos (Enlaces)</label>
+                                <div className="space-y-2">
+                                    {(formData.qualificationDocs || []).map((doc, idx) => (
+                                        <div key={idx} className="flex gap-2 items-center">
+                                            <input
+                                                type="text"
+                                                placeholder="Nombre (ej. Manipulador)"
+                                                className="flex-1 px-2 py-1.5 bg-black/30 border border-white/5 rounded text-xs text-white"
+                                                value={doc.name}
+                                                onChange={e => {
+                                                    const newDocs = [...(formData.qualificationDocs || [])];
+                                                    newDocs[idx].name = e.target.value;
+                                                    setFormData({ ...formData, qualificationDocs: newDocs });
+                                                }}
+                                            />
+                                            <input
+                                                type="text"
+                                                placeholder="URL"
+                                                className="flex-1 px-2 py-1.5 bg-black/30 border border-white/5 rounded text-xs text-white"
+                                                value={doc.url}
+                                                onChange={e => {
+                                                    const newDocs = [...(formData.qualificationDocs || [])];
+                                                    newDocs[idx].url = e.target.value;
+                                                    setFormData({ ...formData, qualificationDocs: newDocs });
+                                                }}
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    const newDocs = (formData.qualificationDocs || []).filter((_, i) => i !== idx);
+                                                    setFormData({ ...formData, qualificationDocs: newDocs });
+                                                }}
+                                                className="text-red-400 hover:text-red-300 p-1"
+                                            >
+                                                <Trash2 size={14} />
+                                            </button>
+                                        </div>
+                                    ))}
+                                    <button
+                                        type="button"
+                                        onClick={() => setFormData({
+                                            ...formData,
+                                            qualificationDocs: [...(formData.qualificationDocs || []), { name: '', url: '' }]
+                                        })}
+                                        className="text-primary hover:text-blue-400 text-xs font-bold flex items-center gap-1 mt-1"
+                                    >
+                                        <Plus size={14} /> Añadir Documento
+                                    </button>
+                                </div>
                             </div>
 
                             <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-white/10">

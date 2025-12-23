@@ -23,6 +23,14 @@ export const createIntegrationSlice: StateCreator<
             status: 'disconnected',
             description: 'Conecta tu cuenta de Outlook para escanear correos en busca de eventos de catering.',
             features: ['Outlook Email Scan', 'Outlook Calendar Sync'],
+        },
+        {
+            id: 'google-gemini',
+            name: 'Google Gemini AI',
+            provider: 'google',
+            status: 'disconnected',
+            description: 'Potencia ChefOS con IA avanzada para creación de menús, escaneo de facturas y predicción de demanda.',
+            features: ['AI Menu Generation', 'Smart Invoice Parsing', 'Demand Prediction'],
         }
     ],
 

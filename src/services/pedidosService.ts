@@ -111,5 +111,41 @@ export const pedidosService = {
             updateData.approvedBy = userId;
         }
         await firestoreService.update(COLLECTIONS.PURCHASE_ORDERS, orderId, updateData);
+    },
+
+    createManualOrder: async (
+        supplierId: string,
+        items: PurchaseOrderItem[],
+        outletId: string
+    ): Promise<PurchaseOrder> => {
+        const orderId = uuidv4();
+        const todayStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+        const orderNumber = `MAN-${todayStr}-${orderId.slice(0, 4)}`.toUpperCase();
+
+        const totalCost = items.reduce((sum, item) => sum + (item.quantity * (item.costPerUnit || 0)), 0);
+
+        const order: PurchaseOrder = {
+            id: orderId,
+            orderNumber,
+            supplierId,
+            outletId,
+            date: new Date().toISOString(),
+            status: 'DRAFT',
+            items,
+            totalCost,
+            type: 'MANUAL',
+            updatedAt: new Date().toISOString(),
+            history: [{
+                date: new Date().toISOString(),
+                status: 'DRAFT',
+                userId: 'user',
+                notes: 'Creado manualmente desde Dashboard'
+            }]
+        };
+
+        // Save to Firestore
+        await firestoreService.create<PurchaseOrder>(collection(db, COLLECTIONS.PURCHASE_ORDERS) as CollectionReference<PurchaseOrder>, order);
+
+        return order;
     }
 };

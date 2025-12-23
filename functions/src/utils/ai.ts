@@ -37,9 +37,12 @@ export async function enrichIngredientWithAI(name: string): Promise<EnrichmentRe
         const text = result.response.candidates?.[0].content.parts[0].text;
 
         if (text) {
-            const cleanJson = text.replace(/```json/g, '').replace(/```/g, '').trim();
-            const data = JSON.parse(cleanJson);
-            return data as EnrichmentResult;
+            // Robust JSON extraction
+            const jsonMatch = text.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+                const data = JSON.parse(jsonMatch[0]);
+                return data as EnrichmentResult;
+            }
         }
     } catch (error) {
         console.error("Enrichment AI Error:", error);

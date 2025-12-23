@@ -2,17 +2,17 @@ import type {
     Ingredient, IngredientBatch, Event, Employee, DailySchedule,
     Recipe, Menu, Supplier, PurchaseOrder, WasteRecord,
     PCC, HACCPLog, HACCPTask, HACCPTaskCompletion, MenuItemAnalytics,
-    KanbanTask, KanbanTaskStatus, BreakfastService, OccupancyData, Integration
+    KanbanTask, KanbanTaskStatus, HospitalityService, OccupancyData, Integration
 } from '../types';
 import type { NotificationSlice } from './slices/createNotificationSlice';
 
-export interface BreakfastSlice {
-    breakfastServices: BreakfastService[];
-    setBreakfastServices: (services: BreakfastService[]) => void;
-    updateBreakfastService: (service: BreakfastService) => Promise<void>;
+export interface HospitalitySlice {
+    hospitalityServices: HospitalityService[];
+    setHospitalityServices: (services: HospitalityService[]) => void;
+    updateHospitalityService: (service: HospitalityService) => Promise<void>;
     importOccupancy: (data: OccupancyData[]) => Promise<void>;
-    fetchBreakfastServices: () => Promise<void>;
-    commitBreakfastConsumption: (serviceId: string) => Promise<void>;
+    fetchHospitalityServices: (date?: string) => Promise<void>;
+    commitHospitalityConsumption: (serviceId: string) => Promise<void>;
 }
 
 export interface IngredientSlice {
@@ -53,6 +53,8 @@ export interface ProductionSlice {
         shift?: import('../types').ShiftType;
         assignedEmployeeId?: string;
     }) => void;
+    addProductionTask: (eventId: string, task: import('../types').KanbanTask) => void;
+    deleteProductionTask: (eventId: string, taskId: string) => void;
 }
 
 export interface StaffSlice {
@@ -63,8 +65,10 @@ export interface StaffSlice {
     updateEmployee: (employee: Employee) => void;
     deleteEmployee: (id: string) => void;
     updateSchedule: (month: string, schedule: DailySchedule) => void;
-    updateShift: (dateStr: string, employeeId: string, type: 'MORNING' | 'AFTERNOON') => void;
+    updateShift: (dateStr: string, employeeId: string, type: import('../types').ShiftType) => void;
     removeShift: (dateStr: string, employeeId: string) => void;
+    saveSchedule: (month: string) => Promise<void>;
+    fetchSchedule: (month: string) => Promise<void>;
 }
 
 export interface RecipeSlice {
@@ -110,6 +114,8 @@ export interface PurchaseSlice {
     loadMorePurchaseOrders: () => Promise<void>;
     setPurchaseOrderFilters: (filters: import('../types').PurchaseOrderFilters) => void;
     receivePurchaseOrderItems: (orderId: string, receivedItems: Record<string, number>) => Promise<void>;
+    purchasingNotes: string;
+    updatePurchasingNotes: (notes: string) => Promise<void>;
 }
 
 export interface WasteSlice {
@@ -177,7 +183,7 @@ export interface AppState extends
     HACCPSlice,
     AnalyticsSlice,
     OutletSlice,
-    BreakfastSlice,
+    HospitalitySlice,
     NotificationSlice,
     IntegrationSlice,
     AuthSlice {

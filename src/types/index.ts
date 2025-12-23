@@ -139,17 +139,20 @@ export interface Employee {
     id: string;
     name: string;
     role: Role;
+    status: 'ACTIVE' | 'INACTIVE';
     // Stats for algorithm
     consecutiveWorkDays: number;
     daysOffInLast28Days: number;
     // Tracking
     vacationDaysTotal: number; // Annual allowance, default 30
     vacationDates: string[]; // ISO Dates (YYYY-MM-DD)
+    sickLeaveDates?: string[]; // ISO Dates (YYYY-MM-DD)
+    qualificationDocs?: { name: string; url: string; expiryDate?: string }[];
     hourlyRate?: number; // For Prime Cost calculation
     outletId?: string;
 }
 
-export type ShiftType = 'MORNING' | 'AFTERNOON' | 'OFF';
+export type ShiftType = 'MORNING' | 'AFTERNOON' | 'OFF' | 'VACATION' | 'SICK_LEAVE';
 
 export interface Shift {
     date: string; // YYYY-MM-DD
@@ -190,6 +193,7 @@ export interface HACCPLog {
     userId: string; // Ideally linked to Employee
     status: 'CORRECT' | 'WARNING' | 'CRITICAL';
     notes?: string;
+    pdfUrl?: string;
 }
 
 export type HACCPTaskFrequency = 'DAILY' | 'WEEKLY' | 'MONTHLY';
@@ -227,10 +231,13 @@ export interface MenuItemAnalytics {
     lastOrdered?: string; // ISO Date
 }
 
-// Breakfast Module Types
-export interface BreakfastService {
-    id: string; // YYYY-MM-DD
+// Hospitality Module Types
+export type MealType = 'breakfast' | 'lunch' | 'dinner';
+
+export interface HospitalityService {
+    id: string; // YYYY-MM-DD_mealType
     date: string; // YYYY-MM-DD
+    mealType: MealType;
     forecastPax: number;
     realPax: number;
     consumption: Record<string, number>; // ingredientId -> quantity
@@ -242,6 +249,7 @@ export interface BreakfastService {
 export interface OccupancyData {
     date: string;
     pax: number;
+    mealType?: MealType;
 }
 
 // Multi-Kitchen / Outlet Management Types
@@ -256,6 +264,9 @@ export interface Outlet {
     address?: string;
     phone?: string;
     autoPurchaseSettings?: AutoPurchaseSettings;
+    geminiApiKey?: string;
+    workspaceAccount?: string;
+    outlookAccount?: string;
 }
 
 // Extended types with Outlet context

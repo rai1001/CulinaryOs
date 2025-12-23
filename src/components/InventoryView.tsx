@@ -11,7 +11,7 @@ import { lookupProductByBarcode, type ProductLookupResult } from '../services/pr
 import { AIInventoryAdvisor } from './inventory/AIInventoryAdvisor';
 
 type ScanStep = 'idle' | 'scanning-barcode' | 'product-found' | 'scanning-expiry' | 'confirm-batch';
-type FilterTab = 'all' | 'expiring' | 'low-stock' | 'meat' | 'fish' | 'produce' | 'dairy' | 'dry' | 'frozen' | 'canned' | 'cocktail' | 'sports_menu' | 'corporate_menu' | 'coffee_break' | 'restaurant' | 'other';
+type FilterTab = 'all' | 'expiring' | 'low-stock' | 'meat' | 'fish' | 'produce' | 'dairy' | 'dry' | 'frozen' | 'canned' | 'cocktail' | 'sports_menu' | 'corporate_menu' | 'coffee_break' | 'restaurant' | 'cleaning' | 'other';
 
 // ⚡ Bolt: Moved outside to prevent recreation on every render
 const getDaysUntilExpiry = (dateStr: string) => {
@@ -475,6 +475,7 @@ export const InventoryView: React.FC = () => {
                     { id: 'frozen', label: 'Congelados' },
                     { id: 'canned', label: 'Latas' },
                     { id: 'cocktail', label: 'Cóctel' },
+                    { id: 'cleaning', label: 'Limpieza' },
                     { id: 'other', label: 'Otros' }
                 ].map(cat => (
                     <button

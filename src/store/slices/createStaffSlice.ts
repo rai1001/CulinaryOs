@@ -1,13 +1,15 @@
 import type { StateCreator } from 'zustand';
 
 import type { AppState, StaffSlice } from '../types';
+import { setDocument, getDocumentById } from '../../services/firestoreService';
+import { COLLECTIONS } from '../../firebase/collections';
 
 export const createStaffSlice: StateCreator<
     AppState,
     [],
     [],
     StaffSlice
-> = (set) => ({
+> = (set, get) => ({
     staff: [],
     schedule: {},
     setStaff: (staff) => set({ staff }),
@@ -63,4 +65,40 @@ export const createStaffSlice: StateCreator<
             }
         };
     }),
+    saveSchedule: async (month) => {
+        const { schedule, activeOutletId } = get();
+        if (!activeOutletId) return;
+        const monthData = schedule[month];
+        if (!monthData) return;
+
+        try {
+            await setDocument(COLLECTIONS.SCHEDULE, `${activeOutletId}_${month}`, {
+                ...monthData,
+                outletId: activeOutletId,
+                month
+            });
+            console.log(`Schedule saved for ${month}`);
+        } catch (error) {
+            console.error("Failed to save schedule", error);
+            throw error;
+        }
+    },
+    fetchSchedule: async (month) => {
+        const { activeOutletId } = get();
+        if (!activeOutletId) return;
+
+        try {
+            const data = await getDocumentById<any>(COLLECTIONS.SCHEDULE, `${activeOutletId}_${month}`);
+            if (data) {
+                set((state) => ({
+                    schedule: {
+                        ...state.schedule,
+                        [month]: data
+                    }
+                }));
+            }
+        } catch (error) {
+            console.error("Failed to fetch schedule", error);
+        }
+    },
 });

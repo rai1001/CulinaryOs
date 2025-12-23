@@ -120,5 +120,21 @@ export const createProductionSlice: StateCreator<
                 productionTasks: { ...state.productionTasks, [eventId]: updatedTasks }
             };
         });
+    },
+    addProductionTask: (eventId, task) => {
+        set((state) => ({
+            productionTasks: {
+                ...state.productionTasks,
+                [eventId]: [...(state.productionTasks[eventId] || []), task]
+            }
+        }));
+    },
+    deleteProductionTask: (eventId, taskId) => {
+        set((state) => ({
+            productionTasks: {
+                ...state.productionTasks,
+                [eventId]: (state.productionTasks[eventId] || []).filter(t => t.id !== taskId)
+            }
+        }));
     }
 });

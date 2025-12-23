@@ -9,16 +9,23 @@ import { normalizeDate } from '../utils/date';
 import * as XLSX from 'xlsx';
 
 export const ScheduleView: React.FC = () => {
-    const { staff, schedule, updateSchedule, events, updateShift, removeShift } = useStore();
+    const { staff, schedule, updateSchedule, events, updateShift, removeShift, saveSchedule, fetchSchedule } = useStore();
     const [currentDate, setCurrentDate] = useState(new Date());
+    const [isSaving, setIsSaving] = useState(false);
     const [viewMode, setViewMode] = useState<'month' | 'week'>('month');
     const [generating, setGenerating] = useState(false);
     const [debugLog, setDebugLog] = useState<string[]>([]);
     const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
-    // Context Menu State
     const [contextMenu, setContextMenu] = useState<{ x: number, y: number, date: string, employeeId: string } | null>(null);
     const menuRef = useRef<HTMLDivElement>(null);
+
+    const monthKey = format(currentDate, 'yyyy-MM');
+
+    // Fetch schedule on month change
+    useEffect(() => {
+        fetchSchedule(monthKey);
+    }, [monthKey, fetchSchedule]);
 
     // Close menu on outside click
     useEffect(() => {
@@ -47,7 +54,6 @@ export const ScheduleView: React.FC = () => {
         }
     }, [currentDate, viewMode]);
 
-    const monthKey = format(currentDate, 'yyyy-MM');
     const currentSchedule = schedule[monthKey]?.shifts || [];
 
     const handleGenerate = async () => {
@@ -118,7 +124,7 @@ export const ScheduleView: React.FC = () => {
         });
     };
 
-    const handleShiftAction = (type: 'MORNING' | 'AFTERNOON' | 'DELETE') => {
+    const handleShiftAction = (type: import('../types').ShiftType | 'DELETE') => {
         if (!contextMenu) return;
         if (type === 'DELETE') {
             removeShift(contextMenu.date, contextMenu.employeeId);
@@ -154,6 +160,18 @@ export const ScheduleView: React.FC = () => {
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Horario");
         XLSX.writeFile(wb, `Horario_${format(currentDate, 'yyyy-MM')}.xlsx`);
+    };
+
+    const handleSave = async () => {
+        setIsSaving(true);
+        try {
+            await saveSchedule(monthKey);
+            // Show some success feedback if needed, although store usually handles it
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     // Derived Roster for Selected Date
@@ -219,6 +237,14 @@ export const ScheduleView: React.FC = () => {
                         <button onClick={() => handleShiftAction('AFTERNOON')} className="w-full text-left px-4 py-2 text-sm text-slate-200 hover:bg-white/5 flex items-center gap-2">
                             <Moon className="w-4 h-4 text-indigo-400" />
                             Turno Tarde
+                        </button>
+                        <button onClick={() => handleShiftAction('VACATION')} className="w-full text-left px-4 py-2 text-sm text-slate-200 hover:bg-white/5 flex items-center gap-2">
+                            <Sun className="w-4 h-4 text-emerald-400" />
+                            Vacaciones
+                        </button>
+                        <button onClick={() => handleShiftAction('SICK_LEAVE')} className="w-full text-left px-4 py-2 text-sm text-slate-200 hover:bg-white/5 flex items-center gap-2">
+                            <AlertTriangle className="w-4 h-4 text-red-400" />
+                            Baja / Indispuesto
                         </button>
                         <div className="border-t border-white/5 my-1"></div>
                         <button onClick={() => handleShiftAction('DELETE')} className="w-full text-left px-4 py-2 text-sm text-red-300 hover:bg-white/5 flex items-center gap-2">
@@ -287,6 +313,16 @@ export const ScheduleView: React.FC = () => {
                             title="Imprimir"
                         >
                             <Printer className="w-5 h-5" />
+                        </button>
+                        <button
+                            onClick={handleSave}
+                            disabled={isSaving || !schedule[monthKey]}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all shadow-lg
+                                ${isSaving ? 'bg-white/5 text-slate-500' : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-500/20'}
+                            `}
+                        >
+                            {isSaving ? <RefreshCw className="animate-spin w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
+                            Guardar Horario
                         </button>
                         <button
                             onClick={handleGenerate}
@@ -367,9 +403,13 @@ export const ScheduleView: React.FC = () => {
                                                                 title={`${shift.type}`}
                                                                 className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold shadow-sm transition-all hover:scale-110 ${shift.type === 'MORNING'
                                                                     ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                                                                    : 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
+                                                                    : shift.type === 'AFTERNOON'
+                                                                        ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
+                                                                        : shift.type === 'VACATION'
+                                                                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                                                                            : 'bg-red-500/20 text-red-300 border border-red-500/30'
                                                                     }`}>
-                                                                {shift.type === 'MORNING' ? 'M' : 'T'}
+                                                                {shift.type === 'MORNING' ? 'M' : shift.type === 'AFTERNOON' ? 'T' : shift.type === 'VACATION' ? 'V' : 'B'}
                                                             </div>
                                                         )}
                                                         {!shift && (
@@ -402,18 +442,31 @@ export const ScheduleView: React.FC = () => {
                                 const total = shifts.length;
                                 const morning = shifts.filter(s => s.type === 'MORNING').length;
                                 const afternoon = shifts.filter(s => s.type === 'AFTERNOON').length;
+                                const vacations = shifts.filter(s => s.type === 'VACATION').length;
+
+                                const vacationEnjoyed = emp.vacationDates?.length || 0;
+                                const vacationPending = (emp.vacationDaysTotal || 30) - vacationEnjoyed;
 
                                 return (
                                     <div key={emp.id} className="bg-black/20 rounded-lg p-4 border border-white/5 flex items-center justify-between">
                                         <div>
                                             <div className="font-bold text-slate-200">{emp.name}</div>
                                             <div className="text-xs text-slate-500">{getRoleLabel(emp.role)}</div>
+                                            <div className="mt-2 flex items-center gap-3">
+                                                <div className="text-[10px] text-slate-500 uppercase">Vacaciones:</div>
+                                                <div className="flex gap-1.5">
+                                                    <span title="Disfrutadas" className="text-emerald-400 font-bold">{vacationEnjoyed}</span>
+                                                    <span className="text-slate-700">/</span>
+                                                    <span title="Pendientes" className="text-amber-400 font-bold">{vacationPending}</span>
+                                                </div>
+                                            </div>
                                         </div>
                                         <div className="text-right">
                                             <div className="text-2xl font-bold text-white mb-1">{total}</div>
                                             <div className="flex gap-2 text-xs">
                                                 <span className="text-amber-300 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">M: {morning}</span>
                                                 <span className="text-indigo-300 bg-indigo-500/10 px-1.5 py-0.5 rounded border border-indigo-500/20">T: {afternoon}</span>
+                                                {vacations > 0 && <span className="text-emerald-300 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">V: {vacations}</span>}
                                             </div>
                                         </div>
                                     </div>

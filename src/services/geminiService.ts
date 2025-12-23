@@ -25,10 +25,11 @@ export async function analyzeImage(imageBase64: string, prompt: string): Promise
     try {
         // Convert base64 to Part object
         // Note: The SDK expects the base64 string directly.
+        const isPdf = imageBase64.startsWith('JVBERi'); // PDF magic bytes in base64
         const imagePart = {
             inlineData: {
                 data: imageBase64,
-                mimeType: "image/jpeg" // Assuming JPEG for simplicity
+                mimeType: isPdf ? "application/pdf" : "image/jpeg"
             }
         };
 
@@ -115,10 +116,27 @@ export async function generateMenuFromCriteria(criteria: {
 
 /**
  * Analyze an invoice image calling analyzeImage with a specific prompt
+ * Includes context-aware training via aiConfig if provided
  */
-export async function scanInvoiceImage(base64Data: string): Promise<AIAnalysisResult> {
+export async function scanInvoiceImage(base64Data: string, aiConfig?: import('../types/suppliers').SupplierAIConfig): Promise<AIAnalysisResult> {
+    let trainingContext = "";
+
+    if (aiConfig) {
+        if (aiConfig.hints) {
+            trainingContext += `\nHINTS ESPECÍFICOS PARA ESTE PROVEEDOR:\n${aiConfig.hints}\n`;
+        }
+
+        if (aiConfig.samples && aiConfig.samples.length > 0) {
+            trainingContext += `\nEJEMPLOS DE EXTRACCIONES EXITOSAS (FEW-SHOT):\n`;
+            aiConfig.samples.forEach(sample => {
+                trainingContext += `TEXTO ORIGINAL DETECTADO: "${sample.rawTextSnippet.substring(0, 500)}..."\n`;
+                trainingContext += `EXTRACCIÓN CORRECTA: ${JSON.stringify(sample.verifiedData)}\n---\n`;
+            });
+        }
+    }
+
     const prompt = `
-        Analiza esta factura de restaurante/proveedor. Extrae los datos en JSON:
+        Analiza esta factura o albarán de restaurante/proveedor. Extrae los datos en JSON siguiendo estrictamente este esquema:
         {
             "supplierName": "String",
             "date": "YYYY-MM-DD",
@@ -127,7 +145,8 @@ export async function scanInvoiceImage(base64Data: string): Promise<AIAnalysisRe
                 { "description": "String", "quantity": Number, "unitPrice": Number, "total": Number }
             ]
         }
-        Si no es legible, devuelve null en los campos.
+        ${trainingContext}
+        Si un campo no es legible, devuelve null. Asegúrate de que los números sean tipos Number de JS, no strings.
     `;
     return analyzeImage(base64Data, prompt);
 }

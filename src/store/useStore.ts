@@ -12,7 +12,7 @@ import { createHACCPSlice } from './slices/createHACCPSlice';
 import { createAnalyticsSlice } from './slices/createAnalyticsSlice';
 import { createOutletSlice } from './slices/createOutletSlice';
 import { createNotificationSlice } from './slices/createNotificationSlice';
-import { createBreakfastSlice } from './slices/createBreakfastSlice';
+import { createHospitalitySlice } from './slices/createHospitalitySlice';
 import { createAuthSlice } from './slices/createAuthSlice';
 import { createIntegrationSlice } from './slices/createIntegrationSlice';
 import type { AppState } from './types';
@@ -35,8 +35,7 @@ export const useStore = create<AppState>()(
             ...createAnalyticsSlice(...a),
             ...createOutletSlice(...a),
             ...createNotificationSlice(...a),
-            ...createNotificationSlice(...a),
-            ...createBreakfastSlice(...a),
+            ...createHospitalitySlice(...a),
             ...createAuthSlice(...a),
             ...createIntegrationSlice(...a),
 

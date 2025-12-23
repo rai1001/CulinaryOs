@@ -30,6 +30,7 @@ export const IngredientsView: React.FC = () => {
         { id: 'dairy', label: 'Lácteos' },
         { id: 'dry', label: 'Secos' },
         { id: 'frozen', label: 'Congelados' },
+        { id: 'cleaning', label: 'Limpieza' },
         { id: 'other', label: 'Otros' }
     ];
 

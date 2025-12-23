@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef } from 'react';
-import { Save, AlertTriangle, CheckCircle, Thermometer, Plus, Camera, Loader2 } from 'lucide-react';
+import { Save, AlertTriangle, CheckCircle, Thermometer, Plus, Camera, Loader2, FileText, Link } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { useToast } from '../ui';
 import type { HACCPLog, PCC } from '../../types';
@@ -10,6 +10,7 @@ export const DailyRegisters: React.FC = () => {
     const { addToast } = useToast();
     const [inputs, setInputs] = useState<Record<string, string>>({});
     const [notes, setNotes] = useState<Record<string, string>>({});
+    const [pdfUrls, setPdfUrls] = useState<Record<string, string>>({});
 
     // OCR State
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -107,7 +108,8 @@ export const DailyRegisters: React.FC = () => {
             timestamp: new Date().toISOString(),
             userId: 'current-user',
             status,
-            notes: notes[pcc.id] || undefined
+            notes: notes[pcc.id] || undefined,
+            pdfUrl: pdfUrls[pcc.id] || undefined
         };
 
         addHACCPLog(newLog);
@@ -124,6 +126,7 @@ export const DailyRegisters: React.FC = () => {
         // Clear inputs
         setInputs(prev => ({ ...prev, [pcc.id]: '' }));
         setNotes(prev => ({ ...prev, [pcc.id]: '' }));
+        setPdfUrls(prev => ({ ...prev, [pcc.id]: '' }));
     };
 
     const getStatusColor = (status: string) => {
@@ -205,6 +208,18 @@ export const DailyRegisters: React.FC = () => {
                                 onChange={(e) => handleNotesChange(pcc.id, e.target.value)}
                                 className="w-full bg-background border border-white/10 rounded-lg px-4 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-primary transition-colors"
                             />
+                            <div className="flex gap-2 items-center">
+                                <div className="relative flex-1">
+                                    <Link className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={14} />
+                                    <input
+                                        type="text"
+                                        placeholder="URL de Documento/PDF (opcional)"
+                                        value={pdfUrls[pcc.id] || ''}
+                                        onChange={(e) => setPdfUrls(prev => ({ ...prev, [pcc.id]: e.target.value }))}
+                                        className="w-full bg-background border border-white/10 rounded-lg pl-9 pr-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-primary transition-colors"
+                                    />
+                                </div>
+                            </div>
                         </div>
                     </div>
                 ))}
@@ -246,6 +261,17 @@ export const DailyRegisters: React.FC = () => {
                                                     <span className="text-xs text-slate-500 italic truncate max-w-[100px]">
                                                         {log.notes}
                                                     </span>
+                                                )}
+                                                {log.pdfUrl && (
+                                                    <a
+                                                        href={log.pdfUrl}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="text-primary hover:text-blue-400 transition-colors"
+                                                        title="Ver Documento"
+                                                    >
+                                                        <FileText size={14} />
+                                                    </a>
                                                 )}
                                             </div>
                                             <span className={`text-xs px-2 py-1 rounded-full font-medium border ${getStatusColor(log.status)}`}>

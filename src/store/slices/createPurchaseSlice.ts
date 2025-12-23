@@ -17,6 +17,7 @@ export const createPurchaseSlice: StateCreator<
     purchaseOrdersHasMore: true,
     purchaseOrdersCursor: null,
     purchaseOrdersFilters: { status: 'ALL', supplierId: 'ALL' },
+    purchasingNotes: '',
 
     // Supplier actions
     setSuppliers: (suppliers: import('../../types').Supplier[]) => set({ suppliers }),
@@ -181,5 +182,17 @@ export const createPurchaseSlice: StateCreator<
         }
     },
 
-    clearSuppliers: () => set({ suppliers: [] })
+    clearSuppliers: () => set({ suppliers: [] }),
+
+    updatePurchasingNotes: async (notes: string) => {
+        const { activeOutletId } = get();
+        if (!activeOutletId) return;
+
+        set({ purchasingNotes: notes });
+        try {
+            await setDocument("system_config", `purchasing_notes_${activeOutletId}`, { notes });
+        } catch (error) {
+            console.error("Failed to save purchasing notes", error);
+        }
+    }
 });

@@ -46,17 +46,20 @@ export const ExcelImporter: React.FC<ExcelImporterProps> = ({
             reader.onload = (e) => {
                 try {
                     const data = e.target?.result;
-                    const workbook = XLSX.read(data, { type: 'binary' });
+                    const workbook = XLSX.read(data, { type: 'array' });
                     const sheetName = workbook.SheetNames[0];
                     const sheet = workbook.Sheets[sheetName];
-                    const jsonData = XLSX.utils.sheet_to_json(sheet);
+                    const jsonData = XLSX.utils.sheet_to_json(sheet, {
+                        cellDates: true,
+                        defval: null
+                    } as any);
                     resolve(jsonData);
                 } catch (err) {
                     reject(err);
                 }
             };
             reader.onerror = (err) => reject(err);
-            reader.readAsBinaryString(file);
+            reader.readAsArrayBuffer(file);
         });
     };
 

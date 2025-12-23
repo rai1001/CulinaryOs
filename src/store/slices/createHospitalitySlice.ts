@@ -1,30 +1,30 @@
 import type { StateCreator } from 'zustand';
-import type { AppState, BreakfastSlice } from '../types';
+import type { AppState, HospitalitySlice } from '../types';
 import { setDocument } from '../../services/firestoreService';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../../firebase/config';
-import type { BreakfastService, OccupancyData } from '../../types';
+import type { HospitalityService, OccupancyData, MealType } from '../../types';
 
-export const createBreakfastSlice: StateCreator<
+export const createHospitalitySlice: StateCreator<
     AppState,
     [],
     [],
-    BreakfastSlice
+    HospitalitySlice
 > = (set, get) => ({
-    breakfastServices: [],
+    hospitalityServices: [],
 
-    setBreakfastServices: (services) => set({ breakfastServices: services }),
+    setHospitalityServices: (services) => set({ hospitalityServices: services }),
 
-    updateBreakfastService: async (service) => {
+    updateHospitalityService: async (service) => {
         // Optimistic update
         set((state) => {
-            const index = state.breakfastServices.findIndex(s => s.id === service.id);
+            const index = state.hospitalityServices.findIndex(s => s.id === service.id);
             if (index >= 0) {
-                const updated = [...state.breakfastServices];
+                const updated = [...state.hospitalityServices];
                 updated[index] = service;
-                return { breakfastServices: updated };
+                return { hospitalityServices: updated };
             } else {
-                return { breakfastServices: [...state.breakfastServices, service] };
+                return { hospitalityServices: [...state.hospitalityServices, service] };
             }
         });
 
@@ -35,29 +35,28 @@ export const createBreakfastSlice: StateCreator<
                 ...service,
                 outletId: service.outletId || activeOutletId
             };
-            await setDocument('breakfastServices', service.id, docData);
+            await setDocument('hospitalityServices', service.id, docData);
         } catch (error) {
-            console.error("Failed to persist breakfast service", error);
-            // Revert? For now, we assume success or user sees error if refresh.
+            console.error("Failed to persist hospitality service", error);
         }
     },
 
     importOccupancy: async (data: OccupancyData[]) => {
-        // Bulk update or sequential
         const state = get();
         const updates: Promise<void>[] = [];
-        const newServices = [...state.breakfastServices];
+        const newServices = [...state.hospitalityServices];
 
         for (const item of data) {
-            // ID is date string YYYY-MM-DD
-            const id = item.date;
+            const mealType: MealType = item.mealType || 'breakfast';
+            const id = `${item.date}_${mealType}`;
             const existing = newServices.find(s => s.id === id);
 
-            const updatedService: BreakfastService = existing
+            const updatedService: HospitalityService = existing
                 ? { ...existing, forecastPax: item.pax }
                 : {
                     id,
                     date: item.date,
+                    mealType,
                     forecastPax: item.pax,
                     realPax: 0,
                     consumption: {},
@@ -69,10 +68,10 @@ export const createBreakfastSlice: StateCreator<
             if (index >= 0) newServices[index] = updatedService;
             else newServices.push(updatedService);
 
-            updates.push(setDocument('breakfastServices', id, updatedService));
+            updates.push(setDocument('hospitalityServices', id, updatedService));
         }
 
-        set({ breakfastServices: newServices });
+        set({ hospitalityServices: newServices });
 
         try {
             await Promise.all(updates);
@@ -81,28 +80,33 @@ export const createBreakfastSlice: StateCreator<
         }
     },
 
-    fetchBreakfastServices: async () => {
+    fetchHospitalityServices: async (date) => {
         const activeOutletId = get().activeOutletId;
         if (!activeOutletId) {
-            set({ breakfastServices: [] });
+            set({ hospitalityServices: [] });
             return;
         }
 
         try {
-            const colRef = collection(db, 'breakfastServices');
-            const q = query(colRef, where('outletId', '==', activeOutletId));
-            const snapshot = await getDocs(q);
-            const items = snapshot.docs.map(doc => ({ ...doc.data() as object, id: doc.id } as BreakfastService));
+            const colRef = collection(db, 'hospitalityServices');
+            let q = query(colRef, where('outletId', '==', activeOutletId));
 
-            set({ breakfastServices: items });
+            if (date) {
+                q = query(q, where('date', '==', date));
+            }
+
+            const snapshot = await getDocs(q);
+            const items = snapshot.docs.map(doc => ({ ...doc.data() as object, id: doc.id } as HospitalityService));
+
+            set({ hospitalityServices: items });
         } catch (error) {
-            console.error("Failed to fetch breakfast services", error);
+            console.error("Failed to fetch hospitality services", error);
         }
     },
 
-    commitBreakfastConsumption: async (serviceId) => {
+    commitHospitalityConsumption: async (serviceId) => {
         const state = get();
-        const service = state.breakfastServices.find(s => s.id === serviceId);
+        const service = state.hospitalityServices.find(s => s.id === serviceId);
         if (!service || service.isCommitted) return;
 
         // 1. Deduct stock for each item in consumption
@@ -112,6 +116,6 @@ export const createBreakfastSlice: StateCreator<
 
         // 2. Mark as committed and persist
         const updatedService = { ...service, isCommitted: true };
-        await get().updateBreakfastService(updatedService);
+        await get().updateHospitalityService(updatedService);
     }
 });
