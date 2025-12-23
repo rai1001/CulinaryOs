@@ -44,12 +44,46 @@ export const FichaTecnicaForm: React.FC<Props> = ({
     const [activeTab, setActiveTab] = useState<TabType>('general');
     const [newStep, setNewStep] = useState('');
     const [selectedVersion, setSelectedVersion] = useState<VersionFicha | null>(null);
+    const [confirmWarning, setConfirmWarning] = useState<{ isOpen: boolean; message: string } | null>(null);
 
-    const handleSave = async () => {
+    const performSave = async () => {
         const success = await save();
         if (success) {
             onSaved();
         }
+    };
+
+    const handleSaveAttempt = () => {
+        // Validation for suspicious data
+        const margin = formData.pricing?.margenObjetivo || 0;
+        const cost = formData.costos?.total || 0;
+        const hasZeroCostIngredients = formData.ingredientes?.some(i => i.costoUnitario === 0);
+
+        if (cost === 0) {
+            setConfirmWarning({
+                isOpen: true,
+                message: 'El coste total de la ficha es 0.00€. Esto suele indicar que faltan precios en los ingredientes. ¿Deseas guardar de todos modos?'
+            });
+            return;
+        }
+
+        if (margin >= 100) {
+            setConfirmWarning({
+                isOpen: true,
+                message: `El margen calculado es ${margin}%. Esto es matemáticamente sospechoso (probablemente coste 0). ¿Confirmas que es correcto?`
+            });
+            return;
+        }
+
+        if (hasZeroCostIngredients) {
+             setConfirmWarning({
+                isOpen: true,
+                message: 'Hay ingredientes con coste 0.00€. Los cálculos de rentabilidad no serán reales. ¿Deseas continuar?'
+            });
+            return;
+        }
+
+        performSave();
     };
 
     const TABS = [
@@ -87,7 +121,7 @@ export const FichaTecnicaForm: React.FC<Props> = ({
                         Cancelar
                     </button>
                     <button
-                        onClick={handleSave}
+                        onClick={handleSaveAttempt}
                         disabled={isSaving}
                         className="bg-primary hover:bg-blue-600 disabled:opacity-50 text-white px-6 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-all shadow-lg shadow-primary/20"
                     >
@@ -271,6 +305,22 @@ export const FichaTecnicaForm: React.FC<Props> = ({
                     </span>
                 )}
             </footer>
+
+            {confirmWarning && (
+                <ConfirmModal
+                    isOpen={confirmWarning.isOpen}
+                    title="Advertencia de Datos"
+                    message={confirmWarning.message}
+                    confirmText="Guardar de todos modos"
+                    cancelText="Revisar"
+                    variant="warning"
+                    onConfirm={() => {
+                        setConfirmWarning(null);
+                        performSave();
+                    }}
+                    onCancel={() => setConfirmWarning(null)}
+                />
+            )}
         </div>
     );
 };
