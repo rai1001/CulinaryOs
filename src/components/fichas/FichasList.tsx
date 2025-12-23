@@ -82,12 +82,16 @@ export const FichasList: React.FC<FichasListProps> = ({ fichas, onDelete, onDupl
                                             onClick={() => navigate(`/fichas-tecnicas/${ficha.id}/editar`)}
                                             className="p-1.5 text-slate-500 hover:text-primary hover:bg-primary/10 rounded-lg transition-all"
                                             title="Editar"
+                                            aria-label="Editar ficha"
                                         >
                                             <Edit className="w-4 h-4" />
                                         </button>
 
                                         <div className="relative group/menu_list">
-                                            <button className="p-1.5 text-slate-500 hover:text-white hover:bg-white/10 rounded-lg transition-all">
+                                            <button
+                                                className="p-1.5 text-slate-500 hover:text-white hover:bg-white/10 rounded-lg transition-all"
+                                                aria-label="Más opciones"
+                                            >
                                                 <MoreVertical className="w-4 h-4" />
                                             </button>
                                             <div className="absolute right-0 top-full mt-2 w-36 bg-surface border border-white/10 rounded-xl shadow-2xl opacity-0 translate-y-2 pointer-events-none group-hover/menu_list:opacity-100 group-hover/menu_list:translate-y-0 group-hover/menu_list:pointer-events-auto transition-all z-20 overflow-hidden text-left">

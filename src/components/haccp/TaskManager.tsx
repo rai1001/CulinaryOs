@@ -166,10 +166,18 @@ export const TaskManager: React.FC = () => {
                                         </div>
                                     </div>
                                     <div className="flex gap-1">
-                                        <button onClick={() => handleEdit(task)} className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg">
+                                        <button
+                                            onClick={() => handleEdit(task)}
+                                            className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg"
+                                            aria-label="Editar tarea"
+                                        >
                                             <Edit2 className="w-4 h-4" />
                                         </button>
-                                        <button onClick={() => handleDelete(task.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg">
+                                        <button
+                                            onClick={() => handleDelete(task.id)}
+                                            className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg"
+                                            aria-label="Eliminar tarea"
+                                        >
                                             <Trash2 className="w-4 h-4" />
                                         </button>
                                     </div>
