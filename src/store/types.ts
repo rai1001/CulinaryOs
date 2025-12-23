@@ -31,8 +31,9 @@ export interface EventSlice {
     eventsRange: { start: string, end: string } | null;
     setEvents: (events: Event[]) => void;
     addEvent: (event: Event) => Promise<void>;
-    addEvents: (events: Event[]) => Promise<void>;
-    updateEvent: (event: Event) => Promise<void>;
+    addEvents: (events: import('../types').Event[]) => Promise<void>;
+    clearEvents: () => Promise<void>;
+    updateEvent: (event: import('../types').Event) => Promise<void>;
     deleteEvent: (id: string) => Promise<void>;
     getFilteredEvents: () => Event[];
     fetchEventsRange: (start: string, end: string) => Promise<void>;
@@ -177,7 +178,7 @@ export interface AppState extends
     EventSlice,
     ProductionSlice,
     StaffSlice,
-    RecipeSlice,
+    RecipeSlice, // Force update types
     MenuSlice,
     PurchaseSlice,
     WasteSlice,

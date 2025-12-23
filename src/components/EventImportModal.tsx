@@ -23,6 +23,7 @@ interface EventImportModalProps {
 }
 
 export const EventImportModal: React.FC<EventImportModalProps> = ({ onClose, onSave }) => {
+    // @ts-ignore
     const { events, addEvents, addEvent, activeOutletId } = useStore();
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -133,7 +134,7 @@ export const EventImportModal: React.FC<EventImportModalProps> = ({ onClose, onS
                 workbook.SheetNames.forEach(sheetName => {
                     const worksheet = workbook.Sheets[sheetName];
                     const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
-                    const sheetEvents = parsePlaningMatrix(jsonData, year);
+                    const sheetEvents = parsePlaningMatrix(jsonData, year, sheetName);
                     allEvents = [...allEvents, ...sheetEvents];
                 });
 
@@ -517,22 +518,52 @@ export const EventImportModal: React.FC<EventImportModalProps> = ({ onClose, onS
                     )}
                 </div>
 
-                {(parsedData || matrixEvents.length > 0 || importedEvents.length > 0) && (
-                    <div className="p-4 border-t border-white/10 bg-white/5 flex justify-end gap-3">
-                        <button
-                            onClick={() => { setParsedData(null); setMatrixEvents([]); setImportedEvents([]); }}
-                            className="px-4 py-2 hover:bg-white/10 rounded text-slate-300 transition-colors"
-                        >
-                            Atrás
-                        </button>
-                        <button
-                            onClick={(matrixEvents.length > 0 || importedEvents.length > 0) ? handleSaveBulk : handleSave}
-                            className="px-6 py-2 bg-primary hover:bg-blue-600 rounded text-white font-medium shadow-lg shadow-primary/25 transition-all"
-                        >
-                            Confirmar e Importar
-                        </button>
+                {/* Permanent Footer */}
+                <div className="p-4 border-t border-white/10 bg-white/5 flex items-center justify-between">
+                    <button
+                        onClick={async () => {
+                            if (confirm('¿Estás SEGURO de que quieres borrar TODOS los eventos cargados en este rango? Esta acción no se puede deshacer.')) {
+                                try {
+                                    // @ts-ignore
+                                    await useStore.getState().clearEvents();
+                                    alert('Eventos eliminados correctamente.');
+                                } catch (err) {
+                                    alert('Error al borrar eventos.');
+                                }
+                            }
+                        }}
+                        className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-red-400 hover:bg-red-400/10 rounded-lg transition-all"
+                    >
+                        <Trash2 size={14} />
+                        Borrar Todo
+                    </button>
+
+                    <div className="flex items-center gap-3">
+                        {(parsedData || matrixEvents.length > 0 || importedEvents.length > 0) ? (
+                            <>
+                                <button
+                                    onClick={() => { setParsedData(null); setMatrixEvents([]); setImportedEvents([]); }}
+                                    className="px-4 py-2 hover:bg-white/10 rounded text-slate-300 transition-colors text-sm"
+                                >
+                                    Atrás
+                                </button>
+                                <button
+                                    onClick={(matrixEvents.length > 0 || importedEvents.length > 0) ? handleSaveBulk : handleSave}
+                                    className="px-6 py-2 bg-primary hover:bg-blue-600 rounded text-white font-medium shadow-lg shadow-primary/25 transition-all text-sm"
+                                >
+                                    Confirmar e Importar
+                                </button>
+                            </>
+                        ) : (
+                            <button
+                                onClick={onClose}
+                                className="px-4 py-2 text-slate-400 hover:text-white transition-colors text-sm"
+                            >
+                                Cancelar
+                            </button>
+                        )}
                     </div>
-                )}
+                </div>
             </div>
         </div>
     );

@@ -1,8 +1,9 @@
 import type { StateCreator } from 'zustand';
-
 import type { AppState, EventSlice } from '../types';
 import type { Event } from '../../types';
-import { setDocument, getEventsRange, deleteDocument, batchSetDocuments } from '../../services/firestoreService';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { db } from '../../firebase/config';
+import { setDocument, getEventsRange, deleteDocument, batchSetDocuments, batchDeleteDocuments } from '../../services/firestoreService';
 
 export const createEventSlice: StateCreator<
     AppState,
@@ -43,6 +44,41 @@ export const createEventSlice: StateCreator<
             }
         } catch (error) {
             console.error("Failed to batch add events", error);
+        }
+    },
+
+    clearEvents: async () => {
+        const { activeOutletId } = get();
+        if (!activeOutletId) return;
+
+        set({ eventsLoading: true });
+
+        try {
+            // First, fetch ALL events for this outlet (not just current range)
+            const colRef = collection(db, "events");
+            const q = query(colRef, where("outletId", "==", activeOutletId));
+            const snapshot = await getDocs(q);
+
+            const idsToDelete = snapshot.docs.map(doc => doc.id);
+
+            if (idsToDelete.length > 0) {
+                await batchDeleteDocuments("events", idsToDelete);
+            }
+
+            set({ events: [], eventsLoading: false });
+
+            // Reload range to show empty state
+            const { eventsRange } = get();
+            if (eventsRange) {
+                get().fetchEventsRange(eventsRange.start, eventsRange.end);
+            }
+        } catch (error) {
+            console.error("Failed to clear events", error);
+            set({ eventsLoading: false });
+            const { eventsRange } = get();
+            if (eventsRange) {
+                get().fetchEventsRange(eventsRange.start, eventsRange.end);
+            }
         }
     },
 

@@ -20,10 +20,25 @@ const MONTHS = [
  * Format: Months in Column A, Rooms in subsequent columns of the same row.
  * Days (1-31) in Column A below the month marker.
  */
-export const parsePlaningMatrix = (data: any[][], year: number = new Date().getFullYear()): PlaningEvent[] => {
+export const parsePlaningMatrix = (data: any[][], year: number = new Date().getFullYear(), sheetName: string = ''): PlaningEvent[] => {
     const events: PlaningEvent[] = [];
     let currentMonthIndex = -1;
-    let currentYear = year; // Initialize with passed year
+    let currentYear = year; // Default to passed year (selector)
+
+    // 0. Detect Year from Sheet Name (e.g. "ENERO 26", "FEB 2026", "2025")
+    if (sheetName) {
+        const sheetYearMatch = sheetName.match(/20\d{2}/) || sheetName.match(/'?\d{2}$/); // Match 2026 or '26 or 26 at end
+        if (sheetYearMatch) {
+            const rawYear = sheetYearMatch[0].replace("'", "");
+            const detectedTotal = rawYear.length === 2 ? 2000 + parseInt(rawYear) : parseInt(rawYear);
+
+            // Heuristic: If detecting 2025/2026/2027 etc.
+            if (detectedTotal >= 2024 && detectedTotal <= 2030) {
+                currentYear = detectedTotal;
+            }
+        }
+    }
+
     let rooms: string[] = [];
     let roomColumns: number[] = [];
 

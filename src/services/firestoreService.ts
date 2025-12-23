@@ -356,6 +356,31 @@ export const deleteAllDocuments = async (collectionName: string): Promise<void> 
     await batch.commit();
 };
 
+export const batchDeleteDocuments = async (collectionName: string, ids: string[]): Promise<void> => {
+    const mockDB = getMockDB();
+    if (mockDB) {
+        if (mockDB[collectionName]) {
+            mockDB[collectionName] = mockDB[collectionName].filter((d: any) => !ids.includes(d.id));
+            saveMockDB(mockDB);
+        }
+        return;
+    }
+
+    // Firestore batch limit is 500
+    const chunkSize = 500;
+    for (let i = 0; i < ids.length; i += chunkSize) {
+        const chunk = ids.slice(i, i + chunkSize);
+        const batch = writeBatch(db);
+
+        chunk.forEach(id => {
+            const docRef = doc(db, collectionName, id);
+            batch.delete(docRef);
+        });
+
+        await batch.commit();
+    }
+};
+
 // Unified Service Export
 export const firestoreService = {
     getAll: getAllDocuments,
@@ -364,5 +389,6 @@ export const firestoreService = {
     create: addDocument,
     delete: deleteDocument,
     deleteAll: deleteAllDocuments,
+    batchDelete: batchDeleteDocuments,
     query: queryDocuments
 };
