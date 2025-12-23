@@ -10,7 +10,9 @@ import { COLLECTIONS } from '../firebase/collections';
 import { lookupProductByBarcode, type ProductLookupResult } from '../services/productLookupService';
 import { AIInventoryAdvisor } from './inventory/AIInventoryAdvisor';
 import { LabelPrinterModal } from './LabelPrinterModal';
-import { Printer, Trash2 } from 'lucide-react';
+import { Printer, Trash2, Package } from 'lucide-react';
+import { EmptyState } from './ui/EmptyState';
+import { TableSkeleton } from './ui/Skeletons';
 
 type ScanStep = 'idle' | 'scanning-barcode' | 'product-found' | 'scanning-expiry' | 'confirm-batch';
 type FilterTab = 'all' | 'expiring' | 'low-stock' | 'meat' | 'fish' | 'produce' | 'dairy' | 'dry' | 'frozen' | 'canned' | 'cocktail' | 'sports_menu' | 'corporate_menu' | 'coffee_break' | 'restaurant' | 'cleaning' | 'preparation' | 'other';
@@ -32,6 +34,13 @@ export const InventoryView: React.FC = () => {
     } = useStore();
     const [searchTerm, setSearchTerm] = useState('');
     const [isDeleting, setIsDeleting] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
+
+    React.useEffect(() => {
+        // Simulate loading / wait for sync
+        const timer = setTimeout(() => setIsLoading(false), 1000);
+        return () => clearTimeout(timer);
+    }, []);
 
     const handleClearData = async () => {
         if (!activeOutletId) {
@@ -222,9 +231,12 @@ export const InventoryView: React.FC = () => {
     };
 
     // Filter logic
+    const outletInventory = React.useMemo(() =>
+        inventory.filter(item => !activeOutletId || item.outletId === activeOutletId),
+    [inventory, activeOutletId]);
+
     const filteredIngredients = React.useMemo(() => {
-        // 1. Filter inventory by outlet
-        let items = inventory.filter(item => !activeOutletId || item.outletId === activeOutletId);
+        let items = outletInventory;
 
         // 2. Search filter
         if (searchTerm.trim()) {
@@ -252,7 +264,7 @@ export const InventoryView: React.FC = () => {
             }
         }
         return items;
-    }, [inventory, searchTerm, activeFilter, activeOutletId]);
+    }, [outletInventory, searchTerm, activeFilter]);
 
     // Count for badges
     const expiringCount = React.useMemo(() => {
@@ -551,204 +563,220 @@ export const InventoryView: React.FC = () => {
             </div>
 
             {/* Inventory Table */}
-            <div className="bg-surface rounded-xl shadow-2xl border border-white/5 overflow-hidden">
-                <div className="overflow-x-auto">
-                    <table className="w-full border-collapse">
-                        <thead className="bg-white/[0.03] border-b border-white/5">
-                            <tr>
-                                <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-500 uppercase tracking-widest w-10"></th>
-                                <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-500 uppercase tracking-widest">Ingrediente</th>
-                                <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-500 uppercase tracking-widest">Stock Total</th>
-                                <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-500 uppercase tracking-widest">Valorización</th>
-                                <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-500 uppercase tracking-widest">Estado de Alerta</th>
-                                <th className="px-6 py-4 text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest">Operaciones</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-white/5">
-                            {filteredIngredients.map((ing) => {
-                                const totalStock = ing.stock || 0;
-                                const totalValue = ing.batches?.reduce((acc, b) => acc + (b.currentQuantity * b.costPerUnit), 0) || (totalStock * ing.costPerUnit);
-                                const minStock = ing.minStock || 0;
-                                const isLowStock = totalStock <= minStock;
-                                const nearExpiryBatches = ing.batches?.filter(b => getDaysUntilExpiry(b.expiresAt) <= 7) || [];
-                                const isExpanded = expandedIds.has(ing.id);
+            {isLoading ? (
+                <TableSkeleton />
+            ) : filteredIngredients.length > 0 ? (
+                <div className="bg-surface rounded-xl shadow-2xl border border-white/5 overflow-hidden">
+                    <div className="overflow-x-auto">
+                        <table className="w-full border-collapse">
+                            <thead className="bg-white/[0.03] border-b border-white/5">
+                                <tr>
+                                    <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-500 uppercase tracking-widest w-10"></th>
+                                    <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-500 uppercase tracking-widest">Ingrediente</th>
+                                    <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-500 uppercase tracking-widest">Stock Total</th>
+                                    <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-500 uppercase tracking-widest">Valorización</th>
+                                    <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-500 uppercase tracking-widest">Estado de Alerta</th>
+                                    <th className="px-6 py-4 text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest">Operaciones</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-white/5">
+                                {filteredIngredients.map((ing) => {
+                                    const totalStock = ing.stock || 0;
+                                    const totalValue = ing.batches?.reduce((acc, b) => acc + (b.currentQuantity * b.costPerUnit), 0) || (totalStock * ing.costPerUnit);
+                                    const minStock = ing.minStock || 0;
+                                    const isLowStock = totalStock <= minStock;
+                                    const nearExpiryBatches = ing.batches?.filter(b => getDaysUntilExpiry(b.expiresAt) <= 7) || [];
+                                    const isExpanded = expandedIds.has(ing.id);
 
-                                return (
-                                    <React.Fragment key={ing.id}>
-                                        <tr className={`hover:bg-white/[0.02] transition-all group ${isExpanded ? 'bg-primary/5' : ''}`}>
-                                            <td className="px-6 py-4">
-                                                <button
-                                                    onClick={() => toggleExpand(ing.id)}
-                                                    className={`p-1.5 rounded-lg transition-all ${isExpanded ? 'bg-primary/20 text-primary rotate-90' : 'bg-white/5 text-slate-600 hover:text-slate-400 group-hover:bg-white/10'}`}
-                                                >
-                                                    <ChevronRight size={18} />
-                                                </button>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <div className="font-bold text-slate-200 group-hover:text-primary transition-colors">{ing.name}</div>
-                                                <div className="text-[10px] text-slate-500 font-bold uppercase tracking-wide mt-1">
-                                                    {ing.category === 'preparation' ? 'Elaboración' : (ing.category || 'Sin categoría')} • {ing.unit}
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="font-mono font-bold text-slate-200 text-lg">{totalStock.toFixed(totalStock % 1 === 0 ? 0 : 2)}</span>
-                                                    <span className="text-slate-500 text-xs uppercase font-medium">{ing.unit}</span>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <div className="text-slate-200 font-mono font-bold">€{totalValue.toFixed(2)}</div>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <div className="flex flex-col gap-1.5">
-                                                    {isLowStock && (
-                                                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-rose-500/10 text-rose-400 border border-rose-500/20 w-fit">
-                                                            <AlertTriangle size={12} strokeWidth={3} /> Crítico: Bajo Stock
-                                                        </span>
-                                                    )}
-                                                    {nearExpiryBatches.length > 0 && (
-                                                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-amber-500/10 text-amber-400 border border-amber-500/20 w-fit">
-                                                            <Calendar size={12} strokeWidth={3} /> {nearExpiryBatches.length} Caducando
-                                                        </span>
-                                                    )}
-                                                    {!isLowStock && nearExpiryBatches.length === 0 && (
-                                                        <span className="inline-flex items-center px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 w-fit">
-                                                            OPTIMAL
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4 text-right">
-                                                <button
-                                                    onClick={() => {
-                                                        setProductLookup({
-                                                            found: true,
-                                                            barcode: '', // Clear barcode for manual or use item's if available
-                                                            name: ing.name,
-                                                        });
-                                                        setScannedBarcode(ing.id); // Use item ID as barcode reference if needed
-                                                        setBatchForm({
-                                                            quantity: '',
-                                                            expiryDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
-                                                            costPerUnit: ing.costPerUnit.toString()
-                                                        });
-                                                        setScanStep('scanning-expiry');
-                                                    }}
-                                                    className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-lg font-bold text-xs hover:bg-primary hover:text-white transition-all active:scale-95"
-                                                >
-                                                    <Plus size={14} strokeWidth={3} /> Registrar Lote
-                                                </button>
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        setPrintingItem({ ingredient: ing as any });
-                                                    }}
-                                                    className="inline-flex items-center gap-2 bg-white/5 text-slate-400 px-3 py-2 rounded-lg font-bold text-xs hover:bg-white/10 hover:text-white transition-all active:scale-95 ml-2"
-                                                    title="Imprimir Etiqueta Genérica"
-                                                >
-                                                    <Printer size={14} />
-                                                </button>
-                                            </td>
-                                        </tr>
-                                        {/* Expanded Batch Details */}
-                                        {isExpanded && (
-                                            <tr>
-                                                <td colSpan={6} className="px-10 pb-8 pt-2 bg-white/[0.01]">
-                                                    <div className="bg-background/50 rounded-2xl border border-white/5 overflow-hidden shadow-2xl">
-                                                        <div className="bg-white/5 px-6 py-3 border-b border-white/5 flex justify-between items-center">
-                                                            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Trazabilidad de Lotes</h4>
-                                                            <div className="text-[10px] text-slate-500 font-mono">ID: {ing.id}</div>
-                                                        </div>
-                                                        <table className="w-full text-sm">
-                                                            <thead className="bg-white/[0.02] text-slate-500 text-[10px] uppercase tracking-widest font-black">
-                                                                <tr>
-                                                                    <th className="px-6 py-3 text-left">F. Recepción</th>
-                                                                    <th className="px-6 py-3 text-left">Caducidad</th>
-                                                                    <th className="px-6 py-3 text-left">Stock Actual</th>
-                                                                    <th className="px-6 py-3 text-left">Val. Unitario</th>
-                                                                    <th className="px-6 py-3 text-center w-24">Estado</th>
-                                                                    <th className="px-6 py-3 text-right">Acciones</th>
-                                                                </tr>
-                                                            </thead>
-                                                            <tbody className="divide-y divide-white/[0.02]">
-                                                                {ing.batches?.sort((a, b) => new Date(a.expiresAt).getTime() - new Date(b.expiresAt).getTime()).map(batch => {
-                                                                    const daysToExpiry = getDaysUntilExpiry(batch.expiresAt);
-                                                                    const isExpired = daysToExpiry < 0;
-                                                                    const isNearExpiry = daysToExpiry <= 3;
-
-                                                                    return (
-                                                                        <tr key={batch.id} className="hover:bg-white/[0.03] transition-colors group/batch">
-                                                                            <td className="px-6 py-4 text-slate-400 font-mono">
-                                                                                {new Date(batch.receivedAt).toLocaleDateString('es-ES')}
-                                                                            </td>
-                                                                            <td className="px-6 py-4">
-                                                                                <div className={`font-bold ${isExpired ? 'text-rose-400' : isNearExpiry ? 'text-amber-400' : 'text-slate-200'}`}>
-                                                                                    {new Date(batch.expiresAt).toLocaleDateString('es-ES')}
-                                                                                </div>
-                                                                                <div className="text-[10px] text-slate-500 uppercase font-black">{daysToExpiry === 0 ? 'Caduca hoy' : daysToExpiry < 0 ? `Vencido hace ${Math.abs(daysToExpiry)}d` : `Quedan ${daysToExpiry} días`}</div>
-                                                                            </td>
-                                                                            <td className="px-6 py-4">
-                                                                                <span className="font-bold text-slate-200 font-mono text-base">{batch.currentQuantity}</span>
-                                                                                <span className="text-[10px] text-slate-500 font-bold uppercase ml-1.5">{ing.unit}</span>
-                                                                            </td>
-                                                                            <td className="px-6 py-4 text-slate-300 font-mono">€{batch.costPerUnit.toFixed(2)}</td>
-                                                                            <td className="px-6 py-4 text-center">
-                                                                                {isExpired ? (
-                                                                                    <span className="inline-flex px-2 py-0.5 rounded-full text-[9px] font-black bg-rose-500 text-white uppercase">Vencido</span>
-                                                                                ) : isNearExpiry ? (
-                                                                                    <span className="inline-flex px-2 py-0.5 rounded-full text-[9px] font-black bg-amber-500 text-black uppercase animate-pulse">Alerta</span>
-                                                                                ) : (
-                                                                                    <span className="inline-flex px-2 py-0.5 rounded-full text-[9px] font-black bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 uppercase">Activo</span>
-                                                                                )}
-                                                                            </td>
-                                                                            <td className="px-6 py-4 text-right">
-                                                                                <button
-                                                                                    onClick={(e) => {
-                                                                                        e.stopPropagation();
-                                                                                        setPrintingItem({ ingredient: ing, batch });
-                                                                                    }}
-                                                                                    className="p-2 bg-white/5 text-slate-400 rounded-lg hover:bg-primary hover:text-white transition-colors"
-                                                                                    title="Imprimir Etiqueta Lote"
-                                                                                >
-                                                                                    <Printer size={14} />
-                                                                                </button>
-                                                                            </td>
-                                                                        </tr>
-                                                                    );
-                                                                })}
-                                                                {(!ing.batches || ing.batches.length === 0) && (
-                                                                    <tr>
-                                                                        <td colSpan={6} className="px-6 py-10 text-center text-slate-600 text-xs italic">
-                                                                            No hay lotes activos para este producto.
-                                                                        </td>
-                                                                    </tr>
-                                                                )}
-                                                            </tbody>
-                                                        </table>
+                                    return (
+                                        <React.Fragment key={ing.id}>
+                                            <tr
+                                                onClick={() => toggleExpand(ing.id)}
+                                                className={`hover:bg-white/[0.02] transition-all group cursor-pointer ${isExpanded ? 'bg-primary/5' : ''}`}
+                                            >
+                                                <td className="px-6 py-4">
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); toggleExpand(ing.id); }}
+                                                        className={`p-1.5 rounded-lg transition-all ${isExpanded ? 'bg-primary/20 text-primary rotate-90' : 'bg-white/5 text-slate-600 hover:text-slate-400 group-hover:bg-white/10'}`}
+                                                    >
+                                                        <ChevronRight size={18} />
+                                                    </button>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="font-bold text-slate-200 group-hover:text-primary transition-colors">{ing.name}</div>
+                                                    <div className="text-[10px] text-slate-500 font-bold uppercase tracking-wide mt-1">
+                                                        {ing.category === 'preparation' ? 'Elaboración' : (ing.category || 'Sin categoría')} • {ing.unit}
                                                     </div>
                                                 </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="font-mono font-bold text-slate-200 text-lg">{totalStock.toFixed(totalStock % 1 === 0 ? 0 : 2)}</span>
+                                                        <span className="text-slate-500 text-xs uppercase font-medium">{ing.unit}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="text-slate-200 font-mono font-bold">€{totalValue.toFixed(2)}</div>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="flex flex-col gap-1.5">
+                                                        {isLowStock && (
+                                                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-rose-500/10 text-rose-400 border border-rose-500/20 w-fit">
+                                                                <AlertTriangle size={12} strokeWidth={3} /> Crítico: Bajo Stock
+                                                            </span>
+                                                        )}
+                                                        {nearExpiryBatches.length > 0 && (
+                                                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-amber-500/10 text-amber-400 border border-amber-500/20 w-fit">
+                                                                <Calendar size={12} strokeWidth={3} /> {nearExpiryBatches.length} Caducando
+                                                            </span>
+                                                        )}
+                                                        {!isLowStock && nearExpiryBatches.length === 0 && (
+                                                            <span className="inline-flex items-center px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 w-fit">
+                                                                OPTIMAL
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 text-right">
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setProductLookup({
+                                                                found: true,
+                                                                barcode: '',
+                                                                name: ing.name,
+                                                            });
+                                                            setScannedBarcode(ing.id);
+                                                            setBatchForm({
+                                                                quantity: '',
+                                                                expiryDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+                                                                costPerUnit: ing.costPerUnit.toString()
+                                                            });
+                                                            setScanStep('scanning-expiry');
+                                                        }}
+                                                        className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-lg font-bold text-xs hover:bg-primary hover:text-white transition-all active:scale-95"
+                                                    >
+                                                        <Plus size={14} strokeWidth={3} /> Registrar Lote
+                                                    </button>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setPrintingItem({ ingredient: ing as any });
+                                                        }}
+                                                        className="inline-flex items-center gap-2 bg-white/5 text-slate-400 px-3 py-2 rounded-lg font-bold text-xs hover:bg-white/10 hover:text-white transition-all active:scale-95 ml-2"
+                                                        title="Imprimir Etiqueta Genérica"
+                                                    >
+                                                        <Printer size={14} />
+                                                    </button>
+                                                </td>
                                             </tr>
-                                        )}
-                                    </React.Fragment>
-                                );
-                            })}
-                            {filteredIngredients.length === 0 && (
-                                <tr>
-                                    <td colSpan={6} className="px-6 py-24 text-center">
-                                        <div className="bg-white/5 w-16 h-16 rounded-3xl flex items-center justify-center mx-auto mb-4 border border-white/5">
-                                            <Search className="text-slate-700" size={32} />
-                                        </div>
-                                        <div className="text-slate-400 text-lg font-bold">Sin resultados</div>
-                                        <div className="text-slate-600 text-sm mt-1 max-w-xs mx-auto">
-                                            {searchTerm ? `No encontramos nada parecido a "${searchTerm}"` : 'Pronto aparecerán tus productos aquí.'}
-                                        </div>
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
+                                            {/* Expanded Batch Details */}
+                                            {isExpanded && (
+                                                <tr>
+                                                    <td colSpan={6} className="px-10 pb-8 pt-2 bg-white/[0.01]">
+                                                        <div className="bg-background/50 rounded-2xl border border-white/5 overflow-hidden shadow-2xl">
+                                                            <div className="bg-white/5 px-6 py-3 border-b border-white/5 flex justify-between items-center">
+                                                                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Trazabilidad de Lotes</h4>
+                                                                <div className="text-[10px] text-slate-500 font-mono">ID: {ing.id}</div>
+                                                            </div>
+                                                            <table className="w-full text-sm">
+                                                                <thead className="bg-white/[0.02] text-slate-500 text-[10px] uppercase tracking-widest font-black">
+                                                                    <tr>
+                                                                        <th className="px-6 py-3 text-left">F. Recepción</th>
+                                                                        <th className="px-6 py-3 text-left">Caducidad</th>
+                                                                        <th className="px-6 py-3 text-left">Stock Actual</th>
+                                                                        <th className="px-6 py-3 text-left">Val. Unitario</th>
+                                                                        <th className="px-6 py-3 text-center w-24">Estado</th>
+                                                                        <th className="px-6 py-3 text-right">Acciones</th>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody className="divide-y divide-white/[0.02]">
+                                                                    {ing.batches?.sort((a, b) => new Date(a.expiresAt).getTime() - new Date(b.expiresAt).getTime()).map(batch => {
+                                                                        const daysToExpiry = getDaysUntilExpiry(batch.expiresAt);
+                                                                        const isExpired = daysToExpiry < 0;
+                                                                        const isNearExpiry = daysToExpiry <= 3;
+
+                                                                        return (
+                                                                            <tr key={batch.id} className="hover:bg-white/[0.03] transition-colors group/batch">
+                                                                                <td className="px-6 py-4 text-slate-400 font-mono">
+                                                                                    {new Date(batch.receivedAt).toLocaleDateString('es-ES')}
+                                                                                </td>
+                                                                                <td className="px-6 py-4">
+                                                                                    <div className={`font-bold ${isExpired ? 'text-rose-400' : isNearExpiry ? 'text-amber-400' : 'text-slate-200'}`}>
+                                                                                        {new Date(batch.expiresAt).toLocaleDateString('es-ES')}
+                                                                                    </div>
+                                                                                    <div className="text-[10px] text-slate-500 uppercase font-black">{daysToExpiry === 0 ? 'Caduca hoy' : daysToExpiry < 0 ? `Vencido hace ${Math.abs(daysToExpiry)}d` : `Quedan ${daysToExpiry} días`}</div>
+                                                                                </td>
+                                                                                <td className="px-6 py-4">
+                                                                                    <span className="font-bold text-slate-200 font-mono text-base">{batch.currentQuantity}</span>
+                                                                                    <span className="text-[10px] text-slate-500 font-bold uppercase ml-1.5">{ing.unit}</span>
+                                                                                </td>
+                                                                                <td className="px-6 py-4 text-slate-300 font-mono">€{batch.costPerUnit.toFixed(2)}</td>
+                                                                                <td className="px-6 py-4 text-center">
+                                                                                    {isExpired ? (
+                                                                                        <span className="inline-flex px-2 py-0.5 rounded-full text-[9px] font-black bg-rose-500 text-white uppercase">Vencido</span>
+                                                                                    ) : isNearExpiry ? (
+                                                                                        <span className="inline-flex px-2 py-0.5 rounded-full text-[9px] font-black bg-amber-500 text-black uppercase animate-pulse">Alerta</span>
+                                                                                    ) : (
+                                                                                        <span className="inline-flex px-2 py-0.5 rounded-full text-[9px] font-black bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 uppercase">Activo</span>
+                                                                                    )}
+                                                                                </td>
+                                                                                <td className="px-6 py-4 text-right">
+                                                                                    <button
+                                                                                        onClick={(e) => {
+                                                                                            e.stopPropagation();
+                                                                                            setPrintingItem({ ingredient: ing, batch });
+                                                                                        }}
+                                                                                        className="p-2 bg-white/5 text-slate-400 rounded-lg hover:bg-primary hover:text-white transition-colors"
+                                                                                        title="Imprimir Etiqueta Lote"
+                                                                                    >
+                                                                                        <Printer size={14} />
+                                                                                    </button>
+                                                                                </td>
+                                                                            </tr>
+                                                                        );
+                                                                    })}
+                                                                    {(!ing.batches || ing.batches.length === 0) && (
+                                                                        <tr>
+                                                                            <td colSpan={6} className="px-6 py-10 text-center text-slate-600 text-xs italic">
+                                                                                No hay lotes activos para este producto.
+                                                                            </td>
+                                                                        </tr>
+                                                                    )}
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </React.Fragment>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
-            </div>
+            ) : outletInventory.length === 0 ? (
+                <EmptyState
+                    title="Tu inventario está vacío"
+                    message="Empieza añadiendo productos o importa tu albarán para llevar el control de stock."
+                    icon={Package}
+                    action={
+                        <button
+                            onClick={() => setImportType('inventory')}
+                            className="bg-primary text-white px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-primary/90 transition-all active:scale-95"
+                        >
+                            <Upload size={18} />
+                            Importar Inventario
+                        </button>
+                    }
+                />
+            ) : (
+                <EmptyState
+                    title="Sin resultados"
+                    message={`No encontramos productos que coincidan con "${searchTerm}"`}
+                    icon={Search}
+                />
+            )}
 
             {/* Scanner Workflow Modals */}
 

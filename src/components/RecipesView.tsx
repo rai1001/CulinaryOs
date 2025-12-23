@@ -13,12 +13,21 @@ import { deleteDocument, addDocument, firestoreService } from '../services/fires
 import { COLLECTIONS, collections } from '../firebase/collections';
 import { convertirRecetaAFicha } from '../services/fichasTecnicasService';
 import type { Recipe } from '../types';
+import { TableSkeleton } from './ui/Skeletons';
+import { EmptyState } from './ui/EmptyState';
 
 export const RecipesView: React.FC = () => {
     const { recipes, currentUser, ingredients } = useStore();
     const { activeOutletId, isValidOutlet } = useOutletScoping();
     const navigate = useNavigate();
     const [searchTerm, setSearchTerm] = useState('');
+    const [isLoading, setIsLoading] = useState(true);
+
+    React.useEffect(() => {
+        // Simulate loading
+        const timer = setTimeout(() => setIsLoading(false), 1000);
+        return () => clearTimeout(timer);
+    }, []);
 
     // Create Map for O(1) ingredient lookup
     const ingredientMap = useMemo(() => new Map(ingredients.map(i => [i.id, i])), [ingredients]);
@@ -368,7 +377,9 @@ export const RecipesView: React.FC = () => {
                             Selecciona una cocina activa para ver y gestionar sus recetas.
                         </p>
                     </div>
-                ) : (
+                ) : isLoading ? (
+                    <TableSkeleton />
+                ) : scopedRecipes.length > 0 ? (
                     <RecipeList
                         recipes={scopedRecipes}
                         onEdit={handleEdit}
@@ -376,6 +387,39 @@ export const RecipesView: React.FC = () => {
                         onConvertToFicha={handleConvertToFicha}
                         sortConfig={sortConfig}
                         onSort={handleSort}
+                    />
+                ) : recipes.filter(r => r.outletId === activeOutletId).length === 0 ? (
+                    <EmptyState
+                        title="Tu recetario está vacío"
+                        message="Crea tus propias recetas, escandallos o impórtalas para empezar."
+                        icon={ChefHat}
+                        action={
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => setImportType('recipe')}
+                                    className="bg-surface text-slate-300 border border-white/10 px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-white/10 transition-all active:scale-95"
+                                >
+                                    <Import size={18} />
+                                    Importar
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setEditingRecipe(undefined);
+                                        setShowAddModal(true);
+                                    }}
+                                    className="bg-primary text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-primary/90 transition-all active:scale-95 shadow-lg shadow-primary/20"
+                                >
+                                    <Plus size={18} />
+                                    Nueva Receta
+                                </button>
+                            </div>
+                        }
+                    />
+                ) : (
+                    <EmptyState
+                        title="Sin resultados"
+                        message={`No se encontraron recetas con "${searchTerm}"`}
+                        icon={Search}
                     />
                 )
             }

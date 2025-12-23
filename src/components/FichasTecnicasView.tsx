@@ -4,12 +4,14 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { ChefHat, Plus, Search, FileText, Copy, Trash2, Edit3, Grid, List as ListIcon } from 'lucide-react';
+import { ChefHat, Plus, Search, FileText, Copy, Trash2, Edit3, Grid, List as ListIcon, AlertTriangle } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { listarFichas, eliminarFichaTecnica, duplicarFicha } from '../services/fichasTecnicasService';
 import { FichaTecnicaForm } from './fichas/FichaTecnicaForm';
 import { generarPDFFicha } from '../services/pdfService';
 import type { FichaTecnica } from '../types';
+import { CardGridSkeleton } from './ui/Skeletons';
+import { EmptyState } from './ui/EmptyState';
 
 export const FichasTecnicasView: React.FC = () => {
     const { activeOutletId, currentUser } = useStore();
@@ -105,22 +107,27 @@ export const FichasTecnicasView: React.FC = () => {
             </header>
 
             {isLoading ? (
-                <div className="flex items-center justify-center py-20">
-                    <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-                </div>
+                <CardGridSkeleton />
             ) : filteredFichas.length > 0 ? (
                 <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' : 'space-y-3'}>
                     {filteredFichas.map(ficha => (
                         <div key={ficha.id} className="bg-surface border border-white/5 rounded-2xl p-6 hover:border-white/20 transition-all group">
                             <div className="flex justify-between items-start mb-4">
                                 <div>
-                                    <span className={`text-[10px] uppercase tracking-widest font-bold px-2 py-0.5 rounded ${ficha.categoria === 'comida' ? 'bg-orange-500/10 text-orange-400' :
-                                            ficha.categoria === 'bebida' ? 'bg-blue-500/10 text-blue-400' :
-                                                ficha.categoria === 'postre' ? 'bg-purple-500/10 text-purple-400' :
-                                                    'bg-slate-500/10 text-slate-400'
-                                        }`}>
-                                        {ficha.categoria.replace('-', ' ')}
-                                    </span>
+                                    <div className="flex items-center gap-2">
+                                        <span className={`text-[10px] uppercase tracking-widest font-bold px-2 py-0.5 rounded ${ficha.categoria === 'comida' ? 'bg-orange-500/10 text-orange-400' :
+                                                ficha.categoria === 'bebida' ? 'bg-blue-500/10 text-blue-400' :
+                                                    ficha.categoria === 'postre' ? 'bg-purple-500/10 text-purple-400' :
+                                                        'bg-slate-500/10 text-slate-400'
+                                            }`}>
+                                            {ficha.categoria.replace('-', ' ')}
+                                        </span>
+                                        {(ficha.costos.total <= 0 || ficha.ingredientes.some(i => i.costoUnitario === 0)) && (
+                                            <span className="flex items-center gap-1 text-[10px] font-bold bg-red-500/20 text-red-400 px-2 py-0.5 rounded border border-red-500/20" title="Coste incompleto o cero">
+                                                <AlertTriangle size={10} /> REVISAR
+                                            </span>
+                                        )}
+                                    </div>
                                     <h3 className="text-xl font-bold text-white mt-2 group-hover:text-primary transition-colors">{ficha.nombre}</h3>
                                 </div>
                                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -162,17 +169,27 @@ export const FichasTecnicasView: React.FC = () => {
                         </div>
                     ))}
                 </div>
+            ) : fichas.length === 0 ? (
+                <EmptyState
+                    title="No hay Fichas Técnicas"
+                    message="Calcula costes, márgenes y crea estándares profesionales para tus platos."
+                    icon={ChefHat}
+                    action={
+                        <button
+                            onClick={() => setShowForm(true)}
+                            className="bg-primary text-white px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-primary/90 transition-all active:scale-95 shadow-lg shadow-primary/20"
+                        >
+                            <Plus size={18} />
+                            Crear Primera Ficha
+                        </button>
+                    }
+                />
             ) : (
-                <div className="text-center py-20 bg-surface/30 rounded-3xl border border-dashed border-white/10">
-                    <ChefHat className="w-12 h-12 text-slate-600 mx-auto mb-4" />
-                    <p className="text-slate-400">No se encontraron fichas técnicas.</p>
-                    <button
-                        onClick={() => setShowForm(true)}
-                        className="mt-4 text-primary hover:underline text-sm font-medium"
-                    >
-                        Crea tu primera ficha técnica
-                    </button>
-                </div>
+                <EmptyState
+                    title="Sin resultados"
+                    message={`No encontramos fichas con "${searchTerm}"`}
+                    icon={Search}
+                />
             )}
 
             {showForm && (

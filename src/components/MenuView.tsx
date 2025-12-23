@@ -13,6 +13,8 @@ import { BookOpen, Plus, Search, Edit2, Trash2, Save, X, Utensils, Store } from 
 import type { Menu, MenuVariation, Recipe, Ingredient } from '../types';
 import { useToast, ConfirmModal } from './ui';
 import { DataImportModal, type ImportType } from './common/DataImportModal';
+import { CardGridSkeleton } from './ui/Skeletons';
+import { EmptyState } from './ui/EmptyState';
 
 export const MenuView: React.FC = () => {
     const { menus, recipes } = useStore();
@@ -20,6 +22,12 @@ export const MenuView: React.FC = () => {
     const { addToast } = useToast();
 
     const [isEditing, setIsEditing] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
+
+    React.useEffect(() => {
+        const timer = setTimeout(() => setIsLoading(false), 1000);
+        return () => clearTimeout(timer);
+    }, []);
     const [searchTerm, setSearchTerm] = useState('');
     const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; id: string | null }>({ isOpen: false, id: null });
     const [isSaving, setIsSaving] = useState(false);
@@ -569,7 +577,9 @@ export const MenuView: React.FC = () => {
                         Selecciona una cocina activa para ver y gestionar sus menús.
                     </p>
                 </div>
-            ) : (
+            ) : isLoading ? (
+                <CardGridSkeleton />
+            ) : scopedMenus.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 overflow-y-auto pb-6 custom-scrollbar">
                     {scopedMenus.map(menu => (
                         <div key={menu.id} className="bg-surface border border-white/5 rounded-xl hover:border-primary/30 transition-all p-6 group relative overflow-hidden">
@@ -613,13 +623,40 @@ export const MenuView: React.FC = () => {
                             </div>
                         </div>
                     ))}
-
-                    {scopedMenus.length === 0 && (
-                        <div className="col-span-full py-12 text-center text-slate-500">
-                            No se encontraron menús. ¡Crea uno nuevo!
-                        </div>
-                    )}
                 </div>
+            ) : menus.filter(m => m.outletId === activeOutletId).length === 0 ? (
+                <EmptyState
+                    title="No hay menús creados"
+                    message="Diseña menús diarios, de eventos o degustación para tus clientes."
+                    icon={BookOpen}
+                    action={
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() => setImportType('menu')}
+                                className="bg-surface text-slate-300 border border-white/10 px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-white/10 transition-all active:scale-95"
+                            >
+                                <Utensils size={18} />
+                                Importar
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setFormData({ name: '', description: '', recipeIds: [], variations: [], sellPrice: 0 });
+                                    setIsEditing(true);
+                                }}
+                                className="bg-primary text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-primary/90 transition-all active:scale-95 shadow-lg shadow-primary/20"
+                            >
+                                <Plus size={18} />
+                                Nuevo Menú
+                            </button>
+                        </div>
+                    }
+                />
+            ) : (
+                <EmptyState
+                    title="Sin resultados"
+                    message={`No se encontraron menús con "${searchTerm}"`}
+                    icon={Search}
+                />
             )}
 
             <ConfirmModal
