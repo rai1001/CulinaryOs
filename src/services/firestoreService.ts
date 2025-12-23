@@ -140,6 +140,38 @@ export const deleteDocument = async (collectionName: string, id: string): Promis
     await deleteDoc(docRef);
 };
 
+export const batchSetDocuments = async <T extends DocumentData>(collectionName: string, documents: { id: string, data: T }[]): Promise<void> => {
+    const mockDB = getMockDB();
+    if (mockDB) {
+        if (!mockDB[collectionName]) mockDB[collectionName] = [];
+        documents.forEach(({ id, data }) => {
+            const index = mockDB[collectionName].findIndex((d: any) => d.id === id);
+            const docData = sanitizeData({ ...data, id });
+            if (index >= 0) {
+                mockDB[collectionName][index] = { ...mockDB[collectionName][index], ...docData };
+            } else {
+                mockDB[collectionName].push(docData);
+            }
+        });
+        saveMockDB(mockDB);
+        return;
+    }
+
+    // Firestore batch limit is 500
+    const chunkSize = 500;
+    for (let i = 0; i < documents.length; i += chunkSize) {
+        const chunk = documents.slice(i, i + chunkSize);
+        const batch = writeBatch(db);
+
+        chunk.forEach(({ id, data }) => {
+            const docRef = doc(db, collectionName, id);
+            batch.set(docRef, sanitizeData(data as any));
+        });
+
+        await batch.commit();
+    }
+};
+
 export const queryDocuments = async <T>(collectionRef: CollectionReference<T>, ...constraints: QueryConstraint[]): Promise<T[]> => {
     const mockDB = getMockDB();
     if (mockDB) {

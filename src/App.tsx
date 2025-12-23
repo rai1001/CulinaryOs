@@ -1,7 +1,12 @@
 import React, { Suspense } from 'react';
 import { Routes, Route, Navigate, NavLink, useLocation } from 'react-router-dom';
 import { Dashboard } from './components/Dashboard';
-import { LayoutDashboard, Calendar, ShoppingCart, Database, CalendarDays, ChefHat, Package, Truck, ClipboardList, ShoppingBag, Trash2, ShieldCheck, TrendingUp, Search, BookOpen, Sparkles, Coffee, Menu as MenuIcon, X, Briefcase, Settings, LogOut, FileText, ChevronDown, Activity, Layers, Zap } from 'lucide-react';
+import {
+  LayoutDashboard, Calendar, ShoppingCart, Database, CalendarDays, ChefHat,
+  Package, Truck, ClipboardList, ShoppingBag, Trash2, ShieldCheck,
+  TrendingUp, Search, BookOpen, Sparkles, Coffee, Menu as MenuIcon,
+  X, Briefcase, Settings, LogOut, FileText, ChevronDown, Layers, Zap
+} from 'lucide-react';
 import { getAuth } from 'firebase/auth';
 import { useStore } from './store/useStore';
 import { OutletSelector } from './components/OutletSelector';
@@ -280,7 +285,7 @@ const NavItem = ({ icon, label, to }: NavItemProps) => {
 
 interface NavGroupProps {
   label: string;
-  icon: React.ReactElement;
+  icon: React.ReactElement<{ size?: number; className?: string }>;
   children: React.ReactNode;
   activePaths: string[];
 }
@@ -303,7 +308,7 @@ const NavGroup = ({ label, icon, children, activePaths }: NavGroupProps) => {
           }`}
       >
         <div className="flex items-center gap-3">
-          {React.cloneElement(icon as React.ReactElement, { size: 18, className: isAnyChildActive ? 'text-primary' : '' })}
+          {React.cloneElement(icon as React.ReactElement<any>, { size: 18, className: isAnyChildActive ? 'text-primary' : '' })}
           <span className={`font-semibold text-[10px] uppercase tracking-[0.1em] ${isAnyChildActive ? 'text-slate-200' : 'text-slate-500'}`}>{label}</span>
         </div>
         <ChevronDown

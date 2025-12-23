@@ -1,7 +1,8 @@
 import type { StateCreator } from 'zustand';
 
 import type { AppState, EventSlice } from '../types';
-import { setDocument, getEventsRange, deleteDocument } from '../../services/firestoreService';
+import type { Event } from '../../types';
+import { setDocument, getEventsRange, deleteDocument, batchSetDocuments } from '../../services/firestoreService';
 
 export const createEventSlice: StateCreator<
     AppState,
@@ -27,6 +28,21 @@ export const createEventSlice: StateCreator<
             }
         } catch (error) {
             console.error("Failed to add event", error);
+        }
+    },
+
+    addEvents: async (newEvents: Event[]) => {
+        set((state) => ({ events: [...state.events, ...newEvents] }));
+        try {
+            const documents = newEvents.map((e: Event) => ({ id: e.id, data: e }));
+            await batchSetDocuments("events", documents);
+            // Reload range
+            const { eventsRange } = get();
+            if (eventsRange) {
+                get().fetchEventsRange(eventsRange.start, eventsRange.end);
+            }
+        } catch (error) {
+            console.error("Failed to batch add events", error);
         }
     },
 

@@ -28,13 +28,14 @@ export interface EventSlice {
     events: Event[];
     eventsLoading: boolean;
     eventsError: string | null;
-    eventsRange: { start: string; end: string } | null;
-    setEvents: (items: Event[]) => void;
-    addEvent: (event: Event) => void;
-    updateEvent: (event: Event) => void;
+    eventsRange: { start: string, end: string } | null;
+    setEvents: (events: Event[]) => void;
+    addEvent: (event: Event) => Promise<void>;
+    addEvents: (events: Event[]) => Promise<void>;
+    updateEvent: (event: Event) => Promise<void>;
+    deleteEvent: (id: string) => Promise<void>;
     getFilteredEvents: () => Event[];
     fetchEventsRange: (start: string, end: string) => Promise<void>;
-    deleteEvent: (id: string) => Promise<void>;
 }
 
 export interface ProductionSlice {

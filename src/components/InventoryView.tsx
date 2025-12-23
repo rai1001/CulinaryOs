@@ -24,7 +24,6 @@ const getDaysUntilExpiry = (dateStr: string) => {
 export const InventoryView: React.FC = () => {
     const { ingredients, addBatch, addIngredient, activeOutletId, setIngredients } = useStore();
     const [searchTerm, setSearchTerm] = useState('');
-    const [error, setError] = useState<string | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
 
     const handleClearData = async () => {
@@ -39,7 +38,6 @@ export const InventoryView: React.FC = () => {
             console.log('Inventory cleared');
         } catch (err) {
             console.error('Error clearing inventory:', err);
-            setError('Error al borrar los datos');
         } finally {
             setIsDeleting(false);
         }
@@ -202,7 +200,7 @@ export const InventoryView: React.FC = () => {
                 // NOTE: Creating ingredient with the batch inside is cleaner if we constructed it that way, but existing logic splits it.
                 // Let's just update the doc with the new batch list.
                 const updatedBatches = [newBatch];
-                await updateDocument(COLLECTION_NAMES.INGREDIENTS, newIngredientId, {
+                await updateDocument(COLLECTIONS.INGREDIENTS, newIngredientId, {
                     batches: updatedBatches,
                     stock: newBatch.currentQuantity
                 });
@@ -237,7 +235,7 @@ export const InventoryView: React.FC = () => {
                 const updatedBatches = [...currentBatches, newBatch];
                 const newStock = updatedBatches.reduce((sum, b) => sum + b.currentQuantity, 0);
 
-                await updateDocument(COLLECTION_NAMES.INGREDIENTS, existingIngredient.id, {
+                await updateDocument(COLLECTIONS.INGREDIENTS, existingIngredient.id, {
                     batches: updatedBatches,
                     stock: newStock
                 });
@@ -368,7 +366,7 @@ export const InventoryView: React.FC = () => {
                         const updatedBatches = [...currentBatches, newBatch];
                         const newStock = updatedBatches.reduce((sum, b) => sum + b.currentQuantity, 0);
 
-                        await updateDocument(COLLECTION_NAMES.INGREDIENTS, match.id, {
+                        await updateDocument(COLLECTIONS.INGREDIENTS, match.id, {
                             batches: updatedBatches,
                             stock: newStock
                         });
