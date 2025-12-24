@@ -41,7 +41,7 @@ export const MenuView: React.FC = () => {
     };
     const [activeCategory, setActiveCategory] = useState<string>('all');
     const [activeStatus, setActiveStatus] = useState<string>('all');
-    const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({
+    const [sortConfig, _setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({
         key: 'name',
         direction: 'asc'
     });
@@ -205,12 +205,12 @@ export const MenuView: React.FC = () => {
         }
     };
 
-    const handleSort = (key: string) => {
-        setSortConfig(prev => ({
-            key,
-            direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
-        }));
-    };
+    // const _handleSort = (key: string) => {
+    //     setSortConfig(prev => ({
+    //         key,
+    //         direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
+    //     }));
+    // };
 
     const filteredMenus = React.useMemo(() => {
         let result = menus.filter(m =>
@@ -279,7 +279,7 @@ export const MenuView: React.FC = () => {
             };
 
             if (formData.id) {
-                await updateDocument(COLLECTIONS.MENUS, formData.id, menuData);
+                await updateDocument(COLLECTIONS.MENUS, formData.id, menuData as any);
                 addToast('Menú actualizado', 'success');
             } else {
                 await addDocument(collections.menus, menuData);

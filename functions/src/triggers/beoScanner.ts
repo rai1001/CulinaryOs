@@ -24,8 +24,8 @@ export const scanBEO = functions.storage.object().onFinalize(async (object) => {
 
     try {
         const db = admin.firestore();
-        const projectId = process.env.GCLOUD_PROJECT || "culinary-os";
-        const location = "europe-west1"; // Consistent location
+        const projectId = process.env.GCLOUD_PROJECT || "culinaryos-6794e";
+        const location = "us-central1"; // Consistent location
 
         // 2. Initialize Vertex AI
         const vertexAI = new VertexAI({ project: projectId, location });

@@ -168,7 +168,7 @@ export interface InventorySlice {
 }
 
 export interface AnalyticsSlice {
-    calculateMenuAnalytics: (startDate: string, endDate: string) => MenuItemAnalytics[];
+    calculateMenuAnalytics: (startDate: string, endDate: string) => Promise<MenuItemAnalytics[]>;
 }
 
 export interface IntegrationSlice {

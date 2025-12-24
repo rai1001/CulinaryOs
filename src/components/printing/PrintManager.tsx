@@ -6,7 +6,7 @@ import { generateLabelPDF, printBlob } from '../../utils/labelGenerator';
 
 export const PrintManager: React.FC = () => {
     const { currentUser } = useStore();
-    const [isPrinting, setIsPrinting] = useState(false);
+    const [_isPrinting, setIsPrinting] = useState(false);
 
     useEffect(() => {
         const handlePrint = async (e: Event) => {

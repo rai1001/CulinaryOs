@@ -34,9 +34,9 @@ export const aiSmartImporter = onObjectFinalized("universal_imports/{uid}/{fileI
         const mimeType = event.data.contentType || 'application/pdf';
 
         // 2. Initialize Vertex AI
-        const vertexAI = new VertexAI({ project: process.env.GCLOUD_PROJECT as string, location: 'us-central1' });
+        const vertexAI = new VertexAI({ project: process.env.GCLOUD_PROJECT || 'culinaryos-6794e', location: 'us-central1' });
         const generativeModel = vertexAI.getGenerativeModel({
-            model: 'gemini-1.5-flash-002',
+            model: 'gemini-2.0-flash',
         });
 
         const prompt = `
@@ -73,16 +73,16 @@ export const aiSmartImporter = onObjectFinalized("universal_imports/{uid}/{fileI
                     parts: [
                         { text: prompt },
                         {
-                            inline_data: {
-                                mime_type: mimeType,
+                            inlineData: {
+                                mimeType: mimeType,
                                 data: base64Data
                             }
                         }
                     ]
                 }
             ],
-            generation_config: {
-                response_mime_type: 'application/json'
+            generationConfig: {
+                responseMimeType: 'application/json'
             } as any
         });
 

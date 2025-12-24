@@ -594,7 +594,7 @@ export const InventoryView: React.FC = () => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-white/5">
-                            {filteredIngredients.map((ing, idx) => {
+                            {filteredIngredients.map((ing, _idx) => {
                                 const totalStock = ing.stock || 0;
                                 const totalValue = ing.batches?.reduce((acc, b) => acc + (b.currentQuantity * b.costPerUnit), 0) || (totalStock * ing.costPerUnit);
                                 const minStock = ing.minStock || 0;

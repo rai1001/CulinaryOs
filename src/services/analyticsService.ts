@@ -3,7 +3,7 @@
  * @description Service for analyzing Ficha Técnica profitability and calculating metrics.
  */
 
-import type { FichaTecnica, Event, Menu, Recipe, Ingredient, MenuItemAnalytics, DishClassification } from '../types';
+import type { FichaTecnica, Event, Menu, Recipe, Ingredient, MenuItemAnalytics } from '../types';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 
 export interface Optimizacion {

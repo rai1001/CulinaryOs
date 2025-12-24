@@ -112,7 +112,7 @@ export const predictDemand = functions.https.onCall(async (data: DemandPredictio
     }
 
     const vertexAI = new VertexAI({ project: projectId, location: "us-central1" }); // Standardize to us-central1
-    const model = vertexAI.getGenerativeModel({ model: "gemini-1.5-flash-002" });
+    const model = vertexAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
     const prompt = `
     Actúa como un Jefe de Compras experto. 

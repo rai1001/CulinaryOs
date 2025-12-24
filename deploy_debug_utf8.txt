@@ -1,0 +1,31 @@
+﻿[2025-12-24T14:14:47.519Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[2025-12-24T14:14:47.521Z] > authorizing via signed-in user (pagopaypal1978@gmail.com)
+[2025-12-24T14:14:47.521Z] [iam] checking project culinaryos-6794e for permissions ["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]
+[2025-12-24T14:14:47.524Z] Checked if tokens are valid: true, expires at: 1766587652825
+[2025-12-24T14:14:47.524Z] Checked if tokens are valid: true, expires at: 1766587652825
+[2025-12-24T14:14:47.527Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/culinaryos-6794e:testIamPermissions [none]
+[2025-12-24T14:14:47.527Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/culinaryos-6794e:testIamPermissions x-goog-quota-user=projects/culinaryos-6794e
+[2025-12-24T14:14:47.527Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/culinaryos-6794e:testIamPermissions {"permissions":["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]}
+[2025-12-24T14:14:47.787Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/culinaryos-6794e:testIamPermissions 200
+[2025-12-24T14:14:47.787Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/culinaryos-6794e:testIamPermissions {"permissions":["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]}
+[2025-12-24T14:14:47.788Z] Checked if tokens are valid: true, expires at: 1766587652825
+[2025-12-24T14:14:47.788Z] Checked if tokens are valid: true, expires at: 1766587652825
+[2025-12-24T14:14:47.788Z] >>> [apiv2][query] POST https://iam.googleapis.com/v1/projects/culinaryos-6794e/serviceAccounts/culinaryos-6794e@appspot.gserviceaccount.com:testIamPermissions [none]
+[2025-12-24T14:14:47.788Z] >>> [apiv2][body] POST https://iam.googleapis.com/v1/projects/culinaryos-6794e/serviceAccounts/culinaryos-6794e@appspot.gserviceaccount.com:testIamPermissions {"permissions":["iam.serviceAccounts.actAs"]}
+[2025-12-24T14:14:48.437Z] <<< [apiv2][status] POST https://iam.googleapis.com/v1/projects/culinaryos-6794e/serviceAccounts/culinaryos-6794e@appspot.gserviceaccount.com:testIamPermissions 200
+[2025-12-24T14:14:48.438Z] <<< [apiv2][body] POST https://iam.googleapis.com/v1/projects/culinaryos-6794e/serviceAccounts/culinaryos-6794e@appspot.gserviceaccount.com:testIamPermissions {"permissions":["iam.serviceAccounts.actAs"]}
+
+=== Deploying to 'culinaryos-6794e'...
+
+i  deploying functions 
+Running command: npm --prefix functions run build
+
+> build
+> tsc
+
+src/ingestion.ts(68,29): error TS2322: Type '{ inline_data: { mime_type: any; data: any; }; }' is not assignable to type 'Part'.
+  Object literal may only specify known properties, but 'inline_data' does not exist in type 'Part'. Did you mean to write 'inlineData'?
+src/triggers/aiSmartImporter.ts(76,29): error TS2322: Type '{ inline_data: { mime_type: string; data: string; }; }' is not assignable to type 'Part'.
+  Object literal may only specify known properties, but 'inline_data' does not exist in type 'Part'. Did you mean to write 'inlineData'?
+
+Error: functions predeploy error: Command terminated with non-zero exit code 2

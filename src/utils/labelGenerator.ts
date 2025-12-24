@@ -26,7 +26,7 @@ export const generateLabelPDF = async (data: LabelData): Promise<Blob> => {
 
     // --- Header (Type) --- 
     // Colors mapped to types (though thermal is usually B&W)
-    let typeColor = [0, 0, 0]; // Default Black
+    // let typeColor = [0, 0, 0]; // Default Black
     /*
     if (data.type === 'congelado') typeColor = [0, 136, 254]; // Blue
     if (data.type === 'fresco') typeColor = [0, 196, 159]; // Green

@@ -1,5 +1,4 @@
-
-
+import React, { useState } from 'react';
 import { useStore } from '../../store/useStore';
 import { getStorage, ref, uploadBytesResumable } from 'firebase/storage';
 import { Upload, CheckCircle, Loader2, AlertCircle } from 'lucide-react';
@@ -32,14 +31,14 @@ export const BEOUploader: React.FC = () => {
             const metadata = {
                 customMetadata: {
                     outletId: activeOutletId || '',
-                    uploadedBy: currentUser?.uid || ''
+                    uploadedBy: currentUser?.id || ''
                 }
             };
 
             const uploadTask = uploadBytesResumable(storageRef, file, metadata);
 
             uploadTask.on('state_changed',
-                (snapshot) => {
+                (_snapshot) => {
                     // Progress...
                 },
                 (error) => {

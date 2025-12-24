@@ -23,7 +23,7 @@ export const LabelPrinterModal: React.FC<LabelPrinterModalProps> = ({ ingredient
     );
     const [customName, setCustomName] = useState('');
     const [quantity, setQuantity] = useState(batch?.currentQuantity?.toString() || '1');
-    const [isPrinting, setIsPrinting] = useState(false);
+    const [_isPrinting, setIsPrinting] = useState(false);
     const printRef = useRef<HTMLDivElement>(null);
 
     const calculateExpiryDays = (types: LabelType[]): number => {

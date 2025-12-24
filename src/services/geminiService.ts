@@ -8,6 +8,7 @@ const vertexAI = getAI(firebaseApp);
 
 // Initialize the generative model with a model that supports multimodal input
 const model = getGenerativeModel(vertexAI, { model: "gemini-2.0-flash" });
+console.log("CulinaryOS AI Service Initialized: using gemini-2.0-flash");
 
 export interface AIAnalysisResult {
     success: boolean;

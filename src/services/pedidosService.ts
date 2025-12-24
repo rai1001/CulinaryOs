@@ -7,7 +7,7 @@ import { collection, where, arrayUnion } from 'firebase/firestore';
 import type { CollectionReference, UpdateData } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import type { Unit } from '../types/inventory';
-import { convertUnit } from '../utils/units';
+// import { convertUnit } from '../utils/units';
 
 export const pedidosService = {
     groupNeedsBySupplier: (needs: ReorderNeed[]): Map<string, ReorderNeed[]> => {
