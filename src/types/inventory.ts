@@ -77,6 +77,9 @@ export interface Ingredient {
 
     // Conversion Factors
     conversionFactors?: Record<string, number>; // e.g. { "caja": 15, "bolsa": 5 } -> multiplier to base unit
+    density?: number; // g/ml - For Volume <-> Mass conversions
+    avgUnitWeight?: number; // g/ud - For Unit <-> Mass conversions
+    wastageFactor?: number; // 0-1 (e.g., 0.2 for 20% waste) - For purchasing calculations
 }
 
 export interface InventoryItem {
