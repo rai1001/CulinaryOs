@@ -1,6 +1,6 @@
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
-import * as PDFDocument from "pdfkit";
+import PDFDocument = require("pdfkit");
 import { format, subMonths, startOfMonth, endOfMonth } from "date-fns";
 
 /**
