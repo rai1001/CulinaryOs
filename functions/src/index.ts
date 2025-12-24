@@ -20,5 +20,5 @@ export { generateMonthlyHACCPReport } from "./scheduled/haccpScheduler";
 
 // New KPI Triggers
 export { onInventoryUpdate } from "./triggers/inventoryTriggers";
-export { onPurchaseOrderUpdate } from "./triggers/orderTriggers";
-export { onWasteRecordCreate } from "./triggers/wasteTriggers";
+// export { onPurchaseOrderUpdate } from "./triggers/orderTriggers";
+// export { onWasteRecordCreate } from "./triggers/wasteTriggers";
