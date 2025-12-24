@@ -45,14 +45,14 @@ export const getCollection = async <T>(collectionName: string): Promise<T[]> => 
 
 // Helper to strip undefined values (Firestore rejects them)
 export const sanitizeData = <T extends object>(data: T): T => {
-    const cleanFn = (obj: any): any => {
+    const cleanFn = (obj: unknown): unknown => {
         if (Array.isArray(obj)) {
             return obj.map(v => cleanFn(v));
         }
         if (obj !== null && typeof obj === 'object' && !(obj instanceof Date)) {
-            const newObj: any = {};
-            Object.keys(obj).forEach(key => {
-                const value = obj[key];
+            const newObj: Record<string, unknown> = {};
+            Object.keys(obj as object).forEach(key => {
+                const value = (obj as Record<string, unknown>)[key];
                 if (value !== undefined) {
                     newObj[key] = cleanFn(value);
                 }
@@ -61,7 +61,7 @@ export const sanitizeData = <T extends object>(data: T): T => {
         }
         return obj;
     };
-    return cleanFn(data);
+    return cleanFn(data) as T;
 };
 
 // Helper for mock DB
@@ -71,7 +71,7 @@ const getMockDB = () => {
     return mock ? JSON.parse(mock) : null;
 };
 
-const saveMockDB = (data: any) => {
+const saveMockDB = (data: Record<string, unknown[]>) => {
     if (typeof localStorage !== 'undefined') {
         localStorage.setItem('E2E_MOCK_DB', JSON.stringify(data));
     }
@@ -88,7 +88,7 @@ export const setDocument = async <T extends DocumentData>(collectionName: string
     const mockDB = getMockDB();
     if (mockDB) {
         if (!mockDB[collectionName]) mockDB[collectionName] = [];
-        const index = mockDB[collectionName].findIndex((d: any) => d.id === id);
+        const index = mockDB[collectionName].findIndex((d: { id: string }) => d.id === id);
         const docData = sanitizeData({ ...data, id }); // Ensure ID is part of data
         if (index >= 0) {
             mockDB[collectionName][index] = { ...mockDB[collectionName][index], ...docData };
@@ -100,7 +100,7 @@ export const setDocument = async <T extends DocumentData>(collectionName: string
         return;
     }
     const docRef = doc(db, collectionName, id);
-    await setDoc(docRef, sanitizeData(data as any));
+    await setDoc(docRef, sanitizeData(data as unknown as object));
 };
 
 export const addDocument = async <T extends DocumentData>(collectionRef: CollectionReference<T>, data: WithFieldValue<T>): Promise<string> => {
@@ -117,7 +117,7 @@ export const addDocument = async <T extends DocumentData>(collectionRef: Collect
         dispatchMockUpdate(collectionName);
         return id;
     }
-    const docRef = await addDoc(collectionRef, sanitizeData(data as any));
+    const docRef = await addDoc(collectionRef, sanitizeData(data as unknown as object));
     return docRef.id;
 };
 
@@ -125,23 +125,23 @@ export const updateDocument = async <T>(collectionName: string, id: string, data
     const mockDB = getMockDB();
     if (mockDB) {
         if (!mockDB[collectionName]) return;
-        const index = mockDB[collectionName].findIndex((d: any) => d.id === id);
+        const index = mockDB[collectionName].findIndex((d: { id: string }) => d.id === id);
         if (index >= 0) {
-            mockDB[collectionName][index] = { ...mockDB[collectionName][index], ...sanitizeData(data as any) };
+            mockDB[collectionName][index] = { ...mockDB[collectionName][index], ...sanitizeData(data as unknown as object) };
             saveMockDB(mockDB);
             dispatchMockUpdate(collectionName);
         }
         return;
     }
     const docRef = doc(db, collectionName, id);
-    await updateDoc(docRef, sanitizeData(data as any));
+    await updateDoc(docRef, sanitizeData(data as unknown as object));
 };
 
 export const deleteDocument = async (collectionName: string, id: string): Promise<void> => {
     const mockDB = getMockDB();
     if (mockDB) {
         if (mockDB[collectionName]) {
-            mockDB[collectionName] = mockDB[collectionName].filter((d: any) => d.id !== id);
+            mockDB[collectionName] = mockDB[collectionName].filter((d: { id: string }) => d.id !== id);
             saveMockDB(mockDB);
             dispatchMockUpdate(collectionName);
         }
@@ -156,7 +156,7 @@ export const batchSetDocuments = async <T extends DocumentData>(collectionName: 
     if (mockDB) {
         if (!mockDB[collectionName]) mockDB[collectionName] = [];
         documents.forEach(({ id, data }) => {
-            const index = mockDB[collectionName].findIndex((d: any) => d.id === id);
+            const index = mockDB[collectionName].findIndex((d: { id: string }) => d.id === id);
             const docData = sanitizeData({ ...data, id });
             if (index >= 0) {
                 mockDB[collectionName][index] = { ...mockDB[collectionName][index], ...docData };
@@ -177,7 +177,7 @@ export const batchSetDocuments = async <T extends DocumentData>(collectionName: 
 
         chunk.forEach(({ id, data }) => {
             const docRef = doc(db, collectionName, id);
-            batch.set(docRef, sanitizeData(data as any));
+            batch.set(docRef, sanitizeData(data as unknown as object));
         });
 
         await batch.commit();
@@ -220,31 +220,31 @@ export const getPurchaseOrdersPage = async ({
         let items = mockDB['purchaseOrders'] || [];
 
         // Filter by Outlet
-        items = items.filter((i: any) => i.outletId === outletId);
+        items = items.filter((i: PurchaseOrder) => i.outletId === outletId);
 
         // Filter by Status
         if (filters.status && filters.status !== 'ALL') {
-            items = items.filter((i: any) => i.status === filters.status);
+            items = items.filter((i: PurchaseOrder) => i.status === filters.status);
         }
 
         // Filter by Supplier
         if (filters.supplierId && filters.supplierId !== 'ALL') {
             if (filters.supplierId === 'SIN_ASIGNAR') {
-                items = items.filter((i: any) => !i.supplierId);
+                items = items.filter((i: PurchaseOrder) => !i.supplierId);
             } else {
-                items = items.filter((i: any) => i.supplierId === filters.supplierId);
+                items = items.filter((i: PurchaseOrder) => i.supplierId === filters.supplierId);
             }
         }
 
         // Sort
-        items.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        items.sort((a: PurchaseOrder, b: PurchaseOrder) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
         // Pagination (Simple slice for mock)
         // Ignoring cursor for simplicity in E2E unless strictly needed
         const pagedItems = items.slice(0, pageSize);
 
         return {
-            items: pagedItems,
+            items: pagedItems as PurchaseOrder[],
             nextCursor: null,
             hasMore: items.length > pageSize
         };
@@ -314,11 +314,11 @@ export const getEventsRange = async ({
     const mockDB = getMockDB();
     if (mockDB) {
         const events = mockDB['events'] || [];
-        return events.filter((e: any) =>
+        return events.filter((e: Event) =>
             e.outletId === outletId &&
             e.date >= startDate &&
             e.date <= endDate
-        ).sort((a: any, b: any) => a.date.localeCompare(b.date));
+        ).sort((a: Event, b: Event) => a.date.localeCompare(b.date));
     }
 
     const constraints: QueryConstraint[] = [
@@ -338,10 +338,10 @@ export const getEventsRange = async ({
 export const getDocumentById = async <T>(collectionName: string, id: string): Promise<T | undefined> => {
     const mockDB = getMockDB();
     if (mockDB) {
-        return mockDB[collectionName]?.find((d: any) => d.id === id);
+        return mockDB[collectionName]?.find((d: { id: string }) => d.id === id) as T;
     }
     const d = await getDoc(doc(db, collectionName, id));
-    return d.exists() ? { id: d.id, ...d.data() } as any : undefined;
+    return d.exists() ? { id: d.id, ...d.data() } as unknown as T : undefined;
 };
 
 // Batch delete helper
@@ -373,7 +373,7 @@ export const batchDeleteDocuments = async (collectionName: string, ids: string[]
     const mockDB = getMockDB();
     if (mockDB) {
         if (mockDB[collectionName]) {
-            mockDB[collectionName] = mockDB[collectionName].filter((d: any) => !ids.includes(d.id));
+            mockDB[collectionName] = mockDB[collectionName].filter((d: { id: string }) => !ids.includes(d.id));
             saveMockDB(mockDB);
             dispatchMockUpdate(collectionName);
         }

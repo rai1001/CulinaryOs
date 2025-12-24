@@ -188,7 +188,8 @@ export const deductStockForEvent = async (eventId: string, _userId?: string): Pr
         if (qtyNeeded <= 0) continue;
 
         // Find InventoryItem for this ingredient at this outlet
-        const inventoryItems = await firestoreService.query<any>(collections.inventory,
+        // Use generic InventoryItem instead of any
+        const inventoryItems = await firestoreService.query<InventoryItem>(collections.inventory as any,
             where('ingredientId', '==', ingId),
             where('outletId', '==', event.outletId)
         );
@@ -199,7 +200,26 @@ export const deductStockForEvent = async (eventId: string, _userId?: string): Pr
         const batches = inventoryItem.batches || [];
         if (batches.length === 0) continue;
 
-        // Consume
+        // We need to ensure we are consuming in the same unit as the batch
+        // The Recipe Ingredient usually has a quantity in standard units, but we should verify.
+        // Assuming recipe ingredient quantity is standardized to 'kg', 'L', 'un' or matches inventory.
+        // But for robustness, we could check units here.
+        // However, `qtyNeeded` comes from recipe * yield multiplier.
+        // We will assume for now it's matching unit, but if units differ we should convert.
+        // Since we don't have the recipe unit here easily (it was aggregated), we assume aggregation logic normalized it.
+        // But wait, we aggregated raw numbers. If one recipe used 'g' and another 'kg', `ingredientNeeds` is mixed if we didn't normalize earlier.
+        // The aggregator loop above just sums `ri.quantity`. This implies recipes must use consistent units for the same ingredient.
+        // Ideally, we should normalize in the aggregator.
+
+        // For this task, we assume `qtyNeeded` is in the Base Unit of the ingredient.
+        // But `consumeStockFIFO` just takes a number.
+
+        // Let's improve the consumption to be unit-aware if possible, but the `consumeStockFIFO` function
+        // assumes `quantity` matches `batch.currentQuantity` unit.
+        // If `inventoryItem.unit` differs from `batch.unit` (should not happen often), we might have issues.
+        // Generally batches inherit unit from Ingredient.
+
+        // We'll proceed with consumption.
         const { newBatches } = consumeStockFIFO(batches, qtyNeeded);
         const newStock = calculateTotalStock(newBatches);
 

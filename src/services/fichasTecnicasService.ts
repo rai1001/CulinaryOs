@@ -16,7 +16,7 @@ import type {
     Ingredient,
     IngredienteFicha
 } from '../types';
-import { where, orderBy } from 'firebase/firestore';
+import { where, orderBy, documentId } from 'firebase/firestore';
 
 /**
  * Creates a new Ficha Técnica.
@@ -209,21 +209,23 @@ export async function convertirRecetaAFicha(recipeId: string, outletId: string, 
     const recipe = await firestoreService.getById<Recipe>(COLLECTIONS.RECIPES, recipeId);
     if (!recipe) throw new Error('Receta no encontrada');
 
-    // Fetch only required ingredients to get current costs
-    const ingredientIds = [...new Set(recipe.ingredients.map(ri => ri.ingredientId))];
-    const inventory: Ingredient[] = [];
-
-    // Firestore 'in' query limit is 30
-    const CHUNK_SIZE = 30;
-    for (let i = 0; i < ingredientIds.length; i += CHUNK_SIZE) {
-        const chunk = ingredientIds.slice(i, i + CHUNK_SIZE);
-        const results = await firestoreService.query<Ingredient>(
-            collections.ingredients as any,
-            where('__name__', 'in', chunk)
-        );
-        inventory.push(...results);
+    // Fetch ingredients efficiently with batching (limit 30 per query)
+    const ingredientIds = [...new Set(recipe.ingredients.map(i => i.ingredientId))];
+    const chunks = [];
+    for (let i = 0; i < ingredientIds.length; i += 30) {
+        chunks.push(ingredientIds.slice(i, i + 30));
     }
 
+    const inventoryChunks = await Promise.all(
+        chunks.map(chunk =>
+            firestoreService.query<Ingredient>(
+                collections.ingredients as any,
+                where(documentId(), 'in', chunk)
+            )
+        )
+    );
+
+    const inventory = inventoryChunks.flat();
     const ingredientMap = new Map<string, Ingredient>(inventory.map(i => [i.id, i]));
 
     const ingredientesFicha: IngredienteFicha[] = recipe.ingredients.map(ri => {

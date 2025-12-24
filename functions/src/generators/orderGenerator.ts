@@ -81,30 +81,36 @@ export const generatePurchaseOrder = onCall(async (request) => {
             });
         });
 
-        // 4. Fetch Supplier Names in Batch (Optimization: avoids N+1 query)
-        const supplierIds = Object.keys(ordersBySupplier).filter(id => id !== 'unknown_supplier');
-        const supplierNames: Record<string, string> = {};
-
-        if (supplierIds.length > 0) {
-            const supplierRefs = supplierIds.map(id => db.collection('suppliers').doc(id));
-            const supplierDocs = await db.getAll(...supplierRefs);
-            supplierDocs.forEach(doc => {
-                if (doc.exists) {
-                    supplierNames[doc.id] = doc.data()?.name || "Unknown Supplier";
-                }
-            });
-        }
+        // 4. (Step removed - unified with optimized fetch below)
 
         // 5. Create Purchase Orders
         const batch = db.batch();
         const ordersCreated: string[] = [];
         const timestamp = new Date().toISOString();
 
+        // Optimized Supplier Fetch: Get all unique supplier IDs first
+        const uniqueSupplierIds = Object.keys(ordersBySupplier).filter(id => id !== 'unknown_supplier');
+        const supplierNameMap: Record<string, string> = {};
+
+        if (uniqueSupplierIds.length > 0) {
+            const supplierRefs = uniqueSupplierIds.map(id => db.collection('suppliers').doc(id));
+            const supplierDocs = await db.getAll(...supplierRefs);
+
+            supplierDocs.forEach(doc => {
+                if (doc.exists) {
+                    supplierNameMap[doc.id] = doc.data()?.name || "Unknown Supplier";
+                }
+            });
+        }
+
         for (const [supplierId, items] of Object.entries(ordersBySupplier)) {
             const totalAmount = items.reduce((sum, item) => sum + item.totalCost, 0);
 
-            // Get Supplier Name from batch results
-            const supplierName = supplierNames[supplierId] || "Unknown Supplier";
+            // Get Supplier Name from map
+            let supplierName = "Unknown Supplier";
+            if (supplierId !== 'unknown_supplier') {
+                supplierName = supplierNameMap[supplierId] || supplierName;
+            }
 
             const newOrderRef = db.collection('purchaseOrders').doc();
             const orderData = {

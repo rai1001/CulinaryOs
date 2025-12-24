@@ -18,3 +18,7 @@ export { sendPurchaseOrderEmail } from "./triggers/sendPurchaseOrderEmail";
 export { createOrderNotification } from "./triggers/createOrderNotification";
 export { generateMonthlyHACCPReport } from "./scheduled/haccpScheduler";
 
+// New KPI Triggers
+export { onInventoryUpdate } from "./triggers/inventoryTriggers";
+export { onPurchaseOrderUpdate } from "./triggers/orderTriggers";
+export { onWasteRecordCreate } from "./triggers/wasteTriggers";
