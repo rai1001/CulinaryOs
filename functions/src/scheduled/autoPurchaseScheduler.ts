@@ -64,14 +64,24 @@ export const autoPurchaseScheduler = onSchedule("every 1 hours", async (event) =
 
             console.log(`Processing Auto Purchase for Outlet: ${outletId}`);
 
-            // 1. Fetch Ingredients and Active Batches
-            const [ingredientsSnap, batchesSnap] = await Promise.all([
+            // 1. Fetch Ingredients, Batches, and Existing Drafts from Today
+            const todayStart = new Date();
+            todayStart.setHours(0, 0, 0, 0);
+
+            const [ingredientsSnap, batchesSnap, existingOrdersSnap] = await Promise.all([
                 db.collection('ingredients').where('outletId', '==', outletId).get(),
-                db.collection('batches').where('outletId', '==', outletId).where('status', '==', 'ACTIVE').get()
+                db.collection('batches').where('outletId', '==', outletId).where('status', '==', 'ACTIVE').get(),
+                db.collection('purchaseOrders')
+                    .where('outletId', '==', outletId)
+                    .where('status', '==', 'DRAFT')
+                    .where('type', '==', 'AUTOMATIC')
+                    .where('date', '>=', todayStart.toISOString())
+                    .get()
             ]);
 
             const ingredients = ingredientsSnap.docs.map(d => ({ id: d.id, ...d.data() } as Ingredient));
             const batches = batchesSnap.docs.map(d => d.data());
+            const existingSupplierIds = new Set(existingOrdersSnap.docs.map(d => d.data().supplierId));
 
             // 2. Calculate Real Stock from Batches
             const stockMap: Record<string, number> = {};
@@ -97,10 +107,12 @@ export const autoPurchaseScheduler = onSchedule("every 1 hours", async (event) =
                 continue;
             }
 
-            // 4. Group by Supplier
+            // 4. Group by Supplier and filter out those with existing drafts today
             const bySupplier: Record<string, typeof needs> = {};
             needs.forEach(item => {
                 const supId = item.ingredient.supplierId || 'SIN_ASIGNAR';
+                if (existingSupplierIds.has(supId)) return; // Skip if draft already exists
+
                 if (!bySupplier[supId]) bySupplier[supId] = [];
                 bySupplier[supId].push(item);
             });
@@ -115,8 +127,6 @@ export const autoPurchaseScheduler = onSchedule("every 1 hours", async (event) =
 
                 const ref = db.collection('purchaseOrders').doc();
                 const totalCost = items.reduce((sum, item) => sum + (item.quantity * item.ingredient.costPerUnit), 0);
-
-                // Generate a unique order number similar to the purchasingService
                 const shortId = ref.id.slice(0, 4).toUpperCase();
                 const orderNumber = `AUTO-${todayStr}-${shortId}`;
 
@@ -137,7 +147,7 @@ export const autoPurchaseScheduler = onSchedule("every 1 hours", async (event) =
                         tempDescription: i.ingredient.name
                     })),
                     totalCost,
-                    notes: 'Generado automáticamente por planificador'
+                    notes: 'Generado automáticamente por planificador (Stock Bajo)'
                 });
                 ordersCreatedCount++;
             }
@@ -145,21 +155,20 @@ export const autoPurchaseScheduler = onSchedule("every 1 hours", async (event) =
             if (ordersCreatedCount > 0) {
                 await batch.commit();
 
-                // Create a notification for the outlet
                 await db.collection('notifications').add({
                     type: 'SYSTEM',
-                    message: `Se han generado ${ordersCreatedCount} borradores de pedido automáticos para revisión.`,
+                    message: `Se han generado ${ordersCreatedCount} borradores de pedido automáticos por stock bajo.`,
                     read: false,
                     timestamp: admin.firestore.FieldValue.serverTimestamp(),
                     outletId,
-                    link: '/purchasing' // Optional: help UI navigation
+                    link: '/purchasing'
                 });
 
                 console.log(`Generated ${ordersCreatedCount} orders for outlet ${outletId}`);
             }
         }
 
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error in Auto Purchase Scheduler:", error);
     }
 });

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { ChefHat, AlertCircle, CheckCircle, Play, Pause, Clock, Thermometer } from 'lucide-react';
+import { ChefHat, AlertCircle, CheckCircle, Play, Pause, Clock, Thermometer, Printer } from 'lucide-react';
+import { printLabel } from '../printing/PrintService';
 import type { KanbanTask, KanbanTaskStatus } from '../../types';
 import { useStore } from '../../store/useStore';
 
@@ -192,6 +193,23 @@ const TaskCard = ({
                         <CheckCircle size={14} />
                     </div>
                 )}
+                {/* Print Button */}
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        printLabel({
+                            title: task.title,
+                            date: new Date(),
+                            type: 'PREP',
+                            quantity: `${task.quantity} ${task.unit}`,
+                            batchNumber: `TASK-${task.id.slice(-6)}`
+                        });
+                    }}
+                    className="p-3 ml-2 rounded-2xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors border border-white/5"
+                    title="Imprimir Etiqueta"
+                >
+                    <Printer size={14} />
+                </button>
             </div>
 
             {/* Progress Bar for Active Tasks */}

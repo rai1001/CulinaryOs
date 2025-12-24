@@ -4,7 +4,7 @@ import type { MenuItemAnalytics } from '../../types';
 import { calculateIngredientUsage } from '../../services/analyticsService';
 
 export interface AnalyticsSlice {
-    calculateMenuAnalytics: (startDate: string, endDate: string) => MenuItemAnalytics[];
+    calculateMenuAnalytics: (startDate: string, endDate: string) => Promise<MenuItemAnalytics[]>;
 }
 
 export const createAnalyticsSlice: StateCreator<
@@ -13,9 +13,9 @@ export const createAnalyticsSlice: StateCreator<
     [],
     AnalyticsSlice
 > = (_set, get) => ({
-    calculateMenuAnalytics: (startDate: string, endDate: string) => {
-        const { events, recipes, menus, ingredients } = get();
-        return calculateIngredientUsage(events, menus, recipes, ingredients, startDate, endDate);
+    calculateMenuAnalytics: async (startDate: string, endDate: string) => {
+        const { events, recipes, menus, ingredients, activeOutletId } = get();
+        return await calculateIngredientUsage(events, menus, recipes, ingredients, startDate, endDate, activeOutletId || undefined);
     }
 });
 

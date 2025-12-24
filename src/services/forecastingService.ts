@@ -1,5 +1,6 @@
 import type { AppState } from '../store/types';
 import { addDays, isBefore, parseISO } from 'date-fns';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 
 export interface ForecastData {
     ingredientId: string;
@@ -11,14 +12,30 @@ export interface ForecastData {
         eventCount: number;
     };
     historicalUsage: {
-        avgDaily: number;
         totalWaste: number;
+        avgDaily: number;
     };
 }
 
 export const forecastingService = {
     /**
+     * Calls the Cloud Function for AI-powered demand prediction
+     */
+    getAIPredictions: async (outletId: string, windowDays: number = 14) => {
+        try {
+            const functions = getFunctions();
+            const predictDemand = httpsCallable<any, any>(functions, 'predictDemand');
+            const result = await predictDemand({ outletId, windowDays });
+            return result.data;
+        } catch (error) {
+            console.error("Cloud Prediction Error:", error);
+            throw error;
+        }
+    },
+
+    /**
      * Aggregates all future inventory needs based on confirmed events within a window
+     * @deprecated Use Cloud Predictions for complex analysis
      */
     getFutureInventoryDemand: (state: AppState, windowDays: number = 14): Record<string, { neededQuantity: number; eventCount: number }> => {
         const { events, recipes, menus } = state;

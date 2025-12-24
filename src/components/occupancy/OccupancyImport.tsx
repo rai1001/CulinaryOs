@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-import { ExcelImporter } from '../common/ExcelImporter';
+import { UniversalImporter } from '../common/UniversalImporter';
 
-import { parseOccupancyImport, saveOccupancyData } from '../../services/occupancyService';
 import { CheckCircle, AlertCircle } from 'lucide-react';
 
 interface OccupancyImportProps {
@@ -12,21 +11,6 @@ export const OccupancyImport: React.FC<OccupancyImportProps> = ({ onSuccess }) =
     const [importStatus, setImportStatus] = useState<'idle' | 'success' | 'error'>('idle');
     const [importedCount, setImportedCount] = useState(0);
 
-    const handleImport = async (data: any[]) => {
-        try {
-            const parsed = parseOccupancyImport(data);
-            if (parsed.length === 0) {
-                throw new Error('No valid occupancy data found');
-            }
-            await saveOccupancyData(parsed);
-            setImportedCount(parsed.length);
-            setImportStatus('success');
-            if (onSuccess) onSuccess();
-        } catch (err) {
-            console.error(err);
-            setImportStatus('error');
-        }
-    };
 
     return (
         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
@@ -37,10 +21,14 @@ export const OccupancyImport: React.FC<OccupancyImportProps> = ({ onSuccess }) =
                     Sube un archivo Excel con las columnas: Fecha, Desayunos, Comidas, Cenas (o columna PAX genérica).
                 </p>
 
-                <ExcelImporter
-                    onImport={handleImport}
-                    buttonLabel="Subir Excel Ocupación"
+                <UniversalImporter
+                    buttonLabel="Subir Ocupación"
                     template={{ date: 'Fecha', breakfast: 'Desayunos', lunch: 'Comidas', dinner: 'Cenas' }}
+                    onCompleted={(data) => {
+                        setImportedCount(data.summary?.occupancyFound || 0);
+                        setImportStatus('success');
+                        if (onSuccess) onSuccess();
+                    }}
                 />
 
                 {importStatus === 'success' && (

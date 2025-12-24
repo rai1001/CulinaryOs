@@ -2,6 +2,8 @@ import React, { useState, useRef } from 'react';
 import Barcode from 'react-barcode';
 import { X, Printer, Snowflake, Leaf, ThermometerSnowflake, Package } from 'lucide-react';
 import type { Ingredient, InventoryItem } from '../types';
+import { useStore } from '../store/useStore';
+import { generateLabelPDF, printBlob } from '../utils/labelGenerator';
 
 interface LabelPrinterModalProps {
     ingredient?: Ingredient | InventoryItem;
@@ -11,7 +13,9 @@ interface LabelPrinterModalProps {
 
 type LabelType = 'congelado' | 'fresco' | 'pasteurizado' | 'elaborado' | 'abatido';
 
+
 export const LabelPrinterModal: React.FC<LabelPrinterModalProps> = ({ ingredient, batch, onClose }) => {
+    const { currentUser } = useStore();
     const [selectedTypes, setSelectedTypes] = useState<LabelType[]>(['congelado']);
     const [expiryDate, setExpiryDate] = useState(
         batch?.expiresAt ? new Date(batch.expiresAt).toISOString().split('T')[0] :
@@ -19,6 +23,7 @@ export const LabelPrinterModal: React.FC<LabelPrinterModalProps> = ({ ingredient
     );
     const [customName, setCustomName] = useState('');
     const [quantity, setQuantity] = useState(batch?.currentQuantity?.toString() || '1');
+    const [isPrinting, setIsPrinting] = useState(false);
     const printRef = useRef<HTMLDivElement>(null);
 
     const calculateExpiryDays = (types: LabelType[]): number => {
@@ -70,154 +75,28 @@ export const LabelPrinterModal: React.FC<LabelPrinterModalProps> = ({ ingredient
     const colors = getDominantColorClass();
 
     const handlePrint = async () => {
-        // Create a hidden iframe for printing
-        const iframe = document.createElement('iframe');
-        iframe.style.position = 'fixed';
-        iframe.style.right = '0';
-        iframe.style.bottom = '0';
-        iframe.style.width = '0';
-        iframe.style.height = '0';
-        iframe.style.border = '0';
-        document.body.appendChild(iframe);
-
-        const content = printRef.current?.innerHTML;
-        if (!content || !iframe.contentWindow) return;
-
-        const doc = iframe.contentWindow.document;
-        doc.open();
-        doc.write(`
-                <html>
-                <head>
-                <style>
-                    @page {
-                        size: 75mm 50mm;
-                        margin: 0;
-                    }
-                    body {
-                        margin: 0;
-                        padding: 2mm;
-                        font-family: sans-serif;
-                    }
-                    .label-container {
-                        width: 75mm;
-                        height: 50mm;
-                        display: flex;
-                        flex-direction: column;
-                        box-sizing: border-box;
-                        overflow: hidden;
-                        border: 1px active border-black;
-                        position: relative;
-                    }
-                    .header {
-                        text-align: center;
-                        font-weight: 900;
-                        font-size: 10px;
-                        text-transform: uppercase;
-                        padding: 2px 0;
-                        border-bottom: 2px solid black;
-                        margin-bottom: 2px;
-                        white-space: nowrap;
-                    }
-                    .header.congelado { border-color: #0088FE; color: #0088FE; }
-                    .header.fresco { border-color: #00C49F; color: #00C49F; }
-                    .header.pasteurizado { border-color: #FFBB28; color: #FFBB28; }
-                    .header.elaborado { border-color: #8884d8; color: #8884d8; }
-                    .header.abatido { border-color: #06b6d4; color: #06b6d4; }
-
-                    .product-name {
-                        font-size: 14px;
-                        font-weight: 900;
-                        margin-bottom: 2px;
-                        line-height: 1.1;
-                        max-height: 32px;
-                        overflow: hidden;
-                        text-transform: uppercase;
-                    }
-
-                    .info-grid {
-                        display: grid;
-                        grid-template-columns: 1fr 1fr;
-                        gap: 2px;
-                        font-size: 8px;
-                        margin-bottom: 2px;
-                    }
-                    
-                    .date-box {
-                        display: flex;
-                        justify-content: space-between;
-                        border: 1px solid #ccc;
-                        padding: 1px 3px;
-                        border-radius: 2px;
-                    }
-                    
-                    .meta-label { font-weight: bold; color: #444; }
-                    .meta-val { font-weight: bold; }
-
-                    .barcode-container {
-                        display: flex;
-                        justify-content: center;
-                        margin-top: auto;
-                        height: 25px;
-                        overflow: hidden;
-                    }
-                    /* Force barcode scaling */
-                    .barcode-container svg {
-                        height: 100% !important;
-                        width: auto !important;
-                        max-width: 100%;
-                    }
-                </style>
-            </head>
-            <body>
-                 <div class="label-container">
-                    <div class="header ${colors.text.replace('text-', '')}">
-                        ${getCombinedLabel()}
-                    </div>
-                    <div class="product-name">
-                        ${ingredient ? ingredient.name : (customName || 'NOMBRE PRODUCTO')}
-                    </div>
-                    
-                    <div class="info-grid">
-                        <div class="date-box">
-                            <span class="meta-label">ELAB:</span>
-                            <span class="meta-val">${new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: '2-digit' })}</span>
-                        </div>
-                         <div class="date-box">
-                            <span class="meta-label">EXP:</span>
-                            <span class="meta-val">${new Date(expiryDate).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: '2-digit' })}</span>
-                        </div>
-                    </div>
-                    
-                    <div class="info-grid" style="margin-bottom: 1px;">
-                         <div class="date-box" style="border:none; padding:0;">
-                            <span class="meta-label">LOTE:</span>
-                            <span class="meta-val" style="font-family:monospace">${batch?.batchNumber?.slice(-6) || 'MANUAL'}</span>
-                        </div>
-                        <div class="date-box" style="border:none; padding:0; justify-content:flex-end;">
-                            <span class="meta-label">CANT:</span>
-                            <span class="meta-val">${quantity} ${ingredient?.unit || 'un'}</span>
-                        </div>
-                    </div>
-
-                    <div class="barcode-container">
-                        ${printRef.current?.querySelector('svg')?.outerHTML || ''}
-                    </div>
-                 </div>
-            </body>
-            </html>
-        `);
-        doc.close();
-
-        // Wait for images/barcodes to load
-        setTimeout(() => {
-            iframe.contentWindow?.focus();
-            iframe.contentWindow?.print();
-            // Cleanup
-            setTimeout(() => {
-                document.body.removeChild(iframe);
-            }, 1000);
-        }, 500);
+        setIsPrinting(true);
+        try {
+            const blob = await generateLabelPDF({
+                title: ingredient ? ingredient.name : (customName || 'NOMBRE PRODUCTO'),
+                type: getCombinedLabel(),
+                productionDate: new Date().toISOString(),
+                expiryDate: new Date(expiryDate).toISOString(),
+                batchNumber: batch?.batchNumber || 'MANUAL-' + Date.now().toString().slice(-6),
+                quantity: quantity + (ingredient?.unit ? ` ${ingredient.unit}` : ''),
+                user: currentUser?.name || currentUser?.email || 'Chef',
+                allergens: (ingredient as Partial<Ingredient>)?.allergens || []
+            });
+            printBlob(blob);
+            // onClose(); // Optional: close after print
+        } catch (error) {
+            console.error("Failed to generate label:", error);
+            alert("Error al generar la etiqueta");
+        } finally {
+            setIsPrinting(false);
+        }
     };
+
 
     return (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">

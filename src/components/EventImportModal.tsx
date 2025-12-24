@@ -8,6 +8,8 @@ import type { EventType } from '../types';
 import { scanEventOrder } from '../services/geminiService';
 import { parsePlaningMatrix } from '../utils/planingParser';
 import type { PlaningEvent } from '../utils/planingParser';
+import { BEOUploader } from './events/BEOUploader';
+
 
 interface ParsedEvent {
     name: string;
@@ -330,52 +332,60 @@ export const EventImportModal: React.FC<EventImportModalProps> = ({ onClose, onS
                     )}
 
                     {(!parsedData && matrixEvents.length === 0 && importedEvents.length === 0) ? (
-                        <div
-                            onClick={() => fileInputRef.current?.click()}
-                            className={`border-2 border-dashed border-white/10 rounded-xl p-12 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-white/5 hover:border-primary/50 transition-all ${parsing ? 'opacity-50 pointer-events-none' : ''}`}
-                        >
-                            <input
-                                type="file"
-                                ref={fileInputRef}
-                                onChange={(mode === 'excel' || mode === 'matrix') ? handleFileChange : handleScanUpload}
-                                className="hidden"
-                                accept={(mode === 'excel' || mode === 'matrix') ? ".xlsx, .xls" : mode === 'ics' ? ".ics" : ".jpg, .jpeg, .png, .webp"}
-                            />
-
-                            {parsing ? (
-                                <>
-                                    <Loader2 className="w-10 h-10 text-primary animate-spin mb-4" />
-                                    <p className="text-lg font-medium text-white">Analizando archivo...</p>
-                                    <p className="text-sm text-slate-400 mt-2">
-                                        {(mode === 'excel' || mode === 'matrix') ? 'Buscando fechas, comensales y eventos' :
-                                            mode === 'ics' ? 'Leyendo calendario...' : 'Extrayendo datos con IA'}
-                                    </p>
-                                </>
-                            ) : error ? (
-                                <>
-                                    <AlertCircle className="w-10 h-10 text-red-400 mb-4" />
-                                    <p className="text-lg font-medium text-red-400">{error}</p>
-                                    <p className="text-sm text-slate-400 mt-2">Click para intentar de nuevo</p>
-                                </>
+                        <>
+                            {mode === 'scan' ? (
+                                <div className="h-full flex flex-col justify-center">
+                                    <BEOUploader />
+                                </div>
                             ) : (
-                                <>
-                                    {mode === 'excel' ? (
-                                        <Upload className="w-10 h-10 text-slate-400 mb-4" />
+                                <div
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className={`border-2 border-dashed border-white/10 rounded-xl p-12 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-white/5 hover:border-primary/50 transition-all ${parsing ? 'opacity-50 pointer-events-none' : ''}`}
+                                >
+                                    <input
+                                        type="file"
+                                        ref={fileInputRef}
+                                        onChange={(mode === 'excel' || mode === 'matrix') ? handleFileChange : handleScanUpload}
+                                        className="hidden"
+                                        accept={(mode === 'excel' || mode === 'matrix') ? ".xlsx, .xls" : mode === 'ics' ? ".ics" : ".jpg, .jpeg, .png, .webp"}
+                                    />
+
+                                    {parsing ? (
+                                        <>
+                                            <Loader2 className="w-10 h-10 text-primary animate-spin mb-4" />
+                                            <p className="text-lg font-medium text-white">Analizando archivo...</p>
+                                            <p className="text-sm text-slate-400 mt-2">
+                                                {(mode === 'excel' || mode === 'matrix') ? 'Buscando fechas, comensales y eventos' :
+                                                    mode === 'ics' ? 'Leyendo calendario...' : 'Extrayendo datos con IA'}
+                                            </p>
+                                        </>
+                                    ) : error ? (
+                                        <>
+                                            <AlertCircle className="w-10 h-10 text-red-400 mb-4" />
+                                            <p className="text-lg font-medium text-red-400">{error}</p>
+                                            <p className="text-sm text-slate-400 mt-2">Click para intentar de nuevo</p>
+                                        </>
                                     ) : (
-                                        <FileText className="w-10 h-10 text-purple-400 mb-4" />
+                                        <>
+                                            {mode === 'excel' ? (
+                                                <Upload className="w-10 h-10 text-slate-400 mb-4" />
+                                            ) : (
+                                                <FileText className="w-10 h-10 text-purple-400 mb-4" />
+                                            )}
+                                            <p className="text-lg font-medium text-white">
+                                                {(mode === 'excel' || mode === 'matrix') ? 'Click para subir Excel' :
+                                                    mode === 'ics' ? 'Click para subir archivo ICS' : 'Click para subir Imagen BEO'}
+                                            </p>
+                                            <p className="text-sm text-slate-400 mt-2">
+                                                {(mode === 'excel' || mode === 'matrix') ? 'Soporta .xlsx y .xls' :
+                                                    mode === 'ics' ? 'Soporta archivos .ics estándar' :
+                                                        'Soporta JPG, PNG (las fotos claras funcionan mejor)'}
+                                            </p>
+                                        </>
                                     )}
-                                    <p className="text-lg font-medium text-white">
-                                        {(mode === 'excel' || mode === 'matrix') ? 'Click para subir Excel' :
-                                            mode === 'ics' ? 'Click para subir archivo ICS' : 'Click para subir Imagen BEO'}
-                                    </p>
-                                    <p className="text-sm text-slate-400 mt-2">
-                                        {(mode === 'excel' || mode === 'matrix') ? 'Soporta .xlsx y .xls' :
-                                            mode === 'ics' ? 'Soporta archivos .ics estándar' :
-                                                'Soporta JPG, PNG (las fotos claras funcionan mejor)'}
-                                    </p>
-                                </>
+                                </div>
                             )}
-                        </div>
+                        </>
                     ) : mode === 'sync' ? (
                         <div className="flex flex-col items-center justify-center h-full space-y-6 text-center p-8">
                             <div className="bg-orange-500/10 p-4 rounded-full">

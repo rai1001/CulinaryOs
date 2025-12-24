@@ -2,19 +2,21 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import { useOutletScoping } from '../hooks/useOutletScoping';
-import { ChefHat, Search, Plus, Trash2, Import, X, Loader2, Sparkles, Store, Layers, BookOpen, DollarSign, AlertTriangle } from 'lucide-react';
+import { ChefHat, Search, Plus, Trash2, X, Loader2, Sparkles, Store, Layers, BookOpen, DollarSign, AlertTriangle } from 'lucide-react';
 import { RecipeForm } from './RecipeForm';
 import { RecipeList } from './lists/RecipeList';
-import { DataImportModal, type ImportType } from './common/DataImportModal';
+import { UniversalImporter } from './common/UniversalImporter';
+import { useToast } from './ui';
 import { searchRecipes } from '../api/ai';
-import { deleteDocument, addDocument, firestoreService } from '../services/firestoreService';
-import { COLLECTIONS, collections } from '../firebase/collections';
+import { deleteDocument, firestoreService } from '../services/firestoreService';
+import { COLLECTIONS } from '../firebase/collections';
 import { convertirRecetaAFicha } from '../services/fichasTecnicasService';
 import type { Recipe } from '../types';
 
 export const RecipesView: React.FC = () => {
     const { recipes, currentUser, ingredients } = useStore();
     const { activeOutletId, isValidOutlet } = useOutletScoping();
+    const { addToast } = useToast();
     const navigate = useNavigate();
     const [searchTerm, setSearchTerm] = useState('');
 
@@ -33,7 +35,6 @@ export const RecipesView: React.FC = () => {
     const [showAddModal, setShowAddModal] = useState(false);
     const [editingRecipe, setEditingRecipe] = useState<Recipe | undefined>(undefined);
     const [activeTab, setActiveTab] = useState<'all' | 'regular' | 'base'>('all');
-    const [importType, setImportType] = useState<ImportType | null>(null);
     const [subCategory, setSubCategory] = useState<string>('all');
     const [isDeletingAll, setIsDeletingAll] = useState(false);
 
@@ -71,52 +72,8 @@ export const RecipesView: React.FC = () => {
     const [aiSearching, setAiSearching] = useState(false);
     const [aiResultIds, setAiResultIds] = useState<string[] | null>(null);
 
-    const handleImportComplete = async (data: any) => {
-        if (data.recipes && Array.isArray(data.recipes)) {
-            // Bulk Import (Excel) -> Save to Firestore
-            if (!activeOutletId) {
-                alert("Selecciona una cocina activa primero.");
-                return;
-            }
-
-            let count = 0;
-            for (const r of data.recipes) {
-                try {
-                    // Ensure basic fields
-                    const newRecipe: Partial<Recipe> = {
-                        ...r,
-                        outletId: activeOutletId,
-                        updatedAt: new Date().toISOString()
-                    };
-                    // Remove temporary ID if present to let Firestore generate one, or use it if valid UUID
-                    // But easier to let addDocument handle it or use the one we generated in import
-                    if (!newRecipe.id) delete newRecipe.id;
-
-                    await addDocument(collections.recipes, newRecipe);
-                    count++;
-                } catch (e) {
-                    console.error("Error saving imported recipe:", e);
-                }
-            }
-            if (count > 0) {
-                alert(`Importadas ${count} recetas correctamente.`);
-            }
-        } else if (data.name) {
-            // Single OCR Import
-            // Prepare it for the RecipeForm to review/edit
-            const newRecipe = {
-                ...data,
-                id: crypto.randomUUID(), // Ensure it has an ID
-                isBase: false, // Default to regular
-                totalCost: 0,  // Will be calculated
-                station: 'hot', // Default
-                outletId: activeOutletId // Ensure outletId is set
-            } as Recipe;
-
-            setEditingRecipe(newRecipe);
-            setShowAddModal(true);
-        }
-        setImportType(null);
+    const handleImportComplete = () => {
+        addToast('Importación de recetas completada con éxito', 'success');
     };
 
     const handleAiSearch = async () => {
@@ -258,13 +215,10 @@ export const RecipesView: React.FC = () => {
                         {aiSearching ? <Loader2 className="animate-spin" size={16} /> : <Sparkles size={16} />}
                         {isAiSearch ? 'IA Activa' : 'AI Search'}
                     </button>
-                    <button
-                        onClick={() => setImportType('recipe')}
-                        className="bg-white/5 text-slate-300 border border-white/10 px-5 py-3 rounded-xl font-black text-xs uppercase tracking-widest flex items-center gap-2 hover:bg-white/10 transition-all active:scale-95"
-                    >
-                        <Import size={16} />
-                        Importar
-                    </button>
+                    <UniversalImporter
+                        buttonLabel="Importar"
+                        onCompleted={handleImportComplete}
+                    />
                     <button
                         onClick={handleClearData}
                         disabled={isDeletingAll}
@@ -454,12 +408,6 @@ export const RecipesView: React.FC = () => {
                 )
             }
 
-            <DataImportModal
-                isOpen={!!importType}
-                onClose={() => setImportType(null)}
-                type={importType || 'recipe'}
-                onImportComplete={handleImportComplete}
-            />
         </div >
     );
 };

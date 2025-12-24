@@ -4,6 +4,7 @@
  */
 
 import type { FichaTecnica, Event, Menu, Recipe, Ingredient, MenuItemAnalytics, DishClassification } from '../types';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 
 export interface Optimizacion {
     tipo: 'ingrediente_caro' | 'margen_bajo' | 'porcion_grande' | 'desperdicio_alto';
@@ -222,76 +223,31 @@ export function analizarFicha(
 /**
  * Calculates menu engineering analytics based on events and dishes.
  */
-export function calculateIngredientUsage(
-    events: Event[],
-    menus: Menu[],
-    recipes: Recipe[],
+/**
+ * Calculates menu engineering analytics based on events and dishes.
+ * Migrated to Cloud Functions for performance.
+ */
+
+/**
+ * Calculates menu engineering analytics based on events and dishes.
+ * Migrated to Cloud Functions for performance.
+ */
+export async function calculateIngredientUsage(
+    _events: Event[],
+    _menus: Menu[],
+    _recipes: Recipe[],
     _ingredients: Ingredient[],
     startDate: string,
-    endDate: string
-): MenuItemAnalytics[] {
-    const rangeEvents = events.filter(e => e.date >= startDate && e.date <= endDate);
-    const statsMap = new Map<string, { totalOrders: number; totalRevenue: number; totalProfit: number; lastOrdered: string }>();
-
-    rangeEvents.forEach(event => {
-        const menu = menus.find(m => m.id === event.menuId);
-        if (!menu) return;
-
-        const recipesInMenu = recipes.filter(r => menu.recipeIds.includes(r.id));
-        const pricePerDish = (menu.sellPrice || 0) / (recipesInMenu.length || 1);
-
-        recipesInMenu.forEach(recipe => {
-            const current = statsMap.get(recipe.id) || { totalOrders: 0, totalRevenue: 0, totalProfit: 0, lastOrdered: event.date };
-            const costPerServing = recipe.totalCost || 0;
-            const profitPerServing = pricePerDish - costPerServing;
-
-            statsMap.set(recipe.id, {
-                totalOrders: current.totalOrders + event.pax,
-                totalRevenue: current.totalRevenue + (pricePerDish * event.pax),
-                totalProfit: current.totalProfit + (profitPerServing * event.pax),
-                lastOrdered: event.date > current.lastOrdered ? event.date : current.lastOrdered
-            });
-        });
-    });
-
-    const results: MenuItemAnalytics[] = Array.from(statsMap.entries()).map(([recipeId, stats]) => {
-        const recipe = recipes.find(r => r.id === recipeId);
-        const avgProfit = stats.totalOrders > 0 ? stats.totalProfit / stats.totalOrders : 0;
-
-        return {
-            recipeId,
-            recipeName: recipe?.name || 'Receta Desconocida',
-            totalRevenue: stats.totalRevenue,
-            totalOrders: stats.totalOrders,
-            avgProfitPerServing: avgProfit,
-            totalProfit: stats.totalProfit,
-            popularityScore: 0, // Calculated below
-            profitabilityScore: 0, // Calculated below
-            classification: 'dog' as DishClassification, // Calculated below
-            lastOrdered: stats.lastOrdered
-        };
-    });
-
-    if (results.length === 0) return [];
-
-    // Calculate Scores and Classification
-    const maxOrders = Math.max(...results.map(r => r.totalOrders));
-    const avgProfit = results.reduce((acc, r) => acc + r.avgProfitPerServing, 0) / results.length;
-
-    return results.map(r => {
-        const popularity = r.totalOrders / (maxOrders || 1);
-        const profitability = r.avgProfitPerServing >= avgProfit ? 1 : 0.4; // Binary high/low for simplicity base
-
-        let classification: DishClassification = 'dog';
-        if (popularity >= 0.7 && profitability === 1) classification = 'star';
-        else if (popularity >= 0.7 && profitability < 1) classification = 'cash-cow';
-        else if (popularity < 0.7 && profitability === 1) classification = 'puzzle';
-
-        return {
-            ...r,
-            popularityScore: popularity,
-            profitabilityScore: profitability,
-            classification
-        };
-    });
+    endDate: string,
+    outletId?: string
+): Promise<MenuItemAnalytics[]> {
+    try {
+        const functions = getFunctions();
+        const getMenuAnalytics = httpsCallable(functions, 'getMenuAnalytics');
+        const result = await getMenuAnalytics({ startDate, endDate, outletId });
+        return result.data as MenuItemAnalytics[];
+    } catch (error) {
+        console.error("Error calling getMenuAnalytics cloud function:", error);
+        return [];
+    }
 }

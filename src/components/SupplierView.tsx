@@ -6,7 +6,7 @@ import { proveedoresService } from '../services/proveedoresService';
 import { firestoreService } from '../services/firestoreService';
 import { COLLECTIONS } from '../firebase/collections';
 
-import { ExcelImporter } from './common/ExcelImporter';
+import { UniversalImporter } from './common/UniversalImporter';
 import { ProveedoresList } from './proveedores/ProveedoresList';
 import { ProveedorForm } from './proveedores/ProveedorForm';
 
@@ -53,44 +53,6 @@ export const SupplierView: React.FC = () => {
     // Initial Form Data for Scan or New
     const [initialFormData, setInitialFormData] = useState<Partial<Supplier> | null>(null);
 
-    const handleImport = async (data: any[]) => {
-        if (!activeOutletId) {
-            alert("No hay cocina activa seleccionada.");
-            return;
-        }
-
-        if (!confirm(`Se importarán ${data.length} proveedores. ¿Continuar?`)) return;
-
-        let successCount = 0;
-        for (const row of data) {
-            try {
-                const name = row['Nombre'] || row['Name'] || row['nombre'] || row['Proveedor'] || row['PROVEEDOR'];
-                if (!name) continue;
-
-                const supplierData = {
-                    name: String(name),
-                    contactName: row['Contacto'] || row['Contact'] || row['contactName'] || row['CONTACTO SEGURA'] || '',
-                    email: row['Email'] || row['Correo'] || row['CONTACTO INCIDENCIAS'] || '',
-                    phone: String(row['Telefono'] || row['Phone'] || row['phone'] || row['TELEFONO'] || ''),
-                    leadTime: 1,
-                    orderDays: [],
-                    minimumOrderValue: Number(row['Minimo'] || row['PEDIDO MINIMO'] || 0),
-                    outletId: activeOutletId
-                };
-
-                const normalizedName = String(name).toLowerCase();
-                const existing = suppliers.find(s => s.name.toLowerCase() === normalizedName);
-                if (existing) continue;
-
-                const newId = await proveedoresService.create(supplierData);
-                addSupplier({ id: newId, ...supplierData } as Supplier);
-                successCount++;
-            } catch (error) {
-                console.error("Error importing supplier row", row, error);
-            }
-        }
-        alert(`Importación completada: ${successCount} proveedores añadidos.`);
-    };
 
     const handleOpenModal = (supplier?: Supplier) => {
         if (supplier) {
@@ -278,7 +240,7 @@ export const SupplierView: React.FC = () => {
                         className="hidden"
                         accept="image/*"
                     />
-                    <ExcelImporter onImport={handleImport} />
+                    <UniversalImporter buttonLabel="Importar Proveedores" />
 
                     <button
                         onClick={() => handleOpenModal()}

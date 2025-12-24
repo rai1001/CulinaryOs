@@ -1,5 +1,8 @@
 import * as XLSX from 'xlsx';
 import { v4 as uuidv4 } from 'uuid';
+import { getStorage, ref, uploadBytes } from 'firebase/storage';
+import { httpsCallable } from 'firebase/functions';
+import { functions } from '../firebase/config';
 import type { Recipe, Ingredient, Menu, Unit } from '../types';
 import { ALLERGENS } from './allergenUtils';
 
@@ -22,8 +25,109 @@ export type ParseResult = {
         menusFound: number;
         itemsFound: number;
         sheetsScaned: number;
+        staffFound?: number;
+        suppliersFound?: number;
+        occupancyFound?: number;
     };
     errors: string[];
+};
+
+export type ImportJobStatus = {
+    id: string;
+    status: 'idle' | 'processing' | 'preview' | 'completed' | 'failed';
+    summary?: ParseResult['summary'];
+    error?: string;
+    fileName: string;
+    items?: IngestionItem[];
+};
+
+export type IngestionItem = {
+    type: 'ingredient' | 'recipe' | 'staff' | 'supplier' | 'occupancy' | 'unknown';
+    data: any;
+    confidence: number;
+    sheetName?: string;
+};
+
+/**
+ * @deprecated Use processStructuredFile
+ */
+export const uploadForCloudParsing = async (file: File, userId: string): Promise<string> => {
+    const storage = getStorage();
+    const fileId = uuidv4();
+    const storageRef = ref(storage, `incoming_imports/${userId}/${fileId}`);
+    await uploadBytes(storageRef, file);
+    return fileId;
+};
+
+/**
+ * @deprecated Use processFileForAnalysis
+ */
+export const uploadForAISmartParsing = async (file: File, userId: string): Promise<string> => {
+    const storage = getStorage();
+    const fileId = uuidv4();
+    const storageRef = ref(storage, `universal_imports/${userId}/${fileId}`);
+    await uploadBytes(storageRef, file);
+    return fileId;
+};
+
+/**
+ * Calls AI Smart Analysis for PDF/Images.
+ */
+export const processFileForAnalysis = async (file: File, targetCollection?: string): Promise<IngestionItem[]> => {
+    const analyzeDocument = httpsCallable<any, { items: IngestionItem[] }>(functions, 'analyzeDocument');
+
+    // Convert file to base64
+    const base64Data = await fileToBase64(file);
+
+    const response = await analyzeDocument({
+        base64Data,
+        mimeType: file.type,
+        targetCollection
+    });
+
+    return response.data.items;
+};
+
+/**
+ * Calls Structured File Parser for Excel/CSV/JSON.
+ */
+export const processStructuredFile = async (file: File): Promise<IngestionItem[]> => {
+    const parseFile = httpsCallable<any, { items: IngestionItem[] }>(functions, 'parseStructuredFile');
+
+    const base64Data = await fileToBase64(file);
+
+    const response = await parseFile({
+        base64Data,
+        fileName: file.name
+    });
+
+    return response.data.items;
+};
+
+/**
+ * Finalizes the import by committing validated items.
+ */
+export const confirmAndCommit = async (items: IngestionItem[], outletId: string): Promise<{ success: boolean, count: number }> => {
+    const commitImport = httpsCallable<any, { success: boolean, count: number }>(functions, 'commitImport');
+
+    const response = await commitImport({
+        items,
+        outletId
+    });
+
+    return response.data;
+};
+
+const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => {
+            const result = reader.result as string;
+            resolve(result.split(',')[1]);
+        };
+        reader.onerror = error => reject(error);
+    });
 };
 
 export const parseWorkbook = async (file: File): Promise<ParseResult> => {

@@ -1,19 +1,20 @@
 import React, { useState, useMemo } from 'react';
 import { useStore } from '../store/useStore';
-import { Package, Search, Plus, X, Import, TrendingDown, DollarSign, Layers, ArrowUpRight } from 'lucide-react';
+import { Package, Search, Plus, X, TrendingDown, DollarSign, Layers, ArrowUpRight } from 'lucide-react';
 import { IngredientList } from './lists/IngredientList';
 import { IngredientForm } from './IngredientForm';
-import { deleteDocument, batchSetDocuments } from '../services/firestoreService';
-import { DataImportModal, type ImportType } from './common/DataImportModal';
+import { deleteDocument } from '../services/firestoreService';
+import { UniversalImporter } from './common/UniversalImporter';
+import { useToast } from './ui';
 import { COLLECTIONS } from '../firebase/collections';
 import type { Ingredient } from '../types';
 
 export const IngredientsView: React.FC = () => {
     const { ingredients } = useStore();
+    const { addToast } = useToast();
     const [searchTerm, setSearchTerm] = useState('');
     const [showAddModal, setShowAddModal] = useState(false);
     const [editingIngredient, setEditingIngredient] = useState<Ingredient | undefined>(undefined);
-    const [importType, setImportType] = useState<ImportType | null>(null);
     const [activeCategory, setActiveCategory] = useState<string>('all');
     const [sortConfig, setSortConfig] = useState<{ key: keyof Ingredient | 'stock'; direction: 'asc' | 'desc' }>({
         key: 'name',
@@ -32,21 +33,10 @@ export const IngredientsView: React.FC = () => {
         { id: 'other', label: 'Otros' }
     ];
 
-    const handleImportComplete = async (data: any) => {
-        if (data.ingredients && Array.isArray(data.ingredients)) {
-            // Excel Bulk Import - Master List
-            await handleImport(data.ingredients);
-        } else if (data.name) {
-            // OCR Single Import
-            setEditingIngredient({
-                ...data,
-                id: crypto.randomUUID(),
-                unit: data.unit || 'kg',
-                costPerUnit: data.costPerUnit || 0
-            } as Ingredient);
-            setShowAddModal(true);
-        }
-        setImportType(null);
+    const handleImportComplete = () => {
+        // Data is already committed to Firestore by UniversalImporter
+        // We just need to refresh or notify
+        addToast('Importación completada y lista de ingredientes actualizada', 'success');
     };
 
     const handleSort = (key: keyof Ingredient | 'stock') => {
@@ -83,31 +73,6 @@ export const IngredientsView: React.FC = () => {
         }
     };
 
-    const handleImport = async (parsedIngredients: Ingredient[]) => {
-        const count = parsedIngredients.length;
-        if (count === 0) {
-            alert("No se encontraron ingredientes válidos en el archivo.");
-            return;
-        }
-
-        if (!confirm(`Se importarán ${count} ingredientes a la biblioteca maestra. ¿Continuar?`)) return;
-
-        try {
-            const documents = parsedIngredients.map(ing => ({
-                id: ing.id || crypto.randomUUID(),
-                data: {
-                    ...ing,
-                    updatedAt: new Date().toISOString()
-                }
-            }));
-
-            await batchSetDocuments(COLLECTIONS.INGREDIENTS, documents);
-            alert(`Importación completada: ${count} ingredientes añadidos.`);
-        } catch (e) {
-            console.error("Error bulk importing ingredients", e);
-            alert("Error al realizar la importación masiva.");
-        }
-    };
 
     const handleEdit = (ingredient: Ingredient) => {
         setEditingIngredient(ingredient);
@@ -141,13 +106,10 @@ export const IngredientsView: React.FC = () => {
                 </div>
 
                 <div className="flex flex-wrap gap-3">
-                    <button
-                        onClick={() => setImportType('ingredient')}
-                        className="bg-white/5 text-slate-300 border border-white/10 px-5 py-3 rounded-xl font-black text-xs uppercase tracking-widest flex items-center gap-2 hover:bg-white/10 transition-all active:scale-95"
-                    >
-                        <Import size={16} />
-                        Importar / Escanear
-                    </button>
+                    <UniversalImporter
+                        buttonLabel="Importar / Escanear"
+                        onCompleted={handleImportComplete}
+                    />
                     <button
                         onClick={() => {
                             setEditingIngredient(undefined);
@@ -266,12 +228,6 @@ export const IngredientsView: React.FC = () => {
                 )
             }
 
-            <DataImportModal
-                isOpen={!!importType}
-                onClose={() => setImportType(null)}
-                type={importType || 'ingredient'}
-                onImportComplete={handleImportComplete}
-            />
         </div>
     );
 };

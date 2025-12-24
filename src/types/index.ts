@@ -7,6 +7,7 @@ export * from './inventory';
 export * from './suppliers';
 export * from './purchases';
 export * from './fichasTecnicas';
+export * from './waste';
 
 
 

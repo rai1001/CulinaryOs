@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Sparkles, Brain, RefreshCw, AlertTriangle, TrendingUp, Info } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { forecastingService } from '../../services/forecastingService';
-import { suggestPurchases } from '../../services/geminiService';
 
 export const AIPurchaseAdvisor: React.FC = () => {
     const state = useStore();
@@ -11,17 +10,21 @@ export const AIPurchaseAdvisor: React.FC = () => {
     const [summary, setSummary] = useState('');
 
     const runAnalysis = async () => {
+        if (!state.activeOutletId) {
+            setStatus('error');
+            return;
+        }
+
         setStatus('analyzing');
         try {
-            const context = forecastingService.aggregateForecastContext(state);
-            const result = await suggestPurchases(context);
+            const data = await forecastingService.getAIPredictions(state.activeOutletId);
 
-            if (result.success && result.data) {
-                setSuggestions(result.data.suggestions || []);
-                setSummary(result.data.summary || '');
+            if (data && data.suggestions) {
+                setSuggestions(data.suggestions);
+                setSummary(data.summary || '');
                 setStatus('success');
             } else {
-                throw new Error(result.error || 'Failed to get recommendations');
+                throw new Error('Failed to get recommendations');
             }
         } catch (error) {
             console.error('AI Purchase Analysis Error:', error);

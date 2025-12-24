@@ -14,6 +14,8 @@ import { OrdersWidget } from './dashboard/OrdersWidget';
 import { HACCPWidget } from './dashboard/HACCPWidget';
 import { PurchasingNotesWidget } from './dashboard/PurchasingNotesWidget';
 import { KPIGrid } from './dashboard/KPIGrid';
+import { ZeroWasteWidget } from './dashboard/ZeroWasteWidget';
+
 
 export const Dashboard: React.FC = () => {
     const { currentUser } = useStore();
@@ -86,6 +88,14 @@ export const Dashboard: React.FC = () => {
             <div className="fade-in-up" style={{ animationDelay: '400ms' }}>
                 <HACCPWidget />
             </div>
+
+            {/* AI Zero Waste Engine Row */}
+            <div className="fade-in-up" style={{ animationDelay: '500ms' }}>
+                <div className="max-w-md">
+                    <ZeroWasteWidget />
+                </div>
+            </div>
+
 
             {/* Main Grid Layout */}
             <div className="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-4 gap-6">

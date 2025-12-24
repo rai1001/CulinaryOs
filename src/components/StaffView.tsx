@@ -5,7 +5,7 @@ import type { Employee, Role } from '../types';
 import { getRoleLabel } from '../utils/labels';
 import { addDocument, updateDocument, deleteDocument } from '../services/firestoreService';
 import { collections } from '../firebase/collections';
-import { ExcelImporter } from './common/ExcelImporter';
+import { UniversalImporter } from './common/UniversalImporter';
 
 export const StaffView: React.FC = () => {
     const { staff, activeOutletId } = useStore();
@@ -39,44 +39,6 @@ export const StaffView: React.FC = () => {
         return { total, active, vacation, chefs };
     }, [staff]);
 
-    const handleImport = async (data: any[]) => {
-        if (!activeOutletId) {
-            alert("No hay cocina activa seleccionada.");
-            return;
-        }
-
-        if (!confirm(`Se importarán ${data.length} empleados. ¿Continuar?`)) return;
-
-        let successCount = 0;
-        for (const row of data) {
-            try {
-                const name = row['Nombre'] || row['Name'] || row['nombre'];
-                const roleRaw = row['Rol'] || row['Role'] || row['rol'] || 'COOK_ROTATING';
-                // Basic mapping, assume default if unknown
-                const role: Role = ['HEAD_CHEF', 'COOK_MORNING', 'COOK_ROTATING'].includes(roleRaw)
-                    ? roleRaw as Role
-                    : 'COOK_ROTATING';
-
-                if (!name) continue;
-
-                const employeeData = {
-                    name: String(name),
-                    role,
-                    vacationDaysTotal: Number(row['Vacaciones'] || 30),
-                    consecutiveWorkDays: 0,
-                    daysOffInLast28Days: 0,
-                    vacationDates: [],
-                    outletId: activeOutletId
-                };
-
-                await addDocument(collections.staff, employeeData);
-                successCount++;
-            } catch (error) {
-                console.error("Error importing staff row", row, error);
-            }
-        }
-        alert(`Importación completada: ${successCount} empleados añadidos.`);
-    };
 
     const handleOpenModal = (employee?: Employee) => {
         if (employee) {
@@ -157,9 +119,8 @@ export const StaffView: React.FC = () => {
                     <p className="text-slate-500 text-xs font-bold mt-2 tracking-[0.3em] uppercase">Equipo & Roles</p>
                 </div>
                 <div className="flex gap-3">
-                    <ExcelImporter
-                        onImport={handleImport}
-                        buttonLabel="Importar Excel"
+                    <UniversalImporter
+                        buttonLabel="Importar Personal"
                         template={{ col1: "Nombre", col2: "Rol" }}
                     />
                     <button

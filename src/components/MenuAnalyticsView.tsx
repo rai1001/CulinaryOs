@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useStore } from '../store/useStore';
 import { TrendingUp, TrendingDown, Star, Dog, DollarSign, HelpCircle } from 'lucide-react';
 import type { MenuItemAnalytics } from '../types';
@@ -17,9 +17,29 @@ export const MenuAnalyticsView: React.FC = () => {
         return new Date().toISOString().split('T')[0];
     });
 
-    // Calculate analytics
-    const analytics = useMemo(() => {
-        return calculateMenuAnalytics(startDate, endDate);
+    const [analytics, setAnalytics] = useState<MenuItemAnalytics[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+
+    // Calculate analytics via Cloud Function
+    useEffect(() => {
+        let isMounted = true;
+        const fetchAnalytics = async () => {
+            setIsLoading(true);
+            try {
+                const data = await calculateMenuAnalytics(startDate, endDate);
+                if (isMounted) {
+                    setAnalytics(data);
+                }
+            } catch (error) {
+                console.error("Error fetching analytics:", error);
+            } finally {
+                if (isMounted) {
+                    setIsLoading(false);
+                }
+            }
+        };
+        fetchAnalytics();
+        return () => { isMounted = false; };
     }, [calculateMenuAnalytics, startDate, endDate]);
 
     // Group by classification
@@ -31,6 +51,16 @@ export const MenuAnalyticsView: React.FC = () => {
 
         return { stars, dogs, cashCows, puzzles };
     }, [analytics]);
+
+    if (isLoading) {
+        return (
+            <div className="p-8 h-full flex flex-col items-center justify-center">
+                <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4" />
+                <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">Calculando Ingeniería de Menús...</p>
+                <p className="text-[10px] text-slate-600 mt-2">Consultando datos históricos en la nube</p>
+            </div>
+        );
+    }
 
     if (analytics.length === 0) {
         return (

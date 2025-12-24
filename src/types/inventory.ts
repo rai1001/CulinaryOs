@@ -116,6 +116,7 @@ export interface StockMovement {
     notes?: string;
 }
 
+
 export type WasteReason = 'CADUCIDAD' | 'ELABORACION' | 'DETERIORO' | 'EXCESO_PRODUCCION' | 'OTROS';
 
 export interface WasteRecord {
@@ -128,3 +129,4 @@ export interface WasteRecord {
     reason: WasteReason;
     notes?: string;
 }
+
