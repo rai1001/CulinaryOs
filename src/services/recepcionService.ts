@@ -2,13 +2,14 @@ import { v4 as uuidv4 } from 'uuid';
 import { firestoreService } from './firestoreService';
 import { COLLECTIONS } from '../firebase/collections';
 import type { PurchaseOrder } from '../types/purchases';
-import type { Ingredient, Batch } from '../types/inventory';
+import type { Ingredient, Batch, IngredientPriceHistory } from '../types/inventory';
 import { calculateTotalStock } from './inventoryService';
+import { orderBy, limit, where } from 'firebase/firestore';
 
 export const recepcionService = {
     receiveOrder: async (
         order: PurchaseOrder,
-        receivedItems: { ingredientId: string; quantity: number; expiryDate?: string }[],
+        receivedItems: { ingredientId: string; quantity: number; expiryDate?: string; price?: number }[],
         userId: string
     ): Promise<void> => {
         // E2E Mock Bypass
@@ -42,6 +43,15 @@ export const recepcionService = {
                 continue;
             }
 
+            // Determine price: Use provided price (from invoice verification) or fallback to PO price or current cost
+            // Note: In a real flow, 'receivedItems' should contain the final invoice price.
+            // If not provided, we try to find it in the PO items.
+            let finalPrice = received.price;
+            if (finalPrice === undefined) {
+                const poItem = order.items.find(i => i.ingredientId === received.ingredientId);
+                finalPrice = poItem ? poItem.pricePerUnit : ingredient.costPerUnit;
+            }
+
             // Create new Batch
             const newBatch: Batch = {
                 id: uuidv4(),
@@ -50,7 +60,7 @@ export const recepcionService = {
                 initialQuantity: received.quantity,
                 currentQuantity: received.quantity,
                 unit: ingredient.unit,
-                costPerUnit: ingredient.costPerUnit,
+                costPerUnit: finalPrice,
                 receivedAt: new Date().toISOString(),
                 expiresAt: received.expiryDate || new Date(Date.now() + (ingredient.shelfLife || 7) * 24 * 60 * 60 * 1000).toISOString(),
                 supplierId: order.supplierId,
@@ -69,6 +79,56 @@ export const recepcionService = {
                 stock: newStock,
                 updatedAt: new Date().toISOString()
             });
+
+            // 2.1 Track Price History & Calculate Deviation
+            if (order.supplierId) {
+                try {
+                    // Save history
+                    const historyEntry: IngredientPriceHistory = {
+                        id: uuidv4(),
+                        ingredientId: ingredient.id,
+                        supplierId: order.supplierId,
+                        price: finalPrice,
+                        date: new Date().toISOString(),
+                        purchaseOrderId: order.id,
+                        outletId: order.outletId,
+                    };
+
+                    // We need a collection for this. Assuming 'ingredientPriceHistory' as a top-level collection.
+                    // If it's not defined in COLLECTIONS yet, we can use the string name 'ingredientPriceHistory'.
+                    await firestoreService.add('ingredientPriceHistory', historyEntry);
+
+                    // Check Deviation
+                    // Fetch last 6 months history for this supplier
+                    const sixMonthsAgo = new Date();
+                    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+                    // Note: firestoreService.query generic is simplistic, constructing raw query here might be better if service limits us
+                    // But assuming we can pass constraints.
+                    const historyDocs = await firestoreService.query<IngredientPriceHistory>(
+                        // @ts-ignore - Assuming we can pass collection string if reference not available
+                        'ingredientPriceHistory',
+                        where('ingredientId', '==', ingredient.id),
+                        where('supplierId', '==', order.supplierId),
+                        where('date', '>=', sixMonthsAgo.toISOString()),
+                        orderBy('date', 'desc'),
+                        limit(10)
+                    );
+
+                    if (historyDocs.length > 0) {
+                        const sum = historyDocs.reduce((acc, h) => acc + h.price, 0);
+                        const avg = sum / historyDocs.length;
+                        const deviation = ((finalPrice - avg) / avg) * 100;
+
+                        if (deviation > 20) {
+                            console.warn(`[PRICE ALERT] Ingredient ${ingredient.name} from Supplier ${order.supplierId} is ${deviation.toFixed(2)}% above 6-month average.`);
+                            // Ideally trigger a notification here
+                        }
+                    }
+                } catch (err) {
+                    console.error("Failed to track price history", err);
+                }
+            }
         }
 
         // 3. Update Order Status

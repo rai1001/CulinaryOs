@@ -17,6 +17,16 @@ export interface PriceHistoryEntry {
     changeReason?: string;
 }
 
+export interface IngredientPriceHistory {
+    id: string;
+    ingredientId: string;
+    supplierId: string;
+    price: number;
+    date: string; // ISO Date
+    purchaseOrderId: string;
+    outletId: string;
+}
+
 export interface Batch {
     id: string;
     ingredientId?: string; // Optional if standalone
@@ -89,6 +99,10 @@ export interface InventoryItem {
     batches: Batch[];
     lastCountedAt?: string;
     updatedAt: string;
+
+    // Multi-Stage Sync Fields
+    theoreticalStock?: number; // System-calculated stock (before physical count)
+    lastPhysicalCount?: number; // Last manually entered count
 }
 
 // Stock Movements
