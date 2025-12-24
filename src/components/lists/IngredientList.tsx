@@ -15,6 +15,11 @@ interface IngredientListProps {
 export const IngredientList: React.FC<IngredientListProps> = React.memo(({ ingredients, onEdit, onDelete, sortConfig, onSort }) => {
     const { suppliers, ingredients: allIngredients } = useStore();
 
+    // Optimization: Create a map for O(1) lookup of suppliers by ID
+    const supplierMap = useMemo(() => {
+        return new Map(suppliers.map(s => [s.id, s.name]));
+    }, [suppliers]);
+
     // Optimization: Create a map for O(1) lookup of ingredients by name
     // This avoids the O(N*M) complexity where N is rendered ingredients and M is total ingredients
     const priceComparisonMap = useMemo(() => {
@@ -38,7 +43,9 @@ export const IngredientList: React.FC<IngredientListProps> = React.memo(({ ingre
 
         const prices = [ing, ...matches].map(i => ({
             price: i.costPerUnit,
-            supplier: suppliers.find(s => s.id === i.supplierId)?.name || 'Desconocido',
+            // Cast supplierId to string because map expects string keys.
+            // In Supplier interface, id is string.
+            supplier: supplierMap.get(i.supplierId as string) || 'Desconocido',
             isLowest: false
         }));
 
@@ -106,8 +113,8 @@ export const IngredientList: React.FC<IngredientListProps> = React.memo(({ ingre
                                                 <div className="glass-card p-3 border-amber-500/30 min-w-[200px] text-left shadow-xl shadow-amber-900/20">
                                                     <p className="text-[10px] font-bold text-amber-400 mb-2 uppercase tracking-widest">Guerra de Precios</p>
                                                     <div className="space-y-1.5">
-                                                        {[ing, ...allIngredients.filter(i => i.name.toLowerCase() === ing.name.toLowerCase() && i.id !== ing.id)].map(match => {
-                                                            const supplierName = suppliers.find(s => s.id === match.supplierId)?.name || 'Desconocido';
+                                                        {[ing, ...(priceComparisonMap.get(ing.name.toLowerCase())?.filter(i => i.id !== ing.id) || [])].map(match => {
+                                                            const supplierName = supplierMap.get(match.supplierId as string) || 'Desconocido';
                                                             const isThis = match.id === ing.id;
                                                             return (
                                                                 <div key={match.id} className={`flex justify-between items-center text-[11px] p-1 rounded ${isThis ? 'bg-primary/20 border border-primary/20' : ''}`}>
