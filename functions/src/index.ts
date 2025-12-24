@@ -17,3 +17,7 @@ export { autoPurchaseScheduler } from "./scheduled/autoPurchaseScheduler";
 export { sendPurchaseOrderEmail } from "./triggers/sendPurchaseOrderEmail";
 export { createOrderNotification } from "./triggers/createOrderNotification";
 
+// New KPI Triggers
+export { onInventoryUpdate } from "./triggers/inventoryTriggers";
+export { onPurchaseOrderUpdate } from "./triggers/orderTriggers";
+export { onWasteRecordCreate } from "./triggers/wasteTriggers";

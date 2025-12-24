@@ -7,6 +7,7 @@ import { collection, where, arrayUnion } from 'firebase/firestore';
 import type { CollectionReference, UpdateData } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import type { Unit } from '../types/inventory';
+import { convertUnit } from '../utils/units';
 
 export const pedidosService = {
     groupNeedsBySupplier: (needs: ReorderNeed[]): Map<string, ReorderNeed[]> => {
@@ -39,6 +40,8 @@ export const pedidosService = {
             tempDescription: need.ingredientName
         }));
 
+        // Calculate total cost using the item's unit/quantity.
+        // Assuming costPerUnit matches the item.unit.
         const totalCost = items.reduce((sum, item) => sum + (item.quantity * item.costPerUnit), 0);
 
         const order: PurchaseOrder = {
@@ -122,6 +125,7 @@ export const pedidosService = {
         const todayStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
         const orderNumber = `MAN-${todayStr}-${orderId.slice(0, 4)}`.toUpperCase();
 
+        // Recalculate cost with robustness
         const totalCost = items.reduce((sum, item) => sum + (item.quantity * (item.costPerUnit || 0)), 0);
 
         const order: PurchaseOrder = {
