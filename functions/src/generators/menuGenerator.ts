@@ -19,7 +19,7 @@ export const generateMenu = functions.https.onCall(async (data: MenuGeneratorDat
     }
 
     const vertexAI = new VertexAI({ project: projectId, location: "europe-west1" });
-    const model = vertexAI.getGenerativeModel({ model: "gemini-pro" });
+    const model = vertexAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
 
     const prompt = `
     Create a professional menu for a catering event.
