@@ -1,5 +1,4 @@
 import type { StateCreator } from 'zustand';
-import type { Recipe } from '../../types';
 import type { AppState, RecipeSlice } from '../types';
 import { setDocument, deleteDocument } from '../../services/firestoreService';
 

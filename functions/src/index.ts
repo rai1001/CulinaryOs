@@ -16,4 +16,5 @@ export { calculateMenuEngineering } from "./scheduled/analyticsScheduler";
 export { autoPurchaseScheduler } from "./scheduled/autoPurchaseScheduler";
 export { sendPurchaseOrderEmail } from "./triggers/sendPurchaseOrderEmail";
 export { createOrderNotification } from "./triggers/createOrderNotification";
+export { generateMonthlyHACCPReport } from "./scheduled/haccpScheduler";
 

@@ -49,9 +49,9 @@ export const IngredientList: React.FC<IngredientListProps> = React.memo(({ ingre
     };
 
     return (
-        <div className="bg-surface border border-white/5 rounded-xl overflow-hidden shadow-sm">
+        <div className="w-full">
             <table className="w-full text-left text-sm text-slate-300">
-                <thead className="bg-black/20 text-slate-500 uppercase font-medium">
+                <thead className="text-xs font-bold text-slate-500 uppercase tracking-widest border-b border-white/5">
                     <tr>
                         <th className="p-4 cursor-pointer hover:text-white transition-colors" onClick={() => onSort('name')}>
                             <div className="flex items-center gap-2">
@@ -78,8 +78,8 @@ export const IngredientList: React.FC<IngredientListProps> = React.memo(({ ingre
                 </thead>
                 <tbody className="divide-y divide-white/5">
                     {ingredients.map(ing => (
-                        <tr key={ing.id} className="hover:bg-white/[0.02]">
-                            <td className="p-4 font-medium text-white">{ing.name}</td>
+                        <tr key={ing.id} className="hover:bg-white/[0.02] transition-colors group">
+                            <td className="p-4 font-medium text-white group-hover:text-primary transition-colors">{ing.name}</td>
                             <td className="p-4">
                                 {ing.isTrackedInInventory !== false ? (
                                     <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 w-fit">

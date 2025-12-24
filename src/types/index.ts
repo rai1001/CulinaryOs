@@ -110,7 +110,8 @@ export interface KanbanTask {
     status: KanbanTaskStatus;
     recipeId?: string;
     station?: 'hot' | 'cold' | 'dessert';
-    eventId?: string; // Added field referenced in slice
+    eventId?: string;
+    outletId?: string;
 
     // Timer & Scheduling
     estimatedTime?: number; // In minutes
@@ -133,7 +134,7 @@ export interface User {
     allowedOutlets?: string[]; // IDs of outlets this user can access
 }
 
-export type Role = 'HEAD_CHEF' | 'COOK_MORNING' | 'COOK_ROTATING';
+export type Role = 'HEAD_CHEF' | 'SOUS_CHEF' | 'CHEF_PARTIE' | 'COOK_MORNING' | 'COOK_ROTATING' | 'ASSISTANT' | 'DISHWASHER';
 
 export interface Employee {
     id: string;
@@ -212,6 +213,15 @@ export interface HACCPTaskCompletion {
     completedAt: string; // ISO Date
     completedBy: string; // User ID
     notes?: string;
+}
+
+export interface HACCPTimer {
+    id: string;
+    pccId: string;
+    startTime: string; // ISO Date
+    duration: number; // minutes
+    label: string;
+    status: 'ACTIVE' | 'EXPIRED' | 'COMPLETED';
 }
 
 // Menu Engineering (Boston Matrix) Types

@@ -26,44 +26,52 @@ const DashboardTab: React.FC = () => {
     ];
 
     return (
-        <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="space-y-8 fade-in-up" style={{ animationDelay: '200ms' }}>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {stats.map((stat, idx) => (
-                    <div key={idx} className="bg-surface border border-white/5 p-6 rounded-xl flex items-center gap-4">
-                        <div className={`p-3 rounded-full ${stat.color}`}>
-                            <stat.icon size={24} />
+                    <div key={idx} className="premium-glass p-6 flex items-center gap-5 group hover:scale-[1.02] transition-all duration-500">
+                        <div className={`p-4 rounded-2xl ${stat.color} shadow-lg group-hover:animate-glow transition-all`}>
+                            <stat.icon size={28} />
                         </div>
                         <div>
-                            <p className="text-slate-400 text-sm">{stat.label}</p>
-                            <p className="text-2xl font-bold text-white">{stat.count}</p>
+                            <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest">{stat.label}</p>
+                            <p className="text-3xl font-black text-white font-mono mt-1">{stat.count}</p>
                         </div>
                     </div>
                 ))}
             </div>
             {/* Alerts for Auto-Purchasing */}
             {purchaseOrders.some(o => o.status === 'DRAFT' && o.type === 'AUTOMATIC') && (
-                <div className="bg-indigo-500/10 border border-indigo-500/20 p-4 rounded-xl flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-indigo-500/20 rounded-lg text-indigo-400">
-                            <FileText size={20} />
+                <div className="bg-primary/10 border border-primary/20 p-5 rounded-2xl flex items-center justify-between glow-border">
+                    <div className="flex items-center gap-4">
+                        <div className="p-3 bg-primary/20 rounded-xl text-primary animate-pulse">
+                            <FileText size={24} />
                         </div>
                         <div>
-                            <p className="text-white font-bold">Nuevas sugerencias de compra</p>
-                            <p className="text-slate-400 text-sm">El sistema ha generado borradores basados en tu stock actual.</p>
+                            <p className="text-white font-black uppercase tracking-tight">Sugerencias AI Detectadas</p>
+                            <p className="text-slate-400 text-xs font-medium">Se han generado borradores automáticos basados en niveles críticos de stock.</p>
                         </div>
                     </div>
+                    <button className="bg-primary hover:bg-blue-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg">
+                        REVISAR AHORA
+                    </button>
                 </div>
             )}
 
             {/* AI Advisor Panel */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-2">
                     <AIPurchaseAdvisor />
                 </div>
                 <div className="space-y-6">
-                    {/* Recent Activity or aggregate chart could go here */}
-                    <div className="bg-surface border border-white/5 rounded-xl p-6 h-full flex items-center justify-center text-slate-500">
-                        <p>Resumen de actividad reciente (Próximamente)</p>
+                    <div className="premium-glass p-8 flex flex-col items-center justify-center text-center gap-4 h-full border-dashed border-2 border-white/5">
+                        <div className="p-5 bg-white/5 rounded-full">
+                            <BarChart3 className="w-8 h-8 text-slate-500" />
+                        </div>
+                        <div>
+                            <p className="text-white font-black uppercase tracking-widest text-xs">Actividad de Proveedores</p>
+                            <p className="text-slate-500 text-[10px] mt-2 font-medium">Analizando tendencias de entrega y variaciones de coste...</p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -85,38 +93,41 @@ export const PurchasingView: React.FC = () => {
     ];
 
     return (
-        <div className="p-6 md:p-8 space-y-6 min-h-screen bg-background text-slate-100">
+        <div className="p-6 md:p-10 space-y-10 min-h-screen bg-transparent text-slate-100 fade-in">
             {/* Header */}
-            <div className="flex justify-between items-center">
+            <div className="flex justify-between items-end">
                 <div>
-                    <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-                        <ShoppingCart className="text-indigo-400" /> Gestion de Compras
+                    <h1 className="text-4xl font-black text-white flex items-center gap-4 tracking-tighter uppercase">
+                        <ShoppingCart className="text-primary animate-glow w-10 h-10" />
+                        Suministros <span className="text-primary">&</span> Compras
                     </h1>
-                    <p className="text-slate-400 text-sm">Control integral de aprovisionamiento</p>
+                    <p className="text-slate-500 text-xs font-bold mt-2 tracking-[0.3em] uppercase">Gestión de Aprovisionamiento Inteligente v2.0</p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-3">
                     <button
                         onClick={() => setIsSettingsOpen(true)}
-                        className="p-2 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-colors"
+                        className="p-3 bg-white/5 hover:bg-white/10 rounded-2xl text-slate-400 hover:text-white transition-all border border-white/5"
                     >
-                        <Settings />
+                        <Settings className="w-6 h-6" />
                     </button>
                 </div>
             </div>
 
             {/* Tabs */}
-            <div className="flex border-b border-white/10 space-x-1 overflow-x-auto">
+            <div className="flex border-b border-white/5 space-x-2 overflow-x-auto custom-scrollbar pb-1">
                 {tabs.map(tab => (
                     <button
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id as any)}
-                        className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeTab === tab.id
-                            ? 'border-indigo-500 text-indigo-400'
-                            : 'border-transparent text-slate-400 hover:text-white hover:border-white/20'
+                        className={`flex items-center gap-3 px-6 py-4 text-[10px] font-black uppercase tracking-widest transition-all relative whitespace-nowrap group rounded-t-2xl
+                            ${activeTab === tab.id
+                                ? 'text-white bg-white/5'
+                                : 'text-slate-500 hover:text-slate-300 hover:bg-white/[0.02]'
                             }`}
                     >
-                        <tab.icon size={16} />
+                        <tab.icon className={`w-4 h-4 transition-transform group-hover:scale-110 ${activeTab === tab.id ? 'text-primary animate-glow' : ''}`} />
                         {tab.label}
+                        {activeTab === tab.id && <div className="absolute bottom-0 left-0 right-0 h-1 bg-primary shadow-[0_0_15px_rgba(var(--primary),0.6)]" />}
                     </button>
                 ))}
             </div>

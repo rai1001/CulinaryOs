@@ -23,44 +23,49 @@ export type { AppState };
 
 export const useStore = create<AppState>()(
     persist(
-        (...a) => ({
-            ...createIngredientSlice(...a),
-            ...createEventSlice(...a),
-            ...createProductionSlice(...a),
-            ...createStaffSlice(...a),
-            ...createRecipeSlice(...a),
-            ...createMenuSlice(...a),
-            ...createPurchaseSlice(...a),
-            ...createWasteSlice(...a),
-            ...createHACCPSlice(...a),
-            ...createAnalyticsSlice(...a),
-            ...createOutletSlice(...a),
-            ...createNotificationSlice(...a),
-            ...createHospitalitySlice(...a),
-            ...createAuthSlice(...a),
-            ...createIntegrationSlice(...a),
-            ...createInventorySlice(...a),
+        (set, get, store) => ({
+            ...createIngredientSlice(set, get, store),
+            ...createEventSlice(set, get, store),
+            ...createProductionSlice(set, get, store),
+            ...createStaffSlice(set, get, store),
+            ...createRecipeSlice(set, get, store),
+            ...createMenuSlice(set, get, store),
+            ...createPurchaseSlice(set, get, store),
+            ...createWasteSlice(set, get, store),
+            ...createHACCPSlice(set, get, store),
+            ...createAnalyticsSlice(set, get, store),
+            ...createOutletSlice(set, get, store),
+            ...createNotificationSlice(set, get, store),
+            ...createHospitalitySlice(set, get, store),
+            ...createAuthSlice(set, get, store),
+            ...createIntegrationSlice(set, get, store),
+            ...createInventorySlice(set, get, store),
 
             // UI State
             activeOutletId: null,
-            setActiveOutletId: (id) => a[0]({
-                activeOutletId: id,
-                // Clear data on switch to prevent leakage
-                ingredients: [],
-                recipes: [],
-                menus: [],
-                events: [],
-                inventory: [],
-                staff: [],
-                suppliers: [],
-                purchaseOrders: [],
-                wasteRecords: [],
-                productionTasks: {},
-                pccs: [],
-                haccpLogs: [],
-                haccpTasks: [],
-                haccpTaskCompletions: []
-            }),
+            setActiveOutletId: (id) => {
+                const currentId = get().activeOutletId;
+                if (currentId === id) return;
+
+                set({
+                    activeOutletId: id,
+                    // Clear data on switch to prevent leakage
+                    ingredients: [],
+                    recipes: [],
+                    menus: [],
+                    events: [],
+                    inventory: [],
+                    staff: [],
+                    suppliers: [],
+                    purchaseOrders: [],
+                    wasteRecords: [],
+                    productionTasks: {},
+                    pccs: [],
+                    haccpLogs: [],
+                    haccpTasks: [],
+                    haccpTaskCompletions: []
+                });
+            },
         }),
         {
             name: 'kitchen-manager-storage',

@@ -1,10 +1,18 @@
 import type {
     Ingredient, IngredientBatch, Event, Employee, DailySchedule,
     Recipe, Menu, Supplier, PurchaseOrder, WasteRecord,
-    PCC, HACCPLog, HACCPTask, HACCPTaskCompletion, MenuItemAnalytics,
+    PCC, HACCPLog, HACCPTask, HACCPTaskCompletion, HACCPTimer, MenuItemAnalytics,
     KanbanTask, KanbanTaskStatus, HospitalityService, OccupancyData, Integration,
-    InventoryItem
+    InventoryItem, Outlet, User, ShiftType, PageCursor, PurchaseOrderFilters
 } from '../types';
+
+export type {
+    Ingredient, IngredientBatch, Event, Employee, DailySchedule,
+    Recipe, Menu, Supplier, PurchaseOrder, WasteRecord,
+    PCC, HACCPLog, HACCPTask, HACCPTaskCompletion, HACCPTimer, MenuItemAnalytics,
+    KanbanTask, KanbanTaskStatus, HospitalityService, OccupancyData, Integration,
+    InventoryItem, Outlet, User, ShiftType, PageCursor, PurchaseOrderFilters
+};
 import type { NotificationSlice } from './slices/createNotificationSlice';
 
 export interface HospitalitySlice {
@@ -131,10 +139,12 @@ export interface HACCPSlice {
     haccpLogs: HACCPLog[];
     haccpTasks: HACCPTask[];
     haccpTaskCompletions: HACCPTaskCompletion[];
+    haccpTimers: HACCPTimer[];
     setPCCs: (pccs: PCC[]) => void;
     setHACCPLogs: (logs: HACCPLog[]) => void;
     setHACCPTasks: (tasks: HACCPTask[]) => void;
     setHACCPTaskCompletions: (completions: HACCPTaskCompletion[]) => void;
+    setHACCPTimers: (timers: HACCPTimer[]) => void;
     addPCC: (pcc: PCC) => void;
     updatePCC: (pcc: PCC) => void;
     deletePCC: (id: string) => void;
@@ -143,6 +153,9 @@ export interface HACCPSlice {
     updateHACCPTask: (task: HACCPTask) => void;
     deleteHACCPTask: (id: string) => void;
     completeHACCPTask: (completion: HACCPTaskCompletion) => void;
+    addHACCPTimer: (timer: HACCPTimer) => void;
+    updateHACCPTimer: (timer: HACCPTimer) => void;
+    deleteHACCPTimer: (id: string) => void;
 }
 
 export interface InventorySlice {

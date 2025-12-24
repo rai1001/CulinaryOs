@@ -40,7 +40,6 @@ export const HACCPView: React.FC = () => {
         let matchedCount = 0;
 
         entries.forEach((entry: any) => {
-            // Fuzzy match PCC name
             const scannedName = (entry.pccName || '').toLowerCase();
             const match = activePCCs.find(p => {
                 const pName = p.name.toLowerCase();
@@ -64,7 +63,7 @@ export const HACCPView: React.FC = () => {
                     pccId: match.id,
                     value,
                     timestamp: entry.date && entry.time ? `${entry.date}T${entry.time}` : new Date().toISOString(),
-                    userId: 'current-user', // In a real app, this would be the logged-in user
+                    userId: 'current-user',
                     status,
                     notes: entry.status !== 'CORRECT' ? `Scanned: ${entry.status}` : undefined
                 };
@@ -94,25 +93,37 @@ export const HACCPView: React.FC = () => {
     };
 
     return (
-        <div className="space-y-6 p-6 md:p-8 animate-in fade-in duration-500">
-            <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-3xl font-bold bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent flex items-center gap-3">
-                        <ClipboardList className="w-8 h-8 text-emerald-400" />
-                        HACCP Digital
-                    </h1>
-                    <p className="text-slate-400 mt-1">
-                        Control de Puntos Críticos y Registros de Temperatura
-                    </p>
-                </div>
-                <button
-                    onClick={() => setIsImportModalOpen(true)}
-                    className="flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-white px-4 py-2 rounded-lg font-medium transition-all shadow-lg shadow-emerald-500/25"
-                >
-                    <Import className="w-4 h-4" />
-                    Importar / Escanear
-                </button>
-            </header>
+        <div className="flex flex-col h-full bg-background animate-in fade-in duration-700">
+            {/* Header Area */}
+            <div className="flex-none p-10 pb-0">
+                <header className="flex flex-col xl:flex-row xl:items-end justify-between gap-8 pb-10 border-b border-white/5 relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-500/5 blur-[100px] -mr-48 -mt-48 pointer-events-none" />
+
+                    <div className="space-y-4 relative z-10">
+                        <div className="flex items-center gap-4">
+                            <div className="p-4 bg-emerald-500/10 rounded-[1.5rem] border border-emerald-500/20 shadow-lg shadow-emerald-500/10 scale-110">
+                                <ClipboardList className="w-8 h-8 text-emerald-400 animate-glow" />
+                            </div>
+                            <div>
+                                <h1 className="text-5xl font-black text-white uppercase tracking-tighter leading-none mb-1">
+                                    HACCP <span className="text-emerald-400">Digital</span>
+                                </h1>
+                                <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.4em] ml-1">Protocolos de Seguridad Alimentaria</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-6 relative z-10">
+                        <button
+                            onClick={() => setIsImportModalOpen(true)}
+                            className="group flex items-center gap-3 bg-white/[0.02] hover:bg-emerald-500 px-8 py-5 rounded-[2rem] border border-white/10 hover:border-emerald-400 text-white transition-all duration-500 shadow-xl hover:shadow-emerald-500/40"
+                        >
+                            <Import className="w-5 h-5 group-hover:rotate-12 transition-transform duration-500" />
+                            <span className="text-[11px] font-black uppercase tracking-[0.2em]">Despliegue de Datos</span>
+                        </button>
+                    </div>
+                </header>
+            </div>
 
             <DataImportModal
                 isOpen={isImportModalOpen}
@@ -121,26 +132,32 @@ export const HACCPView: React.FC = () => {
                 onImportComplete={handleImportComplete}
             />
 
-            {/* Navigation Tabs */}
-            <div className="flex gap-1 bg-surface p-1 rounded-xl border border-white/5 overflow-x-auto">
-                {tabs.map(tab => (
-                    <button
-                        key={tab.id}
-                        onClick={() => setActiveTab(tab.id)}
-                        className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm whitespace-nowrap transition-all ${activeTab === tab.id
-                            ? 'bg-primary text-white shadow-lg shadow-primary/25'
-                            : 'text-slate-400 hover:text-white hover:bg-white/5'
-                            }`}
-                    >
-                        {tab.icon}
-                        {tab.label}
-                    </button>
-                ))}
-            </div>
+            {/* Main Navigation & Content */}
+            <div className="flex-1 flex flex-col p-10 pt-8 gap-10 overflow-hidden">
+                {/* Navigation Tabs */}
+                <div className="flex gap-4 p-1 premium-glass border border-white/5 rounded-2xl w-fit overflow-x-auto print:hidden">
+                    {tabs.map(tab => (
+                        <button
+                            key={tab.id}
+                            onClick={() => setActiveTab(tab.id)}
+                            className={`flex items-center gap-3 px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] transition-all duration-300
+                                ${activeTab === tab.id
+                                    ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20 scale-[1.05]'
+                                    : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
+                                }`}
+                        >
+                            <span className={activeTab === tab.id ? 'animate-glow' : ''}>{tab.icon}</span>
+                            {tab.label}
+                        </button>
+                    ))}
+                </div>
 
-            {/* Content */}
-            <div className="min-h-[400px]">
-                {renderContent()}
+                {/* Content Area */}
+                <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 animate-in fade-in slide-in-from-bottom-5 duration-700">
+                    <div className="max-w-[1600px] mx-auto pb-20">
+                        {renderContent()}
+                    </div>
+                </div>
             </div>
         </div>
     );

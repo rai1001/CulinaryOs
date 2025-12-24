@@ -209,8 +209,21 @@ export async function convertirRecetaAFicha(recipeId: string, outletId: string, 
     const recipe = await firestoreService.getById<Recipe>(COLLECTIONS.RECIPES, recipeId);
     if (!recipe) throw new Error('Receta no encontrada');
 
-    // Fetch ingredients to get current costs
-    const inventory = await firestoreService.getAll<Ingredient>(collections.ingredients as any);
+    // Fetch only required ingredients to get current costs
+    const ingredientIds = [...new Set(recipe.ingredients.map(ri => ri.ingredientId))];
+    const inventory: Ingredient[] = [];
+
+    // Firestore 'in' query limit is 30
+    const CHUNK_SIZE = 30;
+    for (let i = 0; i < ingredientIds.length; i += CHUNK_SIZE) {
+        const chunk = ingredientIds.slice(i, i + CHUNK_SIZE);
+        const results = await firestoreService.query<Ingredient>(
+            collections.ingredients as any,
+            where('__name__', 'in', chunk)
+        );
+        inventory.push(...results);
+    }
+
     const ingredientMap = new Map<string, Ingredient>(inventory.map(i => [i.id, i]));
 
     const ingredientesFicha: IngredienteFicha[] = recipe.ingredients.map(ri => {

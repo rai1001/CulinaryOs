@@ -1,218 +1,268 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
-import { Check, Clock, ChefHat, ArrowLeft } from 'lucide-react';
+import { Check, Clock, ChefHat, ArrowLeft, LayoutDashboard, Timer, Activity } from 'lucide-react';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 export const KitchenDisplayView: React.FC = () => {
-    const { events, recipes, ingredients } = useStore();
+    const { events, productionTasks: storeProductionTasks, updateTaskStatus, activeOutletId } = useStore();
     const navigate = useNavigate();
     const [selectedStation, setSelectedStation] = useState<'all' | 'hot' | 'cold' | 'dessert'>('all');
-    const [completedTasks, setCompletedTasks] = useState<string[]>([]);
+    const [currentTime, setCurrentTime] = useState(new Date());
 
-    // Get today's production needs
-    const today = new Date().toISOString().split('T')[0];
+    // Update time every minute
+    React.useEffect(() => {
+        const timer = setInterval(() => setCurrentTime(new Date()), 60000);
+        return () => clearInterval(timer);
+    }, []);
 
-    // Find today's events or upcoming events within 2 days
-    const activeEvents = useMemo(() => {
-        const nextTwoDays = new Date();
-        nextTwoDays.setDate(nextTwoDays.getDate() + 2);
-        const nextTwoDaysStr = nextTwoDays.toISOString().split('T')[0];
+    // Shift Logic
+    const currentShift = useMemo(() => {
+        const hour = currentTime.getHours();
+        if (hour >= 6 && hour < 14) return 'MORNING';
+        if (hour >= 14 && hour < 22) return 'AFTERNOON';
+        return 'NIGHT';
+    }, [currentTime]);
 
-        return events.filter(e => e.date >= today && e.date <= nextTwoDaysStr).sort((a, b) => a.date.localeCompare(b.date));
-    }, [events, today]);
+    const shiftLabel = {
+        'MORNING': 'Turno Mañana',
+        'AFTERNOON': 'Turno Tarde',
+        'NIGHT': 'Turno Noche'
+    }[currentShift];
 
-    // Aggregate production tasks
-    const productionTasks = useMemo(() => {
-        const tasks: {
-            id: string;
-            recipeId: string;
-            recipeName: string;
-            quantity: number;
-            station: string;
-            eventTime: string;
-            eventName: string;
-            ingredients: { name: string; quantity: number; unit: string }[];
-        }[] = [];
+    const todayStr = format(currentTime, 'yyyy-MM-dd');
 
-        activeEvents.forEach(event => {
-            // Placeholder: Assume logic to get tasks from event menus
-            // For now, we'll mock it based on available recipes if no menu assigned
-            // In a real app, we'd pull from event.menu.recipes
+    // Filtered & Aggregated Tasks
+    const kdsTasks = useMemo(() => {
+        const taskMap = new Map<string, any>();
 
-            // This is a simplification for the KDS MVP to show *something* even if data is sparse
-            if (activeEvents.length > 0 && recipes.length > 0) {
-                recipes.forEach(recipe => {
-                    // Filter by station if selected
-                    if (selectedStation !== 'all' && recipe.station !== selectedStation) return;
+        // Flatten tasks from all events
+        Object.keys(storeProductionTasks).forEach(eventId => {
+            const eventTasks = storeProductionTasks[eventId] || [];
+            const event = events.find(e => e.id === eventId);
 
-                    // Mock task for demo purposes if no real menu data
-                    tasks.push({
-                        id: `${event.id}-${recipe.id}`,
-                        recipeId: recipe.id,
-                        recipeName: recipe.name,
-                        quantity: event.pax,
-                        station: recipe.station,
-                        eventTime: event.date, // Use date as time proxy
-                        eventName: event.name,
-                        ingredients: recipe.ingredients.map(ri => {
-                            const ing = ingredients.find(i => i.id === ri.ingredientId);
-                            return {
-                                name: ing?.name || 'Ingrediente desconocido',
-                                quantity: ri.quantity * event.pax,
-                                unit: ing?.unit || 'un'
-                            };
-                        })
-                    });
-                });
-            }
+            eventTasks.forEach(task => {
+                // Filter by outlet if needed
+                if (activeOutletId && task.outletId !== activeOutletId) return;
+
+                // Station filter
+                if (selectedStation !== 'all' && task.station !== selectedStation) return;
+
+                // Priority Filtering: Same day and shift
+                const isToday = task.assignedDate === todayStr;
+                const isSameShift = task.shift === currentShift;
+
+                // Also include tasks from events happening today if not explicitly assigned
+                const isEventToday = event?.date === todayStr;
+
+                if ((isToday && isSameShift) || (isEventToday && !task.shift)) {
+                    // Aggregation Key: EventName + Date + TaskTitle + Station
+                    // We normalize event name to group "Boda A" and "Boda a" if desired, or keep strict.
+                    // User wanted grouping by name.
+                    const eventName = event?.name?.trim() || 'General';
+                    const eventDate = event?.date || todayStr;
+                    const key = `${eventDate}_${eventName.toLowerCase()}_${task.title}_${task.station}`;
+
+                    if (taskMap.has(key)) {
+                        const existing = taskMap.get(key);
+                        existing.quantity += task.quantity;
+                        existing.references.push({ eventId, taskId: task.id });
+                        // If any is todo, the aggregate is todo (unless all are done? KDS usually shows todo/done)
+                        // If mixed status, what to show? 
+                        // Simplicity: If ANY is not done, show as todo. If ALL are done, show as done.
+                        if (task.status !== 'done') existing.status = 'todo';
+                    } else {
+                        taskMap.set(key, {
+                            ...task,
+                            id: `agg_${eventId}_${task.id}`, // specific ID doesnt matter for display, just unique key
+                            eventName,
+                            eventPax: event?.pax || 0,
+                            references: [{ eventId, taskId: task.id }],
+                            // If base task is 'todo', aggregate is 'todo'.
+                        });
+                    }
+                }
+            });
         });
 
-        // If no events, show a placeholder list from recipes for demo
-        if (tasks.length === 0 && recipes.length > 0) {
-            recipes.forEach(recipe => {
-                if (selectedStation !== 'all' && recipe.station !== selectedStation) return;
-                tasks.push({
-                    id: `demo-${recipe.id}`,
-                    recipeId: recipe.id,
-                    recipeName: recipe.name,
-                    quantity: 50,
-                    station: recipe.station,
-                    eventTime: today,
-                    eventName: 'Producción General',
-                    ingredients: recipe.ingredients.map(ri => {
-                        const ing = ingredients.find(i => i.id === ri.ingredientId);
-                        return {
-                            name: ing?.name || 'Unknown',
-                            quantity: ri.quantity * 50,
-                            unit: ing?.unit || 'un'
-                        };
-                    })
-                });
-            });
-        }
+        const allTasks = Array.from(taskMap.values());
 
-        return tasks;
-    }, [activeEvents, recipes, ingredients, selectedStation]);
+        return allTasks.sort((a, b) => {
+            // Priority to incomplete "todo" -> "in-progress" -> "done"
+            const statusOrder: Record<string, number> = { 'todo': 0, 'in-progress': 1, 'done': 2 };
+            return statusOrder[a.status] - statusOrder[b.status];
+        });
+    }, [storeProductionTasks, activeOutletId, selectedStation, todayStr, currentShift, events]);
 
-    const handleToggleComplete = (taskId: string) => {
-        setCompletedTasks(prev =>
-            prev.includes(taskId) ? prev.filter(id => id !== taskId) : [...prev, taskId]
-        );
+    const completedCount = kdsTasks.filter(t => t.status === 'done').length;
+    const progress = kdsTasks.length > 0 ? (completedCount / kdsTasks.length) * 100 : 0;
+
+    const handleToggleComplete = async (task: any) => {
+        // Toggle based on current aggregate status
+        const newStatus = task.status === 'done' ? 'todo' : 'done';
+
+        // Update ALL referenced real tasks
+        // We can do this in parallel
+        await Promise.all(task.references.map((ref: any) =>
+            updateTaskStatus(ref.eventId, ref.taskId, newStatus)
+        ));
     };
 
     return (
-        <div className="flex flex-col h-screen bg-slate-900 text-slate-100">
-            {/* Header - Optimized for Touch */}
-            <div className="flex items-center justify-between p-6 bg-slate-800 border-b border-white/5">
-                <div className="flex items-center gap-6">
+        <div className="flex flex-col h-screen bg-slate-950 text-slate-100 overflow-hidden font-sans">
+            {/* Header - optimized for touch & premium aesthetics */}
+            <div className="flex items-center justify-between p-8 bg-black/40 border-b border-white/5 backdrop-blur-3xl relative overflow-hidden flex-none">
+                <div className="absolute inset-0 bg-primary/5 blur-3xl rounded-full -left-20 -top-20 opacity-50" />
+
+                <div className="flex items-center gap-10 relative z-10">
                     <button
                         onClick={() => navigate('/production')}
-                        className="p-4 bg-white/5 rounded-xl active:bg-white/10"
+                        className="p-5 bg-white/5 rounded-[1.5rem] border border-white/10 active:scale-95 transition-all shadow-2xl hover:bg-white/10"
                     >
-                        <ArrowLeft size={32} />
+                        <ArrowLeft size={32} className="text-primary" />
                     </button>
                     <div>
-                        <h1 className="text-3xl font-bold">Kitchen Display</h1>
-                        <p className="text-xl text-slate-400">
-                            {new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}
+                        <div className="flex items-center gap-3 mb-1">
+                            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
+                            <h1 className="text-4xl font-black uppercase tracking-tighter">Kitchen Display</h1>
+                        </div>
+                        <p className="text-xl text-slate-500 font-bold uppercase tracking-[0.2em] flex items-center gap-3">
+                            {format(currentTime, 'EEEE, dd MMMM', { locale: es })}
+                            <span className="text-slate-800">|</span>
+                            <span className="text-primary/80 flex items-center gap-2">
+                                <Timer size={18} /> {format(currentTime, 'HH:mm')}
+                            </span>
                         </p>
                     </div>
                 </div>
 
-                {/* Station Filter - Large Targets */}
-                <div className="flex gap-4">
-                    {(['all', 'hot', 'cold', 'dessert'] as const).map(station => (
-                        <button
-                            key={station}
-                            onClick={() => setSelectedStation(station)}
-                            className={`px-8 py-4 rounded-xl text-xl font-bold capitalize transition-all ${selectedStation === station
-                                ? 'bg-primary text-white shadow-lg shadow-primary/20 scale-105'
-                                : 'bg-white/5 text-slate-400'
-                                }`}
-                        >
-                            {station === 'all' ? 'Todas' :
-                                station === 'hot' ? 'Caliente' :
-                                    station === 'cold' ? 'Frío' : 'Postres'}
-                        </button>
-                    ))}
+                <div className="flex flex-col items-end gap-3 relative z-10">
+                    <div className="flex gap-4">
+                        {(['all', 'hot', 'cold', 'dessert'] as const).map(station => (
+                            <button
+                                key={station}
+                                onClick={() => setSelectedStation(station)}
+                                className={`px-10 py-5 rounded-[1.5rem] text-sm font-black uppercase tracking-[0.2em] transition-all border ${selectedStation === station
+                                    ? 'bg-primary border-primary text-white shadow-2xl shadow-primary/40 scale-[1.05]'
+                                    : 'bg-white/5 border-white/5 text-slate-400 hover:bg-white/10'
+                                    }`}
+                            >
+                                {station === 'all' ? 'Todas' :
+                                    station === 'hot' ? 'Caliente' :
+                                        station === 'cold' ? 'Frío' : 'Postres'}
+                            </button>
+                        ))}
+                    </div>
+                    <div className="flex items-center gap-4 w-full max-w-md">
+                        <div className="flex-1 h-3 bg-white/5 rounded-full overflow-hidden border border-white/5">
+                            <div
+                                className="h-full bg-gradient-to-r from-primary to-emerald-400 transition-all duration-1000 shadow-[0_0_15px_rgba(59,130,246,0.3)]"
+                                style={{ width: `${progress}%` }}
+                            />
+                        </div>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 min-w-[100px] text-right">
+                            {shiftLabel} · {completedCount}/{kdsTasks.length} Done
+                        </span>
+                    </div>
                 </div>
             </div>
 
-            {/* Main Content - Grid of Tickets */}
-            <div className="flex-1 overflow-auto p-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                    {productionTasks.map(task => {
-                        const isCompleted = completedTasks.includes(task.id);
+            {/* Main Content - Improved Grid */}
+            <div className="flex-1 overflow-y-auto p-8 custom-scrollbar bg-[radial-gradient(circle_at_50%_50%,rgba(15,23,42,1)_0%,rgba(2,6,23,1)_100%)]">
+                {kdsTasks.length === 0 ? (
+                    <div className="h-full flex flex-col items-center justify-center opacity-20 scale-125">
+                        <LayoutDashboard size={120} className="mb-8" />
+                        <h2 className="text-4xl font-black uppercase tracking-widest">Pipeline Limpio</h2>
+                        <p className="text-xl font-bold uppercase tracking-[0.3em] mt-4">No hay tareas pendientes en este turno</p>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-8">
+                        {kdsTasks.map(task => {
+                            const isCompleted = task.status === 'done';
 
-                        return (
-                            <div
-                                key={task.id}
-                                className={`flex flex-col h-full rounded-2xl border-2 transition-all duration-300 ${isCompleted
-                                    ? 'bg-green-900/20 border-green-900/50 opacity-60'
-                                    : 'bg-slate-800 border-white/5'
-                                    }`}
-                            >
-                                {/* Ticket Header */}
-                                <div className={`p-6 border-b ${isCompleted ? 'border-green-900/30' : 'border-white/5'}`}>
-                                    <div className="flex justify-between items-start mb-2">
-                                        <span className={`px-4 py-1.5 rounded-full text-sm font-bold uppercase tracking-wider ${task.station === 'hot' ? 'bg-orange-500/20 text-orange-400' :
-                                            task.station === 'cold' ? 'bg-blue-500/20 text-blue-400' :
-                                                'bg-pink-500/20 text-pink-400'
-                                            }`}>
-                                            {task.station}
-                                        </span>
-                                        <div className="flex items-center gap-2 text-slate-400 font-mono text-lg">
-                                            <Clock size={20} />
-                                            <span>{task.eventTime}</span>
+                            return (
+                                <div
+                                    key={task.id}
+                                    className={`flex flex-col h-full rounded-[2.5rem] border-2 transition-all duration-500 relative overflow-hidden group/card ${isCompleted
+                                        ? 'bg-emerald-950/20 border-emerald-500/30 opacity-60'
+                                        : 'premium-glass border-white/5 hover:border-white/20'
+                                        }`}
+                                >
+                                    {/* Glass reflection */}
+                                    <div className="absolute inset-0 bg-gradient-to-br from-white/[0.05] to-transparent pointer-events-none" />
+
+                                    {/* Ticket Header */}
+                                    <div className={`p-8 border-b relative z-10 ${isCompleted ? 'border-emerald-500/20' : 'border-white/5'}`}>
+                                        <div className="flex justify-between items-start mb-4">
+                                            <span className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border shadow-inner ${task.station === 'hot' ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' :
+                                                task.station === 'cold' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
+                                                    'bg-pink-500/10 text-pink-400 border-pink-500/20'
+                                                }`}>
+                                                {task.station}
+                                            </span>
+                                            <div className="flex items-center gap-2 text-slate-500 font-mono text-xl font-black">
+                                                <Clock size={20} className="text-primary/50" />
+                                                <span>{task.estimatedTime ? `${task.estimatedTime}'` : '--'}</span>
+                                            </div>
                                         </div>
-                                    </div>
-                                    <h3 className="text-2xl font-bold leading-tight mb-2">{task.recipeName}</h3>
-                                    <p className="text-lg text-slate-400">{task.eventName} · <span className="text-white font-bold">{task.quantity} PAX</span></p>
-                                </div>
-
-                                {/* Ingredients / Steps */}
-                                <div className="flex-1 p-6 space-y-4">
-                                    {task.ingredients.slice(0, 5).map((ing, idx) => (
-                                        <div key={idx} className="flex justify-between items-baseline text-lg">
-                                            <span className="text-slate-300">{ing.name}</span>
-                                            <span className="font-mono font-bold text-slate-500">
-                                                {ing.quantity.toFixed(1)} {ing.unit}
+                                        <h3 className="text-2xl font-black leading-none mb-3 uppercase tracking-tighter group-hover/card:text-primary transition-colors">
+                                            {task.title}
+                                        </h3>
+                                        <div className="flex items-center gap-3">
+                                            <div className="px-3 py-1 bg-black/40 rounded-lg border border-white/5">
+                                                <span className="text-[14px] font-black font-mono text-white">x{task.quantity}</span>
+                                                <span className="text-[9px] text-slate-600 font-bold uppercase tracking-widest ml-1">{task.unit}</span>
+                                            </div>
+                                            <span className="text-[10px] text-slate-500 font-black uppercase tracking-widest truncate">
+                                                {task.eventName}
                                             </span>
                                         </div>
-                                    ))}
-                                    {task.ingredients.length > 5 && (
-                                        <p className="text-center text-slate-500 italic pt-2">
-                                            ... y {task.ingredients.length - 5} más
-                                        </p>
-                                    )}
-                                </div>
+                                    </div>
 
-                                {/* Action Button */}
-                                <div className="p-4 mt-auto">
-                                    <button
-                                        onClick={() => handleToggleComplete(task.id)}
-                                        className={`w-full py-6 rounded-xl text-2xl font-bold flex items-center justify-center gap-4 transition-all active:scale-95 ${isCompleted
-                                            ? 'bg-green-600/20 text-green-400 hover:bg-green-600/30'
-                                            : 'bg-primary text-white shadow-lg shadow-primary/20 hover:bg-primary/90'
-                                            }`}
-                                    >
-                                        {isCompleted ? (
-                                            <>
-                                                <Check size={32} />
-                                                <span>COMPLETADO</span>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <ChefHat size={32} />
-                                                <span>MARCAR HECHO</span>
-                                            </>
-                                        )}
-                                    </button>
+                                    {/* Description / Instructions */}
+                                    <div className="flex-1 p-8 relative z-10">
+                                        <div className="flex items-center gap-2 mb-4 text-primary/40">
+                                            <Activity size={14} />
+                                            <span className="text-[9px] font-black uppercase tracking-[0.2em]">Instrucciones</span>
+                                        </div>
+                                        <p className="text-lg text-slate-300 font-medium leading-relaxed italic">
+                                            {task.description || 'Procedimiento estándar según ficha técnica.'}
+                                        </p>
+                                    </div>
+
+                                    {/* Action Button - Massive touch target */}
+                                    <div className="p-4 relative z-20">
+                                        <button
+                                            onClick={() => handleToggleComplete(task)}
+                                            className={`w-full py-8 rounded-[1.8rem] text-xl font-black uppercase tracking-[0.15em] flex items-center justify-center gap-5 transition-all active:scale-[0.9] border-2 ${isCompleted
+                                                ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/20'
+                                                : 'bg-primary border-primary/50 text-white shadow-[0_15px_30px_rgba(59,130,246,0.3)] hover:scale-[1.02] hover:shadow-primary/50'
+                                                }`}
+                                        >
+                                            {isCompleted ? (
+                                                <>
+                                                    <Check size={36} strokeWidth={3} />
+                                                    <span>Revertir</span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <ChefHat size={36} strokeWidth={3} />
+                                                    <span>Hecho</span>
+                                                </>
+                                            )}
+                                        </button>
+                                    </div>
+
+                                    {/* Background numbers for industrial aesthetics */}
+                                    <div className="absolute -right-2 top-10 opacity-[0.02] text-9xl font-black text-white pointer-events-none select-none italic">
+                                        #{task.id.slice(-2)}
+                                    </div>
                                 </div>
-                            </div>
-                        );
-                    })}
-                </div>
+                            );
+                        })}
+                    </div>
+                )}
             </div>
         </div>
     );

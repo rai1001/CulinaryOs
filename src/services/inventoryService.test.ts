@@ -1,6 +1,15 @@
-import { describe, it, expect } from 'vitest';
-import { consumeStockFIFO } from './inventoryService';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { consumeStockFIFO, recordPhysicalCount } from './inventoryService';
 import { IngredientBatch } from '../types';
+import { firestoreService } from './firestoreService';
+
+vi.mock('./firestoreService', () => ({
+    firestoreService: {
+        getById: vi.fn(),
+        update: vi.fn()
+    },
+    addDocument: vi.fn()
+}));
 
 describe('InventoryService - consumeStockFIFO', () => {
     // Helper to create batches
@@ -85,5 +94,57 @@ describe('InventoryService - consumeStockFIFO', () => {
         const { newBatches, consumed } = consumeStockFIFO([], 10);
         expect(consumed).toBe(0);
         expect(newBatches).toHaveLength(0);
+    });
+});
+
+describe('InventoryService - recordPhysicalCount', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    it('should calculate variance and update stock correctly', async () => {
+        const mockItem = {
+            id: 'item-1',
+            ingredientId: 'ing-1',
+            stock: 10,
+            theoreticalStock: 12,
+            costPerUnit: 5,
+            outletId: 'outlet-1'
+        };
+
+        (firestoreService.getById as any).mockResolvedValue(mockItem);
+
+        const result = await recordPhysicalCount('item-1', 15, 'user-1', 'Count notes');
+
+        // Variance = Real (15) - Theoretical (12) = 3
+        expect(result.variance).toBe(3);
+
+        // Verify update call
+        expect(firestoreService.update).toHaveBeenCalledWith(
+            expect.any(String),
+            'item-1',
+            expect.objectContaining({
+                stock: 15,
+                theoreticalStock: 15,
+                lastPhysicalCount: 15
+            })
+        );
+    });
+
+    it('should use current stock as theoretical if theoreticalStock is missing', async () => {
+        const mockItem = {
+            id: 'item-2',
+            stock: 20,
+            // theoreticalStock missing
+            costPerUnit: 2,
+            outletId: 'outlet-1'
+        };
+
+        (firestoreService.getById as any).mockResolvedValue(mockItem);
+
+        const result = await recordPhysicalCount('item-2', 18, 'user-1');
+
+        // Variance = 18 - 20 = -2
+        expect(result.variance).toBe(-2);
     });
 });

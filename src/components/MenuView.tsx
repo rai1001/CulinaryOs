@@ -9,7 +9,7 @@ import {
 import { COLLECTIONS, collections } from '../firebase/collections';
 import { useStore } from '../store/useStore';
 import { useOutletScoping } from '../hooks/useOutletScoping';
-import { BookOpen, Plus, Search, Edit2, Trash2, Save, X, Utensils, Store } from 'lucide-react';
+import { BookOpen, Plus, Search, Edit2, Trash2, Save, X, Utensils, Store, Layers } from 'lucide-react';
 import type { Menu, MenuVariation, Recipe, Ingredient } from '../types';
 import { useToast, ConfirmModal } from './ui';
 import { DataImportModal, type ImportType } from './common/DataImportModal';
@@ -182,6 +182,28 @@ export const MenuView: React.FC = () => {
     });
 
 
+    // Derived Stats
+    const stats = React.useMemo(() => {
+        if (!menus.length) return { total: 0, active: 0, avgPrice: 0, totalDishes: 0 };
+        const relevant = activeOutletId ? menus.filter(m => m.outletId === activeOutletId) : menus;
+
+        const total = relevant.length;
+        const active = relevant.filter(m => m.status === 'active').length;
+        const totalPrice = relevant.reduce((acc, m) => acc + (m.sellPrice || 0), 0);
+        const avgPrice = total > 0 ? totalPrice / total : 0;
+        const totalDishes = relevant.reduce((acc, m) => acc + (m.recipeIds?.length || 0), 0);
+
+        return { total, active, avgPrice, totalDishes };
+    }, [menus, activeOutletId]);
+
+    const getStatusColor = (status: string) => {
+        switch (status) {
+            case 'active': return 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20';
+            case 'draft': return 'text-amber-400 bg-amber-500/10 border-amber-500/20';
+            case 'archived': return 'text-slate-500 bg-slate-500/10 border-slate-500/20';
+            default: return 'text-slate-400 bg-white/5 border-white/10';
+        }
+    };
 
     const handleSort = (key: string) => {
         setSortConfig(prev => ({
@@ -474,63 +496,98 @@ export const MenuView: React.FC = () => {
     }
 
     return (
-        <div className="h-full flex flex-col p-6 animate-in fade-in duration-500">
+        <div className="p-6 md:p-10 space-y-8 min-h-screen bg-transparent text-slate-100 fade-in">
             {/* Header */}
-            <div className="flex justify-between items-center mb-8">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
                 <div>
-                    <h1 className="text-3xl font-bold text-white flex items-center gap-3">
-                        <BookOpen className="text-primary" />
-                        Gestión de Menús
+                    <h1 className="text-4xl font-black text-white flex items-center gap-4 tracking-tighter uppercase">
+                        <BookOpen className="text-primary animate-pulse w-10 h-10" />
+                        Gestión de <span className="text-primary">Menús</span>
                     </h1>
-                    <p className="text-slate-400 mt-1">Crea y organiza tus propuestas gastronómicas</p>
+                    <p className="text-slate-500 text-xs font-bold mt-2 tracking-[0.3em] uppercase">Carta Digital & Planificación</p>
                 </div>
-                <div className="flex items-center">
+
+                <div className="flex flex-wrap gap-3">
                     <button
                         onClick={handleClearData}
                         disabled={isDeletingAll}
-                        className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 mr-2"
+                        className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 px-5 py-3 rounded-xl font-black text-xs uppercase tracking-widest flex items-center gap-2 transition-all active:scale-95"
                     >
-                        <Trash2 className="w-4 h-4" /> {isDeletingAll ? '...' : 'Borrar Todo'}
+                        <Trash2 size={16} /> {isDeletingAll ? '...' : 'Clear All'}
                     </button>
                     <button
                         onClick={() => setImportType('menu')}
-                        className="bg-surface hover:bg-white/10 text-slate-300 border border-white/10 px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 mr-2"
+                        className="bg-white/5 text-slate-300 border border-white/10 px-5 py-3 rounded-xl font-black text-xs uppercase tracking-widest flex items-center gap-2 hover:bg-white/10 transition-all active:scale-95"
                     >
-                        <Utensils className="w-4 h-4" /> Importar / Escanear Carta
+                        <Utensils size={16} />
+                        Importar Carta
                     </button>
                     <button
                         onClick={() => {
-                            setFormData({ name: '', description: '', recipeIds: [], variations: [], sellPrice: 0 });
+                            setFormData({ name: '', description: '', recipeIds: [], variations: [], sellPrice: 0, category: 'daily', status: 'draft' });
                             setIsEditing(true);
                         }}
-                        className="bg-primary hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-all shadow-lg hover:shadow-primary/25"
+                        className="bg-primary text-white px-6 py-3 rounded-xl font-black text-xs uppercase tracking-widest flex items-center gap-2 hover:bg-primary/90 transition-all active:scale-95 shadow-[0_0_20px_rgba(59,130,246,0.5)] border border-primary/50"
                     >
-                        <Plus size={20} /> Nuevo Menú
+                        <Plus size={16} />
+                        Nuevo Menú
                     </button>
                 </div>
             </div>
 
-            {/* Search */}
-            <div className="relative mb-6">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={20} />
-                <input
-                    className="w-full bg-surface border border-white/10 rounded-xl pl-10 pr-4 py-3 text-white focus:border-primary outline-none transition-colors"
-                    placeholder="Buscar menús..."
-                    value={searchTerm}
-                    onChange={e => setSearchTerm(e.target.value)}
-                />
+            {/* Stats Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="premium-glass p-5 flex items-center gap-4 group hover:scale-[1.02] transition-all duration-500">
+                    <div className="p-3 bg-blue-500/10 rounded-2xl text-blue-400 group-hover:bg-blue-500/20 transition-colors">
+                        <BookOpen size={24} />
+                    </div>
+                    <div>
+                        <p className="text-slate-500 text-[9px] font-black uppercase tracking-widest">Total Menús</p>
+                        <p className="text-2xl font-black text-white font-mono">{stats.total}</p>
+                    </div>
+                </div>
+
+                <div className="premium-glass p-5 flex items-center gap-4 group hover:scale-[1.02] transition-all duration-500">
+                    <div className="p-3 bg-emerald-500/10 rounded-2xl text-emerald-400 group-hover:bg-emerald-500/20 transition-colors">
+                        <Utensils size={24} />
+                    </div>
+                    <div>
+                        <p className="text-slate-500 text-[9px] font-black uppercase tracking-widest">Activos</p>
+                        <p className="text-2xl font-black text-white font-mono">{stats.active}</p>
+                    </div>
+                </div>
+
+                <div className="premium-glass p-5 flex items-center gap-4 group hover:scale-[1.02] transition-all duration-500">
+                    <div className="p-3 bg-amber-500/10 rounded-2xl text-amber-400 group-hover:bg-amber-500/20 transition-colors">
+                        <Store size={24} />
+                    </div>
+                    <div>
+                        <p className="text-slate-500 text-[9px] font-black uppercase tracking-widest">Precio Medio</p>
+                        <p className="text-2xl font-black text-white font-mono">{stats.avgPrice.toFixed(2)}€</p>
+                    </div>
+                </div>
+
+                <div className="premium-glass p-5 flex items-center gap-4 group hover:scale-[1.02] transition-all duration-500">
+                    <div className="p-3 bg-purple-500/10 rounded-2xl text-purple-400 group-hover:bg-purple-500/20 transition-colors">
+                        <Plus size={24} />
+                    </div>
+                    <div>
+                        <p className="text-slate-500 text-[9px] font-black uppercase tracking-widest">Platos Totales</p>
+                        <p className="text-2xl font-black text-white font-mono">{stats.totalDishes}</p>
+                    </div>
+                </div>
             </div>
 
-            {/* Filters */}
-            <div className="flex flex-col md:flex-row gap-4 mb-8 items-start md:items-center justify-between">
-                <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
+            {/* Filter Bar */}
+            <div className="premium-glass p-2 flex flex-col xl:flex-row gap-4 justify-between items-center rounded-2xl">
+                <div className="flex gap-1 overflow-x-auto max-w-full pb-1 custom-scrollbar">
                     {MENU_CATEGORIES.map(cat => (
                         <button
                             key={cat.id}
                             onClick={() => setActiveCategory(cat.id)}
-                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${activeCategory === cat.id
-                                ? 'bg-primary text-white'
-                                : 'bg-surface border border-white/5 text-slate-400 hover:text-white'
+                            className={`px-4 py-3 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all border whitespace-nowrap ${activeCategory === cat.id
+                                ? 'bg-primary text-white border-primary shadow-lg shadow-primary/20'
+                                : 'border-transparent text-slate-500 hover:text-white hover:bg-white/5'
                                 }`}
                         >
                             {cat.label}
@@ -538,9 +595,9 @@ export const MenuView: React.FC = () => {
                     ))}
                 </div>
 
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-4 w-full xl:w-auto">
                     <select
-                        className="bg-surface border border-white/5 rounded-lg px-3 py-2 text-sm text-slate-300 focus:border-primary outline-none"
+                        className="bg-black/20 border border-white/5 rounded-xl px-4 py-3 text-xs font-bold uppercase tracking-widest text-slate-300 focus:border-primary outline-none hover:bg-white/5 transition-colors"
                         value={activeStatus}
                         onChange={e => setActiveStatus(e.target.value)}
                     >
@@ -550,73 +607,96 @@ export const MenuView: React.FC = () => {
                         <option value="archived">Archivados</option>
                     </select>
 
-                    <button
-                        onClick={() => handleSort('sellPrice')}
-                        className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm border transition-colors ${sortConfig.key === 'sellPrice' ? 'border-primary text-primary bg-primary/10' : 'border-white/5 text-slate-400'}`}
-                    >
-                        Precio {sortConfig.key === 'sellPrice' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                    </button>
+                    <div className="w-full xl:w-64 relative group">
+                        <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors" size={16} />
+                        <input
+                            type="text"
+                            placeholder="BUSCAR MENÚ..."
+                            className="w-full pl-11 pr-4 py-3 bg-black/20 border border-white/5 rounded-xl focus:outline-none focus:ring-1 focus:ring-primary/50 focus:border-primary/50 transition-all text-slate-200 placeholder-slate-600 font-medium text-sm"
+                            value={searchTerm}
+                            onChange={e => setSearchTerm(e.target.value)}
+                        />
+                    </div>
                 </div>
             </div>
 
             {/* Grid */}
-            {/* Grid */}
             {!isValidOutlet ? (
-                <div className="flex flex-col items-center justify-center p-12 border-2 border-dashed border-white/10 rounded-xl bg-white/5">
-                    <Store className="w-12 h-12 text-slate-500 mb-4" />
-                    <h3 className="text-xl font-bold text-white mb-2">Selecciona una Cocina</h3>
-                    <p className="text-slate-400 text-center max-w-md">
+                <div className="flex flex-col items-center justify-center p-20 border-2 border-dashed border-white/10 rounded-3xl bg-white/[0.02]">
+                    <Store className="w-16 h-16 text-slate-600 mb-6" />
+                    <h3 className="text-2xl font-black text-white mb-2 uppercase tracking-tight">Selecciona una Cocina</h3>
+                    <p className="text-slate-500 text-center max-w-md font-medium">
                         Selecciona una cocina activa para ver y gestionar sus menús.
                     </p>
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 overflow-y-auto pb-6 custom-scrollbar">
                     {scopedMenus.map(menu => (
-                        <div key={menu.id} className="bg-surface border border-white/5 rounded-xl hover:border-primary/30 transition-all p-6 group relative overflow-hidden">
-                            <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
-                                <button
-                                    onClick={() => handleEdit(menu)}
-                                    className="p-2 bg-black/50 text-white rounded hover:bg-primary transition-colors"
-                                >
-                                    <Edit2 size={16} />
-                                </button>
-                                <button
-                                    onClick={() => handleDelete(menu.id)}
-                                    className="p-2 bg-black/50 text-white rounded hover:bg-red-500 transition-colors"
-                                >
-                                    <Trash2 size={16} />
-                                </button>
-                            </div>
-
-                            <div className="mb-4">
-                                <h3 className="text-xl font-bold text-white mb-2">{menu.name}</h3>
-                                <p className="text-sm text-slate-400 line-clamp-2 min-h-[2.5rem]">
-                                    {menu.description || 'Sin descripción'}
+                        <div key={menu.id} className="premium-glass p-0 group relative overflow-hidden hover:scale-[1.01] transition-transform duration-300 flex flex-col h-full">
+                            {/* Card Header */}
+                            <div className="p-6 relative">
+                                <div className={`absolute top-4 right-4 px-2 py-1 rounded text-[10px] font-black uppercase tracking-widest border ${getStatusColor(menu.status || 'draft')}`}>
+                                    {menu.status === 'active' ? 'ACTIVO' : menu.status === 'archived' ? 'ARCHIVADO' : 'BORRADOR'}
+                                </div>
+                                <h3 className="text-2xl font-black text-white mb-2 pr-16 leading-tight">{menu.name}</h3>
+                                <p className="text-xs text-slate-400 line-clamp-2 min-h-[2.5em] font-medium leading-relaxed">
+                                    {menu.description || 'Sin descripción disponible.'}
                                 </p>
                             </div>
 
-                            <div className="space-y-3 pt-4 border-t border-white/5">
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-slate-500">Platos</span>
-                                    <span className="text-white font-medium">{menu.recipeIds.length}</span>
+                            {/* Card Body */}
+                            <div className="px-6 flex-1">
+                                <div className="space-y-4">
+                                    <div className="flex justify-between items-center p-3 bg-white/5 rounded-lg border border-white/5">
+                                        <div className="flex items-center gap-3">
+                                            <Utensils size={14} className="text-primary" />
+                                            <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">Platos</span>
+                                        </div>
+                                        <span className="text-white font-mono font-bold">{menu.recipeIds.length}</span>
+                                    </div>
+
+                                    <div className="flex justify-between items-center p-3 bg-white/5 rounded-lg border border-white/5">
+                                        <div className="flex items-center gap-3">
+                                            <Layers size={14} className="text-emerald-400" />
+                                            <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">Variaciones</span>
+                                        </div>
+                                        <span className={`font-mono font-bold ${menu.variations?.length ? 'text-emerald-400' : 'text-slate-500'}`}>
+                                            {menu.variations?.length || 0}
+                                        </span>
+                                    </div>
                                 </div>
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-slate-500">Variaciones</span>
-                                    <span className={`font-medium ${menu.variations?.length ? 'text-emerald-400' : 'text-slate-600'}`}>
-                                        {menu.variations?.length || 0}
-                                    </span>
+                            </div>
+
+                            {/* Card Footer */}
+                            <div className="mt-6 p-4 bg-black/40 border-t border-white/5 flex items-center justify-between">
+                                <div>
+                                    <p className="text-[10px] text-slate-500 uppercase font-black tracking-widest">Precio Venta</p>
+                                    <p className="text-xl font-mono text-white font-bold">{menu.sellPrice?.toFixed(2)}€</p>
                                 </div>
-                                <div className="flex justify-between items-center pt-2">
-                                    <span className="text-slate-500 text-sm">Precio Venta</span>
-                                    <span className="text-lg font-bold text-white">{menu.sellPrice?.toFixed(2)}€</span>
+
+                                <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
+                                    <button
+                                        onClick={() => handleEdit(menu)}
+                                        className="p-2 hover:bg-blue-500/20 text-slate-400 hover:text-blue-400 rounded-lg transition-colors border border-transparent hover:border-blue-500/30"
+                                    >
+                                        <Edit2 size={18} />
+                                    </button>
+                                    <button
+                                        onClick={() => handleDelete(menu.id)}
+                                        className="p-2 hover:bg-red-500/20 text-slate-400 hover:text-red-400 rounded-lg transition-colors border border-transparent hover:border-red-500/30"
+                                    >
+                                        <Trash2 size={18} />
+                                    </button>
                                 </div>
                             </div>
                         </div>
                     ))}
 
                     {scopedMenus.length === 0 && (
-                        <div className="col-span-full py-12 text-center text-slate-500">
-                            No se encontraron menús. ¡Crea uno nuevo!
+                        <div className="col-span-full py-20 text-center">
+                            <Utensils className="w-16 h-16 text-slate-700 mx-auto mb-4" />
+                            <h3 className="text-xl font-bold text-slate-500 uppercase tracking-widest">No hay menús</h3>
+                            <p className="text-slate-600 mt-2">Crea tu primer menú para empezar.</p>
                         </div>
                     )}
                 </div>

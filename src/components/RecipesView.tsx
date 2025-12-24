@@ -1,14 +1,12 @@
-
 import React, { useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import { useOutletScoping } from '../hooks/useOutletScoping';
-import { ChefHat, Search, Plus, X, Layers, Sparkles, Loader2, Import, Store, Trash2 } from 'lucide-react';
-import { RecipeList } from './lists/RecipeList';
+import { ChefHat, Search, Plus, Trash2, Import, X, Loader2, Sparkles, Store, Layers, BookOpen, DollarSign, AlertTriangle } from 'lucide-react';
 import { RecipeForm } from './RecipeForm';
-import { searchRecipes } from '../api/ai';
+import { RecipeList } from './lists/RecipeList';
 import { DataImportModal, type ImportType } from './common/DataImportModal';
-
+import { searchRecipes } from '../api/ai';
 import { deleteDocument, addDocument, firestoreService } from '../services/firestoreService';
 import { COLLECTIONS, collections } from '../firebase/collections';
 import { convertirRecetaAFicha } from '../services/fichasTecnicasService';
@@ -232,143 +230,198 @@ export const RecipesView: React.FC = () => {
     }, [filteredRecipes, isValidOutlet, activeOutletId]);
 
     return (
-        <div className="p-8 max-w-6xl mx-auto space-y-6 text-slate-200">
-            <header className="flex justify-between items-end">
+        <div className="p-6 md:p-10 space-y-8 min-h-screen bg-transparent text-slate-100 fade-in">
+            {/* Header */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
                 <div>
-                    <div className="flex items-center gap-3">
-                        <ChefHat className="w-8 h-8 text-primary" />
-                        <h1 className="text-3xl font-bold text-white">Recetas</h1>
-                    </div>
-                    <p className="text-slate-400 mt-1">Gestiona tu biblioteca de recetas y escandallos.</p>
+                    <h1 className="text-4xl font-black text-white flex items-center gap-4 tracking-tighter uppercase">
+                        <ChefHat className="text-primary animate-pulse w-10 h-10" />
+                        Recetas <span className="text-primary">&</span> Escandallos
+                    </h1>
+                    <p className="text-slate-500 text-xs font-bold mt-2 tracking-[0.3em] uppercase">Gestión Técnica Gastronómica</p>
                 </div>
-                <div className="flex gap-3">
-                    <div className="relative">
-                        <Search className={`absolute left-3 top-2.5 w-4 h-4 ${isAiSearch ? 'text-purple-400' : 'text-slate-500'}`} />
-                        <input
-                            className={`bg-surface border rounded-lg pl-9 pr-4 py-2 text-sm focus:outline-none w-64 transition-all ${isAiSearch
-                                ? 'border-purple-500/50 focus:border-purple-500 text-purple-100 placeholder:text-purple-500/50'
-                                : 'border-white/10 focus:border-primary text-slate-200'
-                                }`}
-                            placeholder={isAiSearch ? "Describe tu receta (ej: postre chocolate)..." : "Buscar receta..."}
-                            value={searchTerm}
-                            onChange={e => setSearchTerm(e.target.value)}
-                            onKeyDown={e => {
-                                if (e.key === 'Enter' && isAiSearch) {
-                                    handleAiSearch();
-                                }
-                            }}
-                        />
-                        {isAiSearch && (
-                            <div className="absolute right-2 top-2">
-                                {aiSearching ? <Loader2 className="w-5 h-5 animate-spin text-purple-400" /> : null}
-                            </div>
-                        )}
-                    </div>
+
+                <div className="flex flex-wrap gap-3">
                     <button
                         onClick={() => {
                             const newState = !isAiSearch;
                             setIsAiSearch(newState);
                             if (!newState) {
-                                setAiResultIds(null); // Clear AI results when disabling
+                                setAiResultIds(null);
                             }
                         }}
-                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 border ${isAiSearch
-                            ? 'bg-purple-500/20 text-purple-300 border-purple-500/50 hover:bg-purple-500/30'
-                            : 'bg-surface text-slate-400 border-white/10 hover:text-white hover:bg-white/5'
+                        className={`px-5 py-3 rounded-xl font-black text-xs uppercase tracking-widest flex items-center gap-2 transition-all active:scale-95 border ${isAiSearch
+                            ? 'bg-purple-500/20 text-purple-300 border-purple-500/50 hover:bg-purple-500/30 shadow-lg shadow-purple-500/10'
+                            : 'bg-white/5 text-slate-400 border-white/10 hover:text-white hover:bg-white/10'
                             }`}
-                        title="Búsqueda Semántica con IA"
                     >
-                        <Sparkles className="w-4 h-4" />
-                        {isAiSearch ? 'IA Activa' : 'IA'}
+                        {aiSearching ? <Loader2 className="animate-spin" size={16} /> : <Sparkles size={16} />}
+                        {isAiSearch ? 'IA Activa' : 'AI Search'}
+                    </button>
+                    <button
+                        onClick={() => setImportType('recipe')}
+                        className="bg-white/5 text-slate-300 border border-white/10 px-5 py-3 rounded-xl font-black text-xs uppercase tracking-widest flex items-center gap-2 hover:bg-white/10 transition-all active:scale-95"
+                    >
+                        <Import size={16} />
+                        Importar
                     </button>
                     <button
                         onClick={handleClearData}
                         disabled={isDeletingAll}
-                        className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 mr-2"
+                        className="bg-red-500/10 text-red-400 border border-red-500/20 px-5 py-3 rounded-xl font-black text-xs uppercase tracking-widest flex items-center gap-2 hover:bg-red-500/20 transition-all active:scale-95"
                     >
-                        <Trash2 className="w-4 h-4" /> {isDeletingAll ? '...' : 'Borrar Todo'}
-                    </button>
-                    <button
-                        onClick={() => setImportType('recipe')}
-                        className="bg-surface hover:bg-white/10 text-slate-300 border border-white/10 px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 mr-2"
-                    >
-                        <Import className="w-4 h-4" /> Importar
+                        <Trash2 size={16} />
+                        {isDeletingAll ? '...' : 'Borrar'}
                     </button>
                     <button
                         onClick={() => {
                             setEditingRecipe(undefined);
                             setShowAddModal(true);
                         }}
-                        className="bg-primary hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 shadow-lg shadow-primary/25"
+                        className="bg-primary text-white px-6 py-3 rounded-xl font-black text-xs uppercase tracking-widest flex items-center gap-2 hover:bg-primary/90 transition-all active:scale-95 shadow-[0_0_20px_rgba(59,130,246,0.5)] border border-primary/50"
                     >
-                        <Plus className="w-4 h-4" /> Nueva Receta
+                        <Plus size={16} />
+                        Nueva Receta
                     </button>
                 </div>
-            </header>
+            </div>
 
-            {/* Tabs */}
-            <div className="flex gap-2 border-b border-white/10">
-                <button
-                    onClick={() => setActiveTab('all')}
-                    className={`px-4 py-2 font-medium text-sm transition-colors border-b-2 ${activeTab === 'all'
-                        ? 'border-primary text-white'
-                        : 'border-transparent text-slate-400 hover:text-white'
-                        }`}
-                >
-                    Todas ({recipes.filter(r => r.outletId === activeOutletId).length})
-                </button>
-                <button
-                    onClick={() => setActiveTab('regular')}
-                    className={`px-4 py-2 font-medium text-sm transition-colors border-b-2 flex items-center gap-2 ${activeTab === 'regular'
-                        ? 'border-primary text-white'
-                        : 'border-transparent text-slate-400 hover:text-white'
-                        }`}
-                >
-                    <ChefHat className="w-4 h-4" />
-                    Recetas ({regularRecipes.filter(r => r.outletId === activeOutletId).length})
-                </button>
-                <button
-                    onClick={() => setActiveTab('base')}
-                    className={`px-4 py-2 font-medium text-sm transition-colors border-b-2 flex items-center gap-2 ${activeTab === 'base'
-                        ? 'border-primary text-white'
-                        : 'border-transparent text-slate-400 hover:text-white'
-                        }`}
-                >
-                    <Layers className="w-4 h-4" />
-                    Bases ({baseRecipes.filter(r => r.outletId === activeOutletId).length})
-                </button>
-            </div >
-
-            {/* Sub-Category Pills (only if not searching with AI) */}
-            {
-                !isAiSearch && (
-                    <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
-                        {RECIPE_CATEGORIES.map(cat => (
-                            <button
-                                key={cat.id}
-                                onClick={() => setSubCategory(cat.id)}
-                                className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all border ${subCategory === cat.id
-                                    ? 'bg-primary/20 border-primary text-primary'
-                                    : 'bg-surface border-white/5 text-slate-500 hover:border-white/10 hover:text-white'
-                                    }`}
-                            >
-                                {cat.label}
-                            </button>
-                        ))}
+            {/* Stats Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="premium-glass p-5 flex items-center gap-4 group hover:scale-[1.02] transition-all duration-500">
+                    <div className="p-3 bg-blue-500/10 rounded-2xl text-blue-400 group-hover:bg-blue-500/20 transition-colors">
+                        <BookOpen size={24} />
                     </div>
-                )
-            }
+                    <div>
+                        <p className="text-slate-500 text-[9px] font-black uppercase tracking-widest">Total Recetas</p>
+                        <p className="text-2xl font-black text-white font-mono">{scopedRecipes.length}</p>
+                    </div>
+                </div>
 
-            {
-                !isValidOutlet ? (
-                    <div className="flex flex-col items-center justify-center p-12 border-2 border-dashed border-white/10 rounded-xl bg-white/5 mt-8">
-                        <Store className="w-12 h-12 text-slate-500 mb-4" />
-                        <h3 className="text-xl font-bold text-white mb-2">Selecciona una Cocina</h3>
-                        <p className="text-slate-400 text-center max-w-md">
-                            Selecciona una cocina activa para ver y gestionar sus recetas.
+                <div className="premium-glass p-5 flex items-center gap-4 group hover:scale-[1.02] transition-all duration-500">
+                    <div className="p-3 bg-emerald-500/10 rounded-2xl text-emerald-400 group-hover:bg-emerald-500/20 transition-colors">
+                        <DollarSign size={24} />
+                    </div>
+                    <div>
+                        <p className="text-slate-500 text-[9px] font-black uppercase tracking-widest">Coste Medio</p>
+                        <p className="text-2xl font-black text-white font-mono">
+                            {(scopedRecipes.reduce((acc, r) => acc + getRecipeCost(r), 0) / (scopedRecipes.length || 1)).toFixed(2)}€
                         </p>
                     </div>
-                ) : (
+                </div>
+
+                <div className="premium-glass p-5 flex items-center gap-4 group hover:scale-[1.02] transition-all duration-500">
+                    <div className="p-3 bg-purple-500/10 rounded-2xl text-purple-400 group-hover:bg-purple-500/20 transition-colors">
+                        <Layers size={24} />
+                    </div>
+                    <div>
+                        <p className="text-slate-500 text-[9px] font-black uppercase tracking-widest">Recetas Base</p>
+                        <p className="text-2xl font-black text-white font-mono">{scopedRecipes.filter(r => r.isBase).length}</p>
+                    </div>
+                </div>
+
+                <div className="premium-glass p-5 flex items-center gap-4 group hover:scale-[1.02] transition-all duration-500">
+                    <div className="p-3 bg-rose-500/10 rounded-2xl text-rose-400 group-hover:bg-rose-500/20 transition-colors">
+                        <AlertTriangle size={24} />
+                    </div>
+                    <div>
+                        <p className="text-slate-500 text-[9px] font-black uppercase tracking-widest">Sin Coste</p>
+                        <p className="text-2xl font-black text-white font-mono">{scopedRecipes.filter(r => getRecipeCost(r) === 0).length}</p>
+                    </div>
+                </div>
+            </div>
+
+            {/* Filter Tabs & Search Container */}
+            <div className="premium-glass p-2 flex flex-col xl:flex-row gap-4 justify-between items-center rounded-2xl">
+                <div className="flex gap-1 overflow-x-auto max-w-full pb-1 custom-scrollbar">
+                    <button
+                        onClick={() => setActiveTab('all')}
+                        className={`flex items-center gap-2 px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === 'all'
+                            ? 'bg-primary text-white shadow-lg shadow-primary/20'
+                            : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                            }`}
+                    >
+                        <ChefHat size={14} />
+                        Todas ({recipes.filter(r => r.outletId === activeOutletId).length})
+                    </button>
+
+                    <button
+                        onClick={() => setActiveTab('regular')}
+                        className={`flex items-center gap-2 px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === 'regular'
+                            ? 'bg-primary text-white shadow-lg shadow-primary/20'
+                            : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                            }`}
+                    >
+                        <BookOpen size={14} />
+                        Platos ({regularRecipes.filter(r => r.outletId === activeOutletId).length})
+                    </button>
+
+                    <button
+                        onClick={() => setActiveTab('base')}
+                        className={`flex items-center gap-2 px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === 'base'
+                            ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/20'
+                            : 'text-purple-400 hover:bg-purple-500/10'
+                            }`}
+                    >
+                        <Layers size={14} />
+                        Bases ({baseRecipes.filter(r => r.outletId === activeOutletId).length})
+                    </button>
+
+                    <div className="w-px h-6 bg-white/10 self-center mx-1" />
+
+                    {!isAiSearch && (
+                        <div className="flex gap-1">
+                            {RECIPE_CATEGORIES.map(cat => (
+                                <button
+                                    key={cat.id}
+                                    onClick={() => setSubCategory(cat.id)}
+                                    className={`px-4 py-3 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all border whitespace-nowrap ${subCategory === cat.id
+                                        ? 'bg-white/10 border-white/20 text-white'
+                                        : 'border-transparent text-slate-500 hover:text-slate-300'
+                                        }`}
+                                >
+                                    {cat.label}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
+
+                {/* Search */}
+                <div className="w-full xl:w-96 relative group">
+                    <Search className={`absolute left-4 top-1/2 transform -translate-y-1/2 transition-colors ${isAiSearch ? 'text-purple-400 group-focus-within:text-purple-300' : 'text-slate-500 group-focus-within:text-primary'}`} size={16} />
+                    <input
+                        type="text"
+                        placeholder={isAiSearch ? "Describe tu receta con IA..." : "BUSCAR RECETA..."}
+                        className={`w-full pl-11 pr-4 py-3 bg-black/20 border rounded-xl focus:outline-none focus:ring-1 transition-all text-slate-200 placeholder-slate-600 font-medium text-sm ${isAiSearch
+                            ? 'border-purple-500/30 focus:border-purple-500/50 focus:ring-purple-500/50'
+                            : 'border-white/5 focus:border-primary/50 focus:ring-primary/50'
+                            }`}
+                        value={searchTerm}
+                        onChange={e => setSearchTerm(e.target.value)}
+                        onKeyDown={e => {
+                            if (e.key === 'Enter' && isAiSearch) {
+                                handleAiSearch();
+                            }
+                        }}
+                    />
+                </div>
+            </div>
+
+            {/* Content Area */}
+            {!isValidOutlet ? (
+                <div className="flex flex-col items-center justify-center p-24 border-2 border-dashed border-white/10 rounded-3xl bg-white/5 mt-8 animate-in fade-in zoom-in-95 duration-500">
+                    <div className="p-6 bg-white/5 rounded-full mb-6 relative">
+                        <Store className="w-12 h-12 text-slate-500 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-50 blur-xl scale-150" />
+                        <Store className="w-12 h-12 text-slate-300 relative z-10" />
+                    </div>
+                    <h3 className="text-2xl font-black text-white mb-2 uppercase tracking-wide">Selecciona una Cocina</h3>
+                    <p className="text-slate-500 text-center max-w-md font-medium">
+                        Selecciona una cocina activa en el panel superior para gestionar sus recetas.
+                    </p>
+                </div>
+            ) : (
+                <div className="premium-glass p-0 overflow-hidden">
                     <RecipeList
                         recipes={scopedRecipes}
                         onEdit={handleEdit}
@@ -377,16 +430,16 @@ export const RecipesView: React.FC = () => {
                         sortConfig={sortConfig}
                         onSort={handleSort}
                     />
-                )
-            }
+                </div>
+            )}
 
             {
                 showAddModal && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
                         <div className="relative w-full max-w-lg">
                             <button
                                 onClick={closeModal}
-                                className="absolute top-4 right-4 text-slate-400 hover:text-white z-10"
+                                className="absolute top-4 right-4 text-slate-400 hover:text-white z-10 p-2 hover:bg-white/10 rounded-full transition-colors"
                             >
                                 <X className="w-5 h-5" />
                             </button>

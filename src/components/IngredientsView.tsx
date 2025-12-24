@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useStore } from '../store/useStore';
-import { Package, Search, Plus, X, Import } from 'lucide-react';
+import { Package, Search, Plus, X, Import, TrendingDown, DollarSign, Layers, ArrowUpRight } from 'lucide-react';
 import { IngredientList } from './lists/IngredientList';
 import { IngredientForm } from './IngredientForm';
 import { deleteDocument, batchSetDocuments } from '../services/firestoreService';
@@ -15,7 +15,7 @@ export const IngredientsView: React.FC = () => {
     const [editingIngredient, setEditingIngredient] = useState<Ingredient | undefined>(undefined);
     const [importType, setImportType] = useState<ImportType | null>(null);
     const [activeCategory, setActiveCategory] = useState<string>('all');
-    const [sortConfig, setSortConfig] = useState<{ key: keyof Ingredient; direction: 'asc' | 'desc' }>({
+    const [sortConfig, setSortConfig] = useState<{ key: keyof Ingredient | 'stock'; direction: 'asc' | 'desc' }>({
         key: 'name',
         direction: 'asc'
     });
@@ -49,22 +49,22 @@ export const IngredientsView: React.FC = () => {
         setImportType(null);
     };
 
-    const handleSort = (key: keyof Ingredient) => {
+    const handleSort = (key: keyof Ingredient | 'stock') => {
         setSortConfig(prev => ({
             key,
             direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
         }));
     };
 
-    const filteredIngredients = React.useMemo(() => {
+    const filteredIngredients = useMemo(() => {
         let result = ingredients.filter(i =>
             i.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
             (activeCategory === 'all' || i.category === activeCategory)
         );
 
         return [...result].sort((a, b) => {
-            const aValue = a[sortConfig.key] ?? 0;
-            const bValue = b[sortConfig.key] ?? 0;
+            const aValue = a[sortConfig.key as keyof Ingredient] ?? 0;
+            const bValue = b[sortConfig.key as keyof Ingredient] ?? 0;
 
             if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
             if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
@@ -119,61 +119,123 @@ export const IngredientsView: React.FC = () => {
         setEditingIngredient(undefined);
     };
 
+    // Derived Stats
+    const stats = useMemo(() => {
+        const totalItems = ingredients.length;
+        const lowStock = ingredients.filter(i => (i.stock || 0) < (i.minStock || 0)).length;
+        const totalValue = ingredients.reduce((acc, i) => acc + ((i.stock || 0) * (i.costPerUnit || 0)), 0);
+        const categoriesCount = new Set(ingredients.map(i => i.category)).size;
+        return { totalItems, lowStock, totalValue, categoriesCount };
+    }, [ingredients]);
+
     return (
-        <div className="p-8 max-w-6xl mx-auto space-y-6 text-slate-200">
-            <header className="flex justify-between items-end">
+        <div className="p-6 md:p-10 space-y-8 min-h-screen bg-transparent text-slate-100 fade-in">
+            {/* Header */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
                 <div>
-                    <div className="flex items-center gap-3">
-                        <Package className="w-8 h-8 text-primary" />
-                        <h1 className="text-3xl font-bold text-white">Ingredientes</h1>
-                    </div>
-                    <p className="text-slate-400 mt-1">Base de datos de productos y precios.</p>
+                    <h1 className="text-4xl font-black text-white flex items-center gap-4 tracking-tighter uppercase">
+                        <Package className="text-primary animate-pulse w-10 h-10" />
+                        Ingredientes <span className="text-primary">&</span> Stock
+                    </h1>
+                    <p className="text-slate-500 text-xs font-bold mt-2 tracking-[0.3em] uppercase">Biblioteca Maestra & Precios</p>
                 </div>
-                <div className="flex gap-3 items-center">
+
+                <div className="flex flex-wrap gap-3">
                     <button
                         onClick={() => setImportType('ingredient')}
-                        className="bg-surface hover:bg-white/10 text-slate-300 border border-white/10 px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                        className="bg-white/5 text-slate-300 border border-white/10 px-5 py-3 rounded-xl font-black text-xs uppercase tracking-widest flex items-center gap-2 hover:bg-white/10 transition-all active:scale-95"
                     >
-                        <Import className="w-4 h-4" /> Importar / Escanear
+                        <Import size={16} />
+                        Importar / Escanear
                     </button>
-                    <div className="relative">
-                        <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-500" />
-                        <input
-                            className="bg-surface border border-white/10 rounded-lg pl-9 pr-4 py-2 text-sm focus:border-primary focus:outline-none w-64 transition-all"
-                            placeholder="Buscar ingrediente..."
-                            value={searchTerm}
-                            onChange={e => setSearchTerm(e.target.value)}
-                        />
-                    </div>
                     <button
                         onClick={() => {
                             setEditingIngredient(undefined);
                             setShowAddModal(true);
                         }}
-                        className="bg-primary hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 shadow-lg shadow-primary/25"
+                        className="bg-primary text-white px-6 py-3 rounded-xl font-black text-xs uppercase tracking-widest flex items-center gap-2 hover:bg-primary/90 transition-all active:scale-95 shadow-[0_0_20px_rgba(59,130,246,0.5)] border border-primary/50"
                     >
-                        <Plus className="w-4 h-4" /> Nuevo Ingrediente
+                        <Plus size={16} />
+                        Nuevo Ingrediente
                     </button>
                 </div>
-            </header>
-
-            {/* Category Filter Pills */}
-            <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
-                {CATEGORIES.map(cat => (
-                    <button
-                        key={cat.id}
-                        onClick={() => setActiveCategory(cat.id)}
-                        className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all border ${activeCategory === cat.id
-                            ? 'bg-primary border-primary text-white shadow-lg shadow-primary/20'
-                            : 'bg-surface border-white/5 text-slate-400 hover:border-white/20 hover:text-white'
-                            }`}
-                    >
-                        {cat.label}
-                    </button>
-                ))}
             </div>
 
-            {
+            {/* Stats Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="premium-glass p-5 flex items-center gap-4 group hover:scale-[1.02] transition-all duration-500">
+                    <div className="p-3 bg-blue-500/10 rounded-2xl text-blue-400 group-hover:bg-blue-500/20 transition-colors">
+                        <Layers size={24} />
+                    </div>
+                    <div>
+                        <p className="text-slate-500 text-[9px] font-black uppercase tracking-widest">Total Items</p>
+                        <p className="text-2xl font-black text-white font-mono">{stats.totalItems}</p>
+                    </div>
+                </div>
+
+                <div className="premium-glass p-5 flex items-center gap-4 group hover:scale-[1.02] transition-all duration-500">
+                    <div className="p-3 bg-rose-500/10 rounded-2xl text-rose-400 group-hover:bg-rose-500/20 transition-colors">
+                        <TrendingDown size={24} />
+                    </div>
+                    <div>
+                        <p className="text-slate-500 text-[9px] font-black uppercase tracking-widest">Stock Bajo</p>
+                        <p className="text-2xl font-black text-white font-mono">{stats.lowStock}</p>
+                    </div>
+                </div>
+
+                <div className="premium-glass p-5 flex items-center gap-4 group hover:scale-[1.02] transition-all duration-500">
+                    <div className="p-3 bg-emerald-500/10 rounded-2xl text-emerald-400 group-hover:bg-emerald-500/20 transition-colors">
+                        <DollarSign size={24} />
+                    </div>
+                    <div>
+                        <p className="text-slate-500 text-[9px] font-black uppercase tracking-widest">Valor Stock</p>
+                        <p className="text-2xl font-black text-white font-mono">{stats.totalValue.toFixed(2)}€</p>
+                    </div>
+                </div>
+
+                <div className="premium-glass p-5 flex items-center gap-4 group hover:scale-[1.02] transition-all duration-500">
+                    <div className="p-3 bg-purple-500/10 rounded-2xl text-purple-400 group-hover:bg-purple-500/20 transition-colors">
+                        <ArrowUpRight size={24} />
+                    </div>
+                    <div>
+                        <p className="text-slate-500 text-[9px] font-black uppercase tracking-widest">Categorías</p>
+                        <p className="text-2xl font-black text-white font-mono">{stats.categoriesCount}</p>
+                    </div>
+                </div>
+            </div>
+
+            {/* Filter Tabs & Search Container */}
+            <div className="premium-glass p-2 flex flex-col xl:flex-row gap-4 justify-between items-center rounded-2xl">
+                <div className="flex gap-1 overflow-x-auto max-w-full pb-1 custom-scrollbar">
+                    {CATEGORIES.map(cat => (
+                        <button
+                            key={cat.id}
+                            onClick={() => setActiveCategory(cat.id)}
+                            className={`px-4 py-3 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all border whitespace-nowrap ${activeCategory === cat.id
+                                ? 'bg-primary text-white border-primary shadow-lg shadow-primary/20'
+                                : 'border-transparent text-slate-500 hover:text-white hover:bg-white/5'
+                                }`}
+                        >
+                            {cat.label}
+                        </button>
+                    ))}
+                </div>
+
+                {/* Search */}
+                <div className="w-full xl:w-96 relative group">
+                    <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors" size={16} />
+                    <input
+                        type="text"
+                        placeholder="BUSCAR INGREDIENTE..."
+                        className="w-full pl-11 pr-4 py-3 bg-black/20 border border-white/5 rounded-xl focus:outline-none focus:ring-1 focus:ring-primary/50 focus:border-primary/50 transition-all text-slate-200 placeholder-slate-600 font-medium text-sm"
+                        value={searchTerm}
+                        onChange={e => setSearchTerm(e.target.value)}
+                    />
+                </div>
+            </div>
+
+            {/* Content Area - Wrapped for Glass Effect */}
+            <div className="premium-glass p-0 overflow-hidden">
                 <IngredientList
                     ingredients={filteredIngredients}
                     onEdit={handleEdit}
@@ -181,15 +243,15 @@ export const IngredientsView: React.FC = () => {
                     sortConfig={sortConfig}
                     onSort={handleSort}
                 />
-            }
+            </div>
 
             {
                 showAddModal && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
                         <div className="relative w-full max-w-lg">
                             <button
                                 onClick={closeModal}
-                                className="absolute top-4 right-4 text-slate-400 hover:text-white z-10"
+                                className="absolute top-4 right-4 text-slate-400 hover:text-white z-10 p-2 hover:bg-white/10 rounded-full transition-colors"
                             >
                                 <X className="w-5 h-5" />
                             </button>

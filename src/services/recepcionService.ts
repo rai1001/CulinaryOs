@@ -1,9 +1,10 @@
 import { v4 as uuidv4 } from 'uuid';
-import { firestoreService } from './firestoreService';
-import { COLLECTIONS } from '../firebase/collections';
+import { firestoreService, addDocument } from './firestoreService';
+import { COLLECTIONS, collections } from '../firebase/collections';
 import type { PurchaseOrder } from '../types/purchases';
-import type { Ingredient, Batch } from '../types/inventory';
+import type { Ingredient, Batch, PriceHistoryEntry } from '../types/inventory';
 import { calculateTotalStock } from './inventoryService';
+import { query, where, orderBy, limit, getDocs } from 'firebase/firestore';
 
 export const recepcionService = {
     receiveOrder: async (
@@ -64,9 +65,53 @@ export const recepcionService = {
             const updatedBatches = [...currentBatches, newBatch];
             const newStock = calculateTotalStock(updatedBatches);
 
+            // Price Tracking Optimization
+            const orderItem = order.items.find(i => i.ingredientId === received.ingredientId);
+            const currentPrice = orderItem?.costPerUnit || ingredient.costPerUnit;
+
+            // Fetch last 5 prices for this supplier/ingredient to check deviation
+            const priceQuery = query(
+                collections.ingredientPriceHistory,
+                where('ingredientId', '==', ingredient.id),
+                where('supplierId', '==', order.supplierId),
+                orderBy('date', 'desc'),
+                limit(5)
+            );
+            const priceSnap = await getDocs(priceQuery);
+            const historicalEntries = priceSnap.docs.map(d => d.data() as PriceHistoryEntry);
+
+            if (historicalEntries.length > 0) {
+                const avgPrice = historicalEntries.reduce((sum, e) => sum + e.price, 0) / historicalEntries.length;
+                const threshold = avgPrice * 1.10; // 10% deviation limit
+
+                if (currentPrice > threshold) {
+                    // Trigger alert notification
+                    await addDocument(collections.notifications, {
+                        type: 'SYSTEM',
+                        title: 'ALERTA DE PRECIO',
+                        message: `El precio de ${ingredient.name} del proveedor ha subido un ${(((currentPrice / avgPrice) - 1) * 100).toFixed(1)}% (Actual: ${currentPrice}€, Media: ${avgPrice.toFixed(2)}€).`,
+                        read: false,
+                        timestamp: new Date().toISOString(),
+                        outletId: order.outletId
+                    });
+                }
+            }
+
+            // Save new price entry
+            const priceEntry: PriceHistoryEntry = {
+                date: new Date().toISOString(),
+                price: currentPrice,
+                supplierId: order.supplierId,
+                purchaseOrderId: order.id,
+                changeReason: 'Purchase Order Reception'
+            };
+            await addDocument(collections.ingredientPriceHistory, priceEntry);
+
             await firestoreService.update(COLLECTIONS.INGREDIENTS, ingredient.id, {
                 batches: updatedBatches,
                 stock: newStock,
+                costPerUnit: currentPrice, // Update to latest price
+                priceHistory: [...(ingredient.priceHistory || []), priceEntry].slice(-20), // Keep last 20 in doc for quick UI
                 updatedAt: new Date().toISOString()
             });
         }

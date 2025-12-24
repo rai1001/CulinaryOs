@@ -1,7 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { TIME, INVENTORY } from '../constants';
-import type { Ingredient, IngredientBatch, Event, Menu, Recipe } from '../types';
-import { firestoreService } from './firestoreService';
+import type { Ingredient, IngredientBatch, Event, Menu, Recipe, InventoryItem, StockMovement } from '../types';
+import { firestoreService, addDocument } from './firestoreService';
 import { COLLECTIONS, collections } from '../firebase/collections';
 import { where } from 'firebase/firestore';
 
@@ -210,4 +210,52 @@ export const deductStockForEvent = async (eventId: string, _userId?: string): Pr
             updatedAt: new Date().toISOString()
         });
     }
+};
+
+/**
+ * Records a physical count, calculates variance, and adjusts stock.
+ */
+export const recordPhysicalCount = async (
+    inventoryItemId: string,
+    realCount: number,
+    userId: string,
+    notes?: string
+): Promise<{ variance: number }> => {
+    // 1. Fetch current InventoryItem
+    const item = await firestoreService.getById<InventoryItem>(COLLECTIONS.INVENTORY, inventoryItemId);
+    if (!item) throw new Error("Inventory item not found");
+
+    // 2. Calculate Variance
+    // Theoretical stock is what the system thinks we have.
+    // Stock is the current active number (which usually matches theoretical until a count).
+    const theoretical = item.theoreticalStock ?? item.stock;
+    const variance = realCount - theoretical;
+
+    const now = new Date().toISOString();
+
+    // 3. Record Stock Movement (ADJUSTMENT)
+    const movement: Omit<StockMovement, 'id'> = {
+        ingredientId: item.ingredientId || 'standalone',
+        type: 'ADJUSTMENT',
+        quantity: variance,
+        costPerUnit: item.costPerUnit,
+        date: now,
+        referenceId: inventoryItemId,
+        userId: userId,
+        outletId: item.outletId,
+        notes: notes || `Physical count adjustment. Variance: ${variance}`
+    };
+
+    await addDocument(collections.stockMovements, movement);
+
+    // 4. Update InventoryItem
+    await firestoreService.update(COLLECTIONS.INVENTORY, inventoryItemId, {
+        stock: realCount,
+        theoreticalStock: realCount, // Reset theoretical to real for new starting point
+        lastPhysicalCount: realCount,
+        lastCountedAt: now,
+        updatedAt: now
+    });
+
+    return { variance };
 };

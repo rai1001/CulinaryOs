@@ -13,32 +13,51 @@ export const WeeklyProductionWidget: React.FC = () => {
     const weekEnd = endOfWeek(today, { weekStartsOn: 1 });
 
     const tasks = useMemo(() => {
-        const allTasks: any[] = [];
-
-        // Iterate only relevant events (this week's events)
-        // Or check all tasks if they have assignedDate?
-        // Let's filter events first for performance.
-        const weekEvents = events.filter(e => {
+        // 1. Filter and Aggregate Weekly Events
+        const weekEventsFiltered = events.filter(e => {
             const d = parseISO(e.date);
             return isWithinInterval(d, { start: weekStart, end: weekEnd });
         });
 
-        weekEvents.forEach(event => {
-            const eventTasks = productionTasks[event.id] || [];
-            eventTasks.forEach(task => {
-                if (task.status !== 'done') {
-                    allTasks.push({
-                        ...task,
-                        eventName: event.name,
-                        eventDate: event.date
-                    });
-                }
-            });
+        const aggregatedEventsMap = new Map<string, any>();
+        weekEventsFiltered.forEach(event => {
+            const key = `${event.date}_${event.name.trim().toLowerCase()}`;
+            if (aggregatedEventsMap.has(key)) {
+                aggregatedEventsMap.get(key).pax += event.pax;
+                aggregatedEventsMap.get(key).ids.push(event.id);
+            } else {
+                aggregatedEventsMap.set(key, { ...event, ids: [event.id] });
+            }
         });
 
-        // Also check if tasks have assignedDate within this week (even if event is later/earlier?)
-        // Currently model ties tasks strongly to events. Let's stick to Event Date logic for simplicity or assignedDate if present.
-        // If task has assignedDate, use that.
+        const allTasks: any[] = [];
+
+        // 2. Process tasks for aggregated events
+        aggregatedEventsMap.forEach(aggEvent => {
+            // For each aggregated event, we might have multiple event IDs
+            // We need to consolidated tasks that are the "same" across these IDs
+            const consolidatedTasksMap = new Map<string, any>();
+
+            aggEvent.ids.forEach((eventId: string) => {
+                const eventTasks = productionTasks[eventId] || [];
+                eventTasks.forEach(task => {
+                    if (task.status !== 'done') {
+                        const taskKey = `${task.recipeId || task.title}_${task.station}`;
+                        if (consolidatedTasksMap.has(taskKey)) {
+                            consolidatedTasksMap.get(taskKey).quantity += task.quantity;
+                        } else {
+                            consolidatedTasksMap.set(taskKey, {
+                                ...task,
+                                eventName: aggEvent.name,
+                                eventDate: aggEvent.date
+                            });
+                        }
+                    }
+                });
+            });
+
+            allTasks.push(...Array.from(consolidatedTasksMap.values()));
+        });
 
         return allTasks.sort((a, b) => {
             const dateA = a.assignedDate || a.eventDate;
@@ -48,14 +67,14 @@ export const WeeklyProductionWidget: React.FC = () => {
     }, [productionTasks, events, weekStart, weekEnd]);
 
     return (
-        <div className="glass-card p-0 flex flex-col h-full">
-            <div className="p-4 border-b border-white/10 flex justify-between items-center bg-surface/50">
-                <h3 className="font-bold flex items-center gap-2">
-                    <ChefHat className="w-5 h-5 text-indigo-400" />
+        <div className="premium-glass p-0 flex flex-col h-full fade-in-up" style={{ animationDelay: '500ms' }}>
+            <div className="p-4 border-b border-white/5 flex justify-between items-center bg-white/5">
+                <h3 className="font-bold flex items-center gap-2 text-slate-100 uppercase tracking-tighter text-sm">
+                    <ChefHat className="w-5 h-5 text-primary animate-glow" />
                     Producción Semanal
                 </h3>
-                <span className="text-xs bg-indigo-500/20 text-indigo-300 px-2 py-1 rounded-full border border-indigo-500/20">
-                    {tasks.length} Pendientes
+                <span className="text-[10px] font-bold bg-primary/20 text-primary px-2 py-1 rounded-md border border-primary/20">
+                    {tasks.length} TAREAS
                 </span>
             </div>
 
@@ -66,36 +85,44 @@ export const WeeklyProductionWidget: React.FC = () => {
                         <p className="text-sm">Producción al día</p>
                     </div>
                 ) : (
-                    <div className="space-y-2">
-                        {tasks.map(task => (
-                            <div key={task.id} className="p-3 rounded-lg bg-surface border border-white/5 hover:bg-white/5 transition-colors group">
-                                <div className="flex justify-between items-start mb-1">
-                                    <div className="font-medium text-slate-200 line-clamp-1">{task.title}</div>
-                                    <div className="text-[10px] uppercase font-bold text-slate-500 bg-white/5 px-1.5 py-0.5 rounded">
+                    <div className="space-y-3">
+                        {tasks.map((task, i) => (
+                            <div
+                                key={task.id}
+                                className="p-4 rounded-xl bg-white/[0.02] border border-white/5 hover:border-primary/30 hover:bg-white/[0.05] transition-all duration-300 group relative overflow-hidden"
+                                style={{ animationDelay: `${600 + (i * 50)}ms` }}
+                            >
+                                <div className="flex justify-between items-start mb-2">
+                                    <div className="font-semibold text-slate-100 line-clamp-1 group-hover:text-primary transition-colors">{task.title}</div>
+                                    <div className="text-[9px] uppercase font-bold text-slate-400 bg-white/5 px-2 py-0.5 rounded-full border border-white/5">
                                         {task.station || 'General'}
                                     </div>
                                 </div>
 
-                                <div className="text-xs text-slate-500 flex justify-between items-center">
-                                    <span>{task.quantity} {task.unit}</span>
-                                    <div className="flex items-center gap-1">
-                                        <Clock className="w-3 h-3" />
-                                        <span>
+                                <div className="text-[11px] text-slate-400 flex justify-between items-center">
+                                    <span className="font-medium text-slate-300">{task.quantity} {task.unit}</span>
+                                    <div className="flex items-center gap-1.5 opacity-60 group-hover:opacity-100 transition-opacity">
+                                        <Clock className="w-3 h-3 text-primary" />
+                                        <span className="font-mono">
                                             {format(parseISO(task.assignedDate || task.eventDate), 'EEE d', { locale: es })}
                                         </span>
                                     </div>
                                 </div>
-                                <div className="text-[10px] text-slate-600 truncate mt-1">
-                                    Evento: {task.eventName}
+                                <div className="text-[10px] text-slate-500 truncate mt-2 font-medium">
+                                    EVENTO: {task.eventName?.toUpperCase()}
                                 </div>
+                                <div className="absolute left-0 top-0 w-0.5 h-full bg-primary opacity-0 group-hover:opacity-100 transition-opacity" />
                             </div>
                         ))}
                     </div>
                 )}
             </div>
-            <div className="p-3 border-t border-white/10 bg-surface/30">
-                <button onClick={() => navigate('/production')} className="w-full text-center text-xs text-slate-400 hover:text-white transition-colors">
-                    Ver Tablero Kanban →
+            <div className="p-4 border-t border-white/5 bg-white/[0.01]">
+                <button
+                    onClick={() => navigate('/production')}
+                    className="w-full text-center text-[11px] font-bold text-slate-400 hover:text-primary uppercase tracking-widest transition-all duration-300"
+                >
+                    GESTIONAR TURNOS →
                 </button>
             </div>
         </div>

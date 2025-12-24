@@ -85,9 +85,10 @@ export const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
 
                     // Set default outlet if available and not set
                     if (data.defaultOutletId && data.active) {
-                        // We could check if current store has it, but syncing handles that.
-                        // Just ensuring we have an active outlet ID in store for logic
-                        setActiveOutletId(data.defaultOutletId);
+                        const currentActiveId = useStore.getState().activeOutletId;
+                        if (currentActiveId !== data.defaultOutletId) {
+                            setActiveOutletId(data.defaultOutletId);
+                        }
                     }
 
                     // Sync to global store

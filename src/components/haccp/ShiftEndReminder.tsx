@@ -45,7 +45,7 @@ export const ShiftEndReminder: React.FC = () => {
 
     const handleComplete = (task: HACCPTask) => {
         const completion: HACCPTaskCompletion = {
-            id: crypto.randomUUID(),
+            id: (crypto as any).randomUUID?.() || Math.random().toString(36).substring(2, 11),
             taskId: task.id,
             completedAt: new Date().toISOString(),
             completedBy: 'current-user' // Placeholder

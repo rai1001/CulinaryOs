@@ -8,22 +8,30 @@ export const createOutletSlice: StateCreator<AppState, [], [], OutletSlice> = (s
 
     setOutlets: (outlets) => set({ outlets }),
 
-    addOutlet: (outlet) => set((state) => ({ outlets: [...state.outlets, outlet] })),
+    addOutlet: async (outlet) => {
+        set((state) => ({ outlets: [...state.outlets, outlet] }));
+    },
 
-    updateOutlet: (id, updates) => set((state) => ({
-        outlets: state.outlets.map((o) => (o.id === id ? { ...o, ...updates } : o))
-    })),
+    updateOutlet: async (id, updates) => {
+        set((state) => ({
+            outlets: state.outlets.map((o) => (o.id === id ? { ...o, ...updates } : o))
+        }));
+    },
 
     setActiveOutlet: (id) => set({ activeOutletId: id }),
 
-    deleteOutlet: (id) => set((state) => ({
-        outlets: state.outlets.filter((o) => o.id !== id),
-        activeOutletId: state.activeOutletId === id ? null : state.activeOutletId
-    })),
+    deleteOutlet: async (id) => {
+        set((state) => ({
+            outlets: state.outlets.filter((o) => o.id !== id),
+            activeOutletId: state.activeOutletId === id ? null : state.activeOutletId
+        }));
+    },
 
-    toggleOutletActive: (id) => set((state) => ({
-        outlets: state.outlets.map((o) => (o.id === id ? { ...o, isActive: !o.isActive } : o))
-    })),
+    toggleOutletActive: async (id) => {
+        set((state) => ({
+            outlets: state.outlets.map((o) => (o.id === id ? { ...o, isActive: !o.isActive } : o))
+        }));
+    },
 
     getOutlet: (id) => get().outlets.find((o) => o.id === id)
 });

@@ -81,150 +81,167 @@ export const HACCPHistory: React.FC = () => {
     };
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-12 animate-in fade-in duration-700">
             {/* Header with Filters */}
-            <div className="flex flex-wrap items-center justify-between gap-4">
-                <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                    <History className="w-5 h-5" />
-                    Historial de Registros
-                </h3>
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8 pb-8 border-b border-white/5">
+                <div>
+                    <h3 className="text-3xl font-black text-white flex items-center gap-4 uppercase tracking-tighter">
+                        <History className="text-emerald-400" size={32} /> Registro Cronológico
+                    </h3>
+                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.4em] mt-1 ml-11">Auditoría Permanente de Seguridad Alimentaria</p>
+                </div>
 
-                <div className="flex flex-wrap gap-3">
-                    {/* Date Range */}
-                    <div className="flex bg-surface rounded-lg p-1">
+                <div className="flex flex-wrap items-center gap-4">
+                    {/* Date Range Selector */}
+                    <div className="flex bg-black/40 border border-white/5 rounded-2xl p-1.5 backdrop-blur-xl">
                         {(['7d', '30d', '90d'] as DateRange[]).map(range => (
                             <button
                                 key={range}
                                 onClick={() => setDateRange(range)}
-                                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${dateRange === range ? 'bg-primary text-white' : 'text-slate-400 hover:text-white'
+                                className={`px-6 py-2.5 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all duration-500 ${dateRange === range
+                                    ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20'
+                                    : 'text-slate-500 hover:text-white'
                                     }`}
                             >
-                                {range === '7d' ? '7 días' : range === '30d' ? '30 días' : '90 días'}
+                                {range === '7d' ? '7 Días' : range === '30d' ? '30 Días' : '90 Días'}
                             </button>
                         ))}
                     </div>
+
+                    <div className="h-10 w-px bg-white/5 hidden md:block" />
 
                     {/* Status Filter */}
                     <select
                         value={statusFilter}
                         onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-                        className="bg-surface border border-white/10 rounded-lg px-3 py-1.5 text-sm text-slate-300 focus:outline-none focus:border-primary"
+                        className="bg-black/40 border border-white/5 rounded-2xl px-6 py-3.5 text-[10px] font-black uppercase tracking-widest text-emerald-400 focus:outline-none focus:border-emerald-500/50 appearance-none cursor-pointer min-w-[180px]"
                     >
-                        <option value="all">Todos los estados</option>
-                        <option value="CORRECT">Solo Correctos</option>
-                        <option value="WARNING">Advertencias</option>
-                        <option value="CRITICAL">Críticos</option>
+                        <option value="all">TODOS LOS NIVELES</option>
+                        <option value="CORRECT">OPTIMO / CORRECTO</option>
+                        <option value="WARNING">PRECAUCIÓN / AVISO</option>
+                        <option value="CRITICAL">FALLA CRÍTICA</option>
                     </select>
 
                     {/* PCC Filter */}
                     <select
                         value={selectedPCC}
                         onChange={(e) => setSelectedPCC(e.target.value)}
-                        className="bg-surface border border-white/10 rounded-lg px-3 py-1.5 text-sm text-slate-300 focus:outline-none focus:border-primary"
+                        className="bg-black/40 border border-white/5 rounded-2xl px-6 py-3.5 text-[10px] font-black uppercase tracking-widest text-slate-400 focus:outline-none focus:border-emerald-500/50 appearance-none cursor-pointer min-w-[200px]"
                     >
-                        <option value="all">Todos los PCC</option>
+                        <option value="all">FILTRAR POR PCC</option>
                         {pccs.map(pcc => (
-                            <option key={pcc.id} value={pcc.id}>{pcc.name}</option>
+                            <option key={pcc.id} value={pcc.id}>{pcc.name.toUpperCase()}</option>
                         ))}
                     </select>
 
                     {/* Export Button */}
                     <button
                         onClick={handleExport}
-                        className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-1.5 rounded-lg text-sm font-medium transition-colors"
+                        className="flex items-center gap-3 bg-white hover:bg-emerald-500 text-black hover:text-white px-8 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all duration-500 shadow-xl group"
                     >
-                        <Download className="w-4 h-4" />
-                        Exportar
+                        <Download className="w-4 h-4 group-hover:translate-y-0.5 transition-transform" />
+                        Exportar Reporte
                     </button>
                 </div>
             </div>
 
             {/* Stats Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                <div className="bg-surface border border-white/5 rounded-xl p-4">
-                    <p className="text-slate-400 text-xs mb-1">Total Registros</p>
-                    <p className="text-2xl font-bold text-white">{stats.total}</p>
-                </div>
-                <div className="bg-surface border border-white/5 rounded-xl p-4">
-                    <p className="text-slate-400 text-xs mb-1">Correctos</p>
-                    <p className="text-2xl font-bold text-emerald-400">{stats.correct}</p>
-                </div>
-                <div className="bg-surface border border-white/5 rounded-xl p-4">
-                    <p className="text-slate-400 text-xs mb-1">Advertencias</p>
-                    <p className="text-2xl font-bold text-amber-400">{stats.warnings}</p>
-                </div>
-                <div className="bg-surface border border-white/5 rounded-xl p-4">
-                    <p className="text-slate-400 text-xs mb-1">Críticos</p>
-                    <p className="text-2xl font-bold text-red-400">{stats.critical}</p>
-                </div>
-                <div className="bg-surface border border-white/5 rounded-xl p-4">
-                    <p className="text-slate-400 text-xs mb-1">Cumplimiento</p>
-                    <p className="text-2xl font-bold text-primary">{stats.complianceRate}%</p>
-                </div>
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-6">
+                {[
+                    { label: 'Total Ingesta', value: stats.total, color: 'text-white' },
+                    { label: 'Cumplimiento OK', value: stats.correct, color: 'text-emerald-400' },
+                    { label: 'Desviaciones', value: stats.warnings, color: 'text-amber-400' },
+                    { label: 'Incidencias', value: stats.critical, color: 'text-red-400' },
+                    { label: 'Tasa Compliance', value: `${stats.complianceRate}%`, color: 'text-emerald-500' }
+                ].map((stat, i) => (
+                    <div key={i} className="premium-glass p-6 rounded-3xl border border-white/5 relative overflow-hidden group">
+                        <div className="absolute inset-0 bg-white/[0.01] group-hover:bg-white/[0.03] transition-colors" />
+                        <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-2 block relative z-10">{stat.label}</span>
+                        <span className={`text-3xl font-black font-mono tracking-tighter relative z-10 ${stat.color}`}>{stat.value}</span>
+                        <div className="absolute bottom-0 left-0 h-1 bg-current opacity-20 w-0 group-hover:w-full transition-all duration-700" style={{ color: stat.color.replace('text-', '') }} />
+                    </div>
+                ))}
             </div>
 
             {/* Logs Table */}
-            <div className="bg-surface border border-white/5 rounded-xl overflow-hidden">
-                <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                        <thead className="bg-black/20 text-slate-400 text-xs uppercase">
-                            <tr>
-                                <th className="px-4 py-3 text-left">Fecha/Hora</th>
-                                <th className="px-4 py-3 text-left">Punto Control</th>
-                                <th className="px-4 py-3 text-center">Valor</th>
-                                <th className="px-4 py-3 text-center">Estado</th>
-                                <th className="px-4 py-3 text-left">Notas</th>
-                                <th className="px-4 py-3 text-center">Docs</th>
+            <div className="premium-glass rounded-[2.5rem] border border-white/5 overflow-hidden shadow-2xl relative">
+                <div className="absolute inset-0 bg-white/[0.01] -z-10" />
+                <div className="overflow-x-auto custom-scrollbar">
+                    <table className="w-full text-left border-collapse">
+                        <thead>
+                            <tr className="bg-white/[0.02]">
+                                <th className="px-8 py-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] border-b border-white/5">Marca de Tiempo</th>
+                                <th className="px-8 py-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] border-b border-white/5">Nodo de Control</th>
+                                <th className="px-8 py-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] border-b border-white/5 text-center">Magnitud</th>
+                                <th className="px-8 py-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] border-b border-white/5 text-center">Estado</th>
+                                <th className="px-8 py-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] border-b border-white/5">Observaciones Técnicas</th>
+                                <th className="px-8 py-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] border-b border-white/5 text-center">Docs</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-white/5">
+                        <tbody>
                             {filteredLogs.map(log => (
-                                <tr key={log.id} className="hover:bg-white/[0.02]">
-                                    <td className="px-4 py-3">
-                                        <div className="font-mono text-slate-300">
-                                            {format(new Date(log.timestamp), 'dd/MM', { locale: es })}
-                                        </div>
-                                        <div className="text-xs text-slate-500">
-                                            {format(new Date(log.timestamp), 'HH:mm', { locale: es })}
+                                <tr key={log.id} className="group hover:bg-white/[0.03] transition-colors border-b border-white/5 last:border-0">
+                                    <td className="px-8 py-6">
+                                        <div className="flex flex-col">
+                                            <span className="text-sm font-black text-white font-mono">{format(new Date(log.timestamp), 'dd MMM, yy', { locale: es }).toUpperCase()}</span>
+                                            <span className="text-[10px] font-bold text-slate-500 mt-0.5">{format(new Date(log.timestamp), 'HH:mm:ss', { locale: es })}</span>
                                         </div>
                                     </td>
-                                    <td className="px-4 py-3 text-white font-medium">
-                                        {getPCCName(log.pccId)}
+                                    <td className="px-8 py-6">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500/40" />
+                                            <span className="text-xs font-black text-white uppercase tracking-wider">{getPCCName(log.pccId)}</span>
+                                        </div>
                                     </td>
-                                    <td className="px-4 py-3 text-center">
-                                        <span className="font-mono font-bold text-white">{log.value}°C</span>
+                                    <td className="px-8 py-6 text-center">
+                                        <span className={`text-lg font-black font-mono tracking-tighter ${log.status === 'CORRECT' ? 'text-emerald-400' :
+                                            log.status === 'WARNING' ? 'text-amber-400' : 'text-red-400'
+                                            }`}>{log.value}°C</span>
                                     </td>
-                                    <td className="px-4 py-3 text-center">
-                                        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(log.status)}`}>
+                                    <td className="px-8 py-6 text-center">
+                                        <div className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full border bg-black/40 ${getStatusColor(log.status)} shadow-lg shadow-black/20`}>
                                             {log.status === 'CORRECT' ? (
-                                                <><CheckCircle className="w-3 h-3" /> OK</>
+                                                <CheckCircle className="w-3.5 h-3.5" />
                                             ) : (
-                                                <><AlertTriangle className="w-3 h-3" /> {log.status}</>
+                                                <AlertTriangle className="w-3.5 h-3.5" />
                                             )}
-                                        </span>
+                                            <span className="text-[10px] font-black uppercase tracking-widest">
+                                                {log.status === 'CORRECT' ? 'Nivel Óptimo' : log.status}
+                                            </span>
+                                        </div>
                                     </td>
-                                    <td className="px-4 py-3 text-slate-400 text-xs max-w-[200px] truncate">
-                                        {log.notes || '—'}
+                                    <td className="px-8 py-6">
+                                        <p className="text-[11px] text-slate-400 font-medium leading-relaxed max-w-xs italic">
+                                            {log.notes || 'No se registraron anomalías.'}
+                                        </p>
                                     </td>
-                                    <td className="px-4 py-3 text-center">
+                                    <td className="px-8 py-6 text-center">
                                         {log.pdfUrl ? (
                                             <a
                                                 href={log.pdfUrl}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
-                                                className="text-primary hover:text-blue-400 transition-colors inline-block"
-                                                title="Ver PDF"
+                                                className="w-10 h-10 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 text-emerald-400 hover:bg-emerald-500 hover:text-white transition-all mx-auto"
+                                                title="Ver Certificado"
                                             >
-                                                <FileText size={16} />
+                                                <FileText size={18} />
                                             </a>
-                                        ) : '—'}
+                                        ) : (
+                                            <span className="text-[10px] font-black text-slate-700 uppercase tracking-widest">N/A</span>
+                                        )}
                                     </td>
                                 </tr>
                             ))}
                             {filteredLogs.length === 0 && (
                                 <tr>
-                                    <td colSpan={5} className="px-4 py-8 text-center text-slate-500">
-                                        No hay registros para los filtros seleccionados.
+                                    <td colSpan={6} className="px-8 py-32 text-center">
+                                        <div className="flex flex-col items-center">
+                                            <div className="w-20 h-20 bg-white/[0.02] rounded-3xl border border-white/5 flex items-center justify-center mb-6">
+                                                <History className="text-slate-700 w-10 h-10" />
+                                            </div>
+                                            <h4 className="text-xl font-black text-white uppercase tracking-tighter mb-2">Sin Datos en el Período</h4>
+                                            <p className="text-slate-600 text-[10px] font-black uppercase tracking-[0.3em]">No se han localizado registros bajo el criterio de búsqueda.</p>
+                                        </div>
                                     </td>
                                 </tr>
                             )}

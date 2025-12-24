@@ -11,15 +11,24 @@ export const MonthlyEventsWidget: React.FC = () => {
     const today = startOfDay(new Date());
 
     const monthlyEvents = useMemo(() => {
-        return events
-            .filter(e => {
-                const date = parseISO(e.date);
-                // Filter current month AND future/today (don't show past events of this month?)
-                // User requirement: "Eventos del mes". Let's show all for context but highlight future.
-                // Or maybe just future ones for "What's coming"?
-                // Let's show all in month, sorted.
-                return isSameMonth(date, today);
-            })
+        const filtered = events.filter(e => isSameMonth(parseISO(e.date), today));
+
+        // Group by Date + Name
+        const groupedMap = new Map<string, any>();
+
+        filtered.forEach(event => {
+            const key = `${event.date}_${event.name.trim().toLowerCase()}`;
+            if (groupedMap.has(key)) {
+                const existing = groupedMap.get(key);
+                existing.pax += event.pax;
+                // Keep the first ID but maybe concatenate notes if needed? 
+                // Mostly just summing PAX as requested.
+            } else {
+                groupedMap.set(key, { ...event });
+            }
+        });
+
+        return Array.from(groupedMap.values())
             .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     }, [events, today]);
 

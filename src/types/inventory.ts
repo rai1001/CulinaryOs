@@ -14,6 +14,8 @@ export interface NutritionalInfo {
 export interface PriceHistoryEntry {
     date: string; // ISO Date
     price: number;
+    supplierId?: string;
+    purchaseOrderId?: string;
     changeReason?: string;
 }
 
@@ -83,11 +85,13 @@ export interface InventoryItem {
     category: InventoryCategory; // Required for standalone
     costPerUnit: number; // Snapshot/standalone cost
     barcode?: string; // Standalone barcode
-    stock: number;
+    stock: number; // This is the "Real" or current active stock
+    theoreticalStock: number; // Calculated stock since last count
     minStock: number;
     optimalStock: number;
     batches: Batch[];
     lastCountedAt?: string;
+    lastPhysicalCount?: number;
     updatedAt: string;
 }
 

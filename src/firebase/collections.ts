@@ -21,7 +21,10 @@ export const COLLECTION_NAMES = {
     BATCHES: 'batches',
     FICHAS_TECNICAS: 'fichasTecnicas',
     VERSIONES_FICHAS: 'versionesFichas',
-    INVENTORY: 'inventory'
+    INVENTORY: 'inventory',
+    STOCK_MOVEMENTS: 'stockMovements',
+    INGREDIENT_PRICE_HISTORY: 'ingredientPriceHistory',
+    NOTIFICATIONS: 'notifications'
 } as const;
 
 // Collection References
@@ -44,7 +47,10 @@ export const collections = {
     batches: collection(db, COLLECTION_NAMES.BATCHES),
     fichasTecnicas: collection(db, COLLECTION_NAMES.FICHAS_TECNICAS),
     versionesFichas: collection(db, COLLECTION_NAMES.VERSIONES_FICHAS),
-    inventory: collection(db, COLLECTION_NAMES.INVENTORY)
+    inventory: collection(db, COLLECTION_NAMES.INVENTORY),
+    stockMovements: collection(db, COLLECTION_NAMES.STOCK_MOVEMENTS),
+    ingredientPriceHistory: collection(db, COLLECTION_NAMES.INGREDIENT_PRICE_HISTORY),
+    notifications: collection(db, COLLECTION_NAMES.NOTIFICATIONS)
 };
 
 // Alias for compatibility if needed, but try to use collections (refs) or COLLECTION_NAMES (strings)

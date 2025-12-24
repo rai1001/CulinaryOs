@@ -78,7 +78,7 @@ export const ExcelImporter: React.FC = () => {
 
                     if (master) {
                         inventoryPromises.push(addInventoryItem({
-                            id: crypto.randomUUID(),
+                            id: (crypto as any).randomUUID?.() || Math.random().toString(36).substring(2, 11),
                             ingredientId: master.id,
                             outletId: activeOutletId,
                             name: master.name,
@@ -86,6 +86,7 @@ export const ExcelImporter: React.FC = () => {
                             category: (master.category || 'other') as any,
                             costPerUnit: master.costPerUnit || 0,
                             stock: item.quantity,
+                            theoreticalStock: item.quantity,
                             minStock: 5, // Default
                             optimalStock: 10, // Default
                             updatedAt: new Date().toISOString(),

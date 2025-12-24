@@ -15,12 +15,14 @@ export const createHACCPSlice: StateCreator<
         { id: 'task-3', name: 'Revisión Calibración Termómetros', description: 'Verificar calibración de termómetros', frequency: 'MONTHLY', isActive: true },
     ],
     haccpTaskCompletions: [],
+    haccpTimers: [],
 
     // Setters for Sync
     setPCCs: (pccs) => set({ pccs }),
     setHACCPLogs: (logs) => set({ haccpLogs: logs }),
     setHACCPTasks: (tasks) => set({ haccpTasks: tasks }),
     setHACCPTaskCompletions: (completions) => set({ haccpTaskCompletions: completions }),
+    setHACCPTimers: (timers) => set({ haccpTimers: timers }),
 
     // PCC actions
     addPCC: (pcc) => set((state) => ({
@@ -56,5 +58,18 @@ export const createHACCPSlice: StateCreator<
     // HACCP Task Completion actions
     completeHACCPTask: (completion) => set((state) => ({
         haccpTaskCompletions: [...state.haccpTaskCompletions, completion]
+    })),
+
+    // HACCP Timer actions
+    addHACCPTimer: (timer) => set((state) => ({
+        haccpTimers: [...state.haccpTimers, timer]
+    })),
+
+    updateHACCPTimer: (updatedTimer) => set((state) => ({
+        haccpTimers: state.haccpTimers.map(t => t.id === updatedTimer.id ? updatedTimer : t)
+    })),
+
+    deleteHACCPTimer: (id) => set((state) => ({
+        haccpTimers: state.haccpTimers.filter(t => t.id !== id)
     })),
 });

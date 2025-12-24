@@ -57,6 +57,7 @@ export const createInventorySlice: StateCreator<
                 category: standaloneData.category,
                 costPerUnit: standaloneData.costPerUnit,
                 stock: 0,
+                theoreticalStock: 0,
                 minStock: 5,
                 optimalStock: 10,
                 batches: [],
@@ -67,7 +68,7 @@ export const createInventorySlice: StateCreator<
         }
 
         const newBatch: IngredientBatch = {
-            id: crypto.randomUUID(),
+            id: (crypto as any).randomUUID?.() || Math.random().toString(36).substring(2, 11),
             ingredientId: inventoryItem.ingredientId,
             batchNumber: (batchData as any).batchNumber || `LOT-${Date.now()}`,
             initialQuantity: (batchData as any).initialQuantity || (batchData as any).quantity || 0,

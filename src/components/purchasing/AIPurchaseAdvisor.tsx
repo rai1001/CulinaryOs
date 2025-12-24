@@ -30,108 +30,142 @@ export const AIPurchaseAdvisor: React.FC = () => {
     };
 
     return (
-        <div className="bg-surface border border-white/5 rounded-2xl overflow-hidden flex flex-col">
+        <div className="premium-glass overflow-hidden flex flex-col border border-white/5 h-full">
             {/* Header */}
-            <div className="p-5 bg-gradient-to-r from-indigo-600/10 to-purple-600/10 border-b border-white/5 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                    <div className="bg-indigo-500/20 p-2 rounded-xl">
-                        <Brain className="text-indigo-400" size={20} />
+            <div className="p-6 bg-white/[0.02] border-b border-white/5 flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                    <div className="bg-primary/20 p-3 rounded-2xl shadow-[0_0_15px_rgba(59,130,246,0.2)] animate-glow">
+                        <Brain className="text-primary" size={24} />
                     </div>
                     <div>
-                        <h3 className="font-bold text-white">AI Purchase Advisor</h3>
-                        <p className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Previsión de Compras Inteligente</p>
+                        <h3 className="font-black text-white text-lg tracking-tight uppercase">AI Purchase Advisor</h3>
+                        <p className="text-[10px] text-slate-500 uppercase tracking-[0.2em] font-black">Previsión de Compras Inteligente</p>
                     </div>
                 </div>
                 {status !== 'analyzing' && (
                     <button
                         onClick={runAnalysis}
-                        className="p-2 hover:bg-white/5 rounded-lg text-indigo-400 transition-colors"
+                        className="p-3 hover:bg-white/5 rounded-2xl text-primary transition-all group border border-transparent hover:border-white/5"
                         title="Refrescar análisis"
                     >
-                        <RefreshCw size={18} />
+                        <RefreshCw size={20} className="group-hover:rotate-180 transition-transform duration-700" />
                     </button>
                 )}
             </div>
 
             {/* Content */}
-            <div className="p-5 min-h-[300px]">
+            <div className="p-6 flex-1 min-h-[400px]">
                 {status === 'idle' && (
-                    <div className="h-64 flex flex-col items-center justify-center text-center space-y-4">
-                        <Sparkles className="text-indigo-500/20" size={48} />
-                        <div className="max-w-xs">
-                            <h4 className="text-white font-semibold">Análisis de Demanda Próxima</h4>
-                            <p className="text-slate-500 text-xs mt-1">Calcularemos cuánto necesitas comprar basándonos en tus próximos eventos y mermas históricas.</p>
+                    <div className="h-full flex flex-col items-center justify-center text-center space-y-6 py-12">
+                        <div className="relative">
+                            <div className="absolute inset-0 blur-3xl bg-primary/20 rounded-full animate-pulse" />
+                            <Sparkles className="text-primary relative" size={64} />
+                        </div>
+                        <div className="max-w-xs space-y-2">
+                            <h4 className="text-white font-black text-xl uppercase tracking-tighter">Análisis de Demanda</h4>
+                            <p className="text-slate-500 text-xs font-medium leading-relaxed uppercase tracking-wider">
+                                Calcularemos tus necesidades basándonos en eventos, mermas y stock actual.
+                            </p>
                         </div>
                         <button
                             onClick={runAnalysis}
-                            className="px-6 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-bold transition-all shadow-lg shadow-indigo-600/20"
+                            className="px-8 py-3 bg-primary hover:bg-blue-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] transition-all shadow-xl shadow-primary/20 border border-white/10"
                         >
-                            Ver Sugerencias
+                            Ejecutar Análisis
                         </button>
                     </div>
                 )}
 
                 {status === 'analyzing' && (
-                    <div className="h-64 flex flex-col items-center justify-center space-y-4">
-                        <div className="w-12 h-12 border-2 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" />
-                        <p className="text-slate-500 text-xs animate-pulse">Sincronizando PAX y Recetas...</p>
+                    <div className="h-full flex flex-col items-center justify-center space-y-6 py-12">
+                        <div className="relative w-16 h-16">
+                            <div className="absolute inset-0 border-4 border-primary/10 rounded-full" />
+                            <div className="absolute inset-0 border-4 border-t-primary rounded-full animate-spin" />
+                        </div>
+                        <div className="text-center">
+                            <p className="text-white font-black uppercase tracking-widest text-xs">Sincronizando Cerebro</p>
+                            <p className="text-slate-500 text-[10px] mt-2 animate-pulse uppercase tracking-wider font-bold">Procesando PAX, Recetas y Almacén...</p>
+                        </div>
                     </div>
                 )}
 
                 {status === 'error' && (
-                    <div className="h-64 flex flex-col items-center justify-center text-center space-y-3">
-                        <AlertTriangle className="text-rose-400" size={32} />
-                        <p className="text-slate-400 text-sm">Error al conectar con Gemini</p>
-                        <button onClick={runAnalysis} className="text-indigo-400 text-xs font-bold underline">Reintentar</button>
+                    <div className="h-full flex flex-col items-center justify-center text-center space-y-4 py-12">
+                        <div className="p-4 bg-red-500/10 rounded-3xl">
+                            <AlertTriangle className="text-red-400 font-bold" size={40} />
+                        </div>
+                        <div className="space-y-1">
+                            <p className="text-white font-black uppercase text-sm">Error de Conexión</p>
+                            <p className="text-slate-500 text-xs">No hemos podido contactar con el núcleo AI</p>
+                        </div>
+                        <button onClick={runAnalysis} className="text-primary text-[10px] font-black uppercase tracking-widest hover:underline">Reintentar Conexión</button>
                     </div>
                 )}
 
                 {status === 'success' && (
-                    <div className="space-y-4 animate-in fade-in duration-500">
+                    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
                         {summary && (
-                            <div className="bg-indigo-500/5 border border-indigo-500/10 p-4 rounded-xl flex gap-3 italic">
-                                <Info className="text-indigo-400 shrink-0" size={18} />
-                                <p className="text-xs text-indigo-100/70">{summary}</p>
+                            <div className="bg-primary/10 border border-primary/20 p-5 rounded-2xl flex gap-4 backdrop-blur-md">
+                                <Info className="text-primary shrink-0" size={20} />
+                                <p className="text-xs text-slate-300 font-medium leading-relaxed italic line-clamp-3">{summary}</p>
                             </div>
                         )}
 
-                        <div className="grid gap-3">
-                            {suggestions.map((item, idx) => (
-                                <div key={idx} className="bg-white/2 border border-white/5 p-4 rounded-xl flex justify-between items-center group hover:border-white/10 transition-colors">
-                                    <div className="flex gap-4 items-center">
-                                        <div className={`p-2 rounded-lg ${item.priority === 'CRITICAL' ? 'bg-rose-500/20 text-rose-400' : 'bg-blue-500/20 text-blue-400'}`}>
-                                            {item.priority === 'CRITICAL' ? <AlertTriangle size={16} /> : <TrendingUp size={16} />}
+                        <div className="space-y-3">
+                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4">Sugerencias Estratégicas</p>
+                            <div className="grid gap-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                                {suggestions.map((item, idx) => (
+                                    <div key={idx} className="group relative bg-white/[0.02] hover:bg-white/[0.05] p-5 rounded-3xl border border-white/5 transition-all duration-300">
+                                        <div className="flex justify-between items-center relative z-10">
+                                            <div className="flex gap-4 items-center">
+                                                <div className={`p-3 rounded-2xl ${item.priority === 'CRITICAL' ? 'bg-red-500/20 text-red-400' : 'bg-primary/20 text-primary'}`}>
+                                                    {item.priority === 'CRITICAL' ? <AlertTriangle size={18} /> : <TrendingUp size={18} />}
+                                                </div>
+                                                <div>
+                                                    <h5 className="text-sm font-black text-white leading-none mb-2 uppercase tracking-tight">{item.ingredientName}</h5>
+                                                    <p className="text-[10px] text-slate-500 font-medium italic line-clamp-1">{item.reason}</p>
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                <div className="text-lg font-black text-white font-mono flex items-center justify-end gap-1">
+                                                    {item.quantityToBuy}
+                                                    <span className="text-[10px] text-slate-500">{item.unit}</span>
+                                                </div>
+                                                <div className={`text-[10px] font-black uppercase tracking-widest mt-1 ${item.priority === 'CRITICAL' ? 'text-red-400' : 'text-primary'}`}>
+                                                    {item.priority === 'CRITICAL' ? 'CRITICO' : 'RECOMENDADO'}
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <h5 className="text-sm font-bold text-white leading-none mb-1">{item.ingredientName}</h5>
-                                            <p className="text-[10px] text-slate-500 italic">{item.reason}</p>
-                                        </div>
+                                        <div className="absolute left-0 top-0 w-1 h-0 group-hover:h-full bg-primary transition-all duration-300 rounded-l-3xl opacity-0 group-hover:opacity-100" />
                                     </div>
-                                    <div className="text-right">
-                                        <p className="text-sm font-black text-white tabular-nums">{item.quantityToBuy} <span className="text-xs font-normal text-slate-500">{item.unit}</span></p>
-                                        <p className={`text-[10px] font-bold ${item.priority === 'CRITICAL' ? 'text-rose-400' : 'text-blue-400'}`}>
-                                            {item.priority === 'CRITICAL' ? 'Stock Crítico' : 'Planificación'}
+                                ))}
+                                {suggestions.length === 0 && (
+                                    <div className="py-20 text-center border-2 border-dashed border-white/5 rounded-3xl bg-white/[0.01]">
+                                        <Info className="w-12 h-12 text-slate-700 mx-auto mb-4 opacity-20" />
+                                        <p className="text-slate-600 text-[10px] font-black uppercase tracking-[0.2em] opacity-40">
+                                            Sin necesidades detectadas
                                         </p>
                                     </div>
-                                </div>
-                            ))}
-                            {suggestions.length === 0 && (
-                                <div className="h-48 flex items-center justify-center text-slate-600 text-sm italic">
-                                    No se detectan necesidades de compra adicionales.
-                                </div>
-                            )}
+                                )}
+                            </div>
                         </div>
                     </div>
                 )}
             </div>
 
             {status === 'success' && (
-                <div className="p-4 bg-black/20 border-t border-white/5">
-                    <p className="text-[9px] text-slate-600 text-center uppercase tracking-widest">
-                        Basado en eventos de las próximas 2 semanas y stock actual
-                    </p>
+                <div className="p-5 bg-white/[0.02] border-t border-white/5">
+                    <div className="flex justify-between items-center">
+                        <p className="text-[9px] text-slate-600 uppercase tracking-widest font-black">
+                            Update: Just now
+                        </p>
+                        <p className="text-[9px] text-slate-600 uppercase tracking-widest font-black">
+                            Predictive Engine v4.2
+                        </p>
+                    </div>
                 </div>
             )}
         </div>
     );
 };
+

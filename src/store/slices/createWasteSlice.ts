@@ -1,8 +1,7 @@
 import type { StateCreator } from 'zustand';
-import type { WasteRecord } from '../../types';
-import { consumeStockFIFO, createMigrationBatch } from '../../services/inventoryService';
-import type { AppState, WasteSlice } from '../types';
 import type { InventoryItem } from '../../types';
+import type { AppState, WasteSlice, InventorySlice, WasteRecord } from '../types';
+import { consumeStockFIFO, createMigrationBatch } from '../../services/inventoryService';
 import { setDocument, deleteDocument, updateDocument } from '../../services/firestoreService';
 
 export const createWasteSlice: StateCreator<
@@ -16,13 +15,13 @@ export const createWasteSlice: StateCreator<
     setWasteRecords: (records: WasteRecord[]) => set({ wasteRecords: records }),
 
     addWasteRecord: async (record) => {
-        const { inventory, activeOutletId, wasteRecords } = get();
+        const { inventory, activeOutletId } = get() as AppState & InventorySlice;
         const inventoryIndex = inventory.findIndex(
             (i: InventoryItem) => i.ingredientId === record.ingredientId && i.outletId === activeOutletId
         );
 
         if (inventoryIndex === -1) {
-            set({ wasteRecords: [...wasteRecords, record] });
+            set((state: any) => ({ wasteRecords: [...state.wasteRecords, record] }));
             try {
                 await setDocument("wasteRecords", record.id, record);
             } catch (error) {
@@ -36,7 +35,7 @@ export const createWasteSlice: StateCreator<
         // Ensure item has batches
         if (!inventoryItem.batches || inventoryItem.batches.length === 0) {
             inventoryItem.batches = [createMigrationBatch(
-                inventoryItem.ingredientId,
+                inventoryItem.ingredientId || '',
                 inventoryItem.stock || 0,
                 0, // costPerUnit
                 activeOutletId || 'unknown'
@@ -53,10 +52,10 @@ export const createWasteSlice: StateCreator<
         const newInventory = [...inventory];
         newInventory[inventoryIndex] = inventoryItem;
 
-        set({
-            wasteRecords: [...wasteRecords, record],
+        set((state: any) => ({
+            wasteRecords: [...state.wasteRecords, record],
             inventory: newInventory
-        });
+        }));
 
         try {
             await Promise.all([
@@ -73,8 +72,8 @@ export const createWasteSlice: StateCreator<
     },
 
     deleteWasteRecord: async (id) => {
-        set((state: AppState) => ({
-            wasteRecords: state.wasteRecords.filter(w => w.id !== id)
+        set((state: any) => ({
+            wasteRecords: state.wasteRecords.filter((w: WasteRecord) => w.id !== id)
         }));
         try {
             await deleteDocument("wasteRecords", id);

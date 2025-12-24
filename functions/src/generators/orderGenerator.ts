@@ -81,7 +81,21 @@ export const generatePurchaseOrder = onCall(async (request) => {
             });
         });
 
-        // 4. Create Purchase Orders
+        // 4. Fetch Supplier Names in Batch (Optimization: avoids N+1 query)
+        const supplierIds = Object.keys(ordersBySupplier).filter(id => id !== 'unknown_supplier');
+        const supplierNames: Record<string, string> = {};
+
+        if (supplierIds.length > 0) {
+            const supplierRefs = supplierIds.map(id => db.collection('suppliers').doc(id));
+            const supplierDocs = await db.getAll(...supplierRefs);
+            supplierDocs.forEach(doc => {
+                if (doc.exists) {
+                    supplierNames[doc.id] = doc.data()?.name || "Unknown Supplier";
+                }
+            });
+        }
+
+        // 5. Create Purchase Orders
         const batch = db.batch();
         const ordersCreated: string[] = [];
         const timestamp = new Date().toISOString();
@@ -89,14 +103,8 @@ export const generatePurchaseOrder = onCall(async (request) => {
         for (const [supplierId, items] of Object.entries(ordersBySupplier)) {
             const totalAmount = items.reduce((sum, item) => sum + item.totalCost, 0);
 
-            // Get Supplier Name (Optional optimization: fetch supplier doc)
-            let supplierName = "Unknown Supplier";
-            if (supplierId !== 'unknown_supplier') {
-                const supplierDoc = await db.collection('suppliers').doc(supplierId).get();
-                if (supplierDoc.exists) {
-                    supplierName = supplierDoc.data()?.name || supplierName;
-                }
-            }
+            // Get Supplier Name from batch results
+            const supplierName = supplierNames[supplierId] || "Unknown Supplier";
 
             const newOrderRef = db.collection('purchaseOrders').doc();
             const orderData = {

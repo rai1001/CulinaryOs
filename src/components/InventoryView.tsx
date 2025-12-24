@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useStore } from '../store/useStore';
-import { AlertTriangle, Search, Plus, ChevronRight, Calculator, Calendar, Scan, Filter, Sparkles, Upload } from 'lucide-react';
+import { AlertTriangle, Search, Plus, ChevronRight, Calendar, Scan, Filter, Sparkles, Upload, Package, Package2, DollarSign } from 'lucide-react';
 import type { Ingredient, InventoryItem, IngredientBatch } from '../types';
 import { BarcodeScanner } from './scanner/BarcodeScanner';
 import { ExpiryDateScanner } from './scanner/ExpiryDateScanner';
@@ -177,10 +177,10 @@ export const InventoryView: React.FC = () => {
                 inv => (inv.name === productLookup.name || inv.id === scannedBarcode) && inv.outletId === activeOutletId
             );
 
-            const itemId = existingInventoryItem?.id || crypto.randomUUID();
+            const itemId = existingInventoryItem?.id || ((crypto as any).randomUUID?.() || Math.random().toString(36).substring(2, 11));
 
             const batchData: Partial<IngredientBatch> = {
-                id: crypto.randomUUID(),
+                id: (crypto as any).randomUUID?.() || Math.random().toString(36).substring(2, 11),
                 batchNumber: `LOT-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}`,
                 initialQuantity: parseFloat(batchForm.quantity),
                 currentQuantity: parseFloat(batchForm.quantity),
@@ -329,7 +329,7 @@ export const InventoryView: React.FC = () => {
                             });
                         } else {
                             const newInventoryItem: InventoryItem = {
-                                id: crypto.randomUUID(),
+                                id: (crypto as any).randomUUID?.() || Math.random().toString(36).substring(2, 11),
                                 ingredientId: match.id,
                                 outletId: activeOutletId,
                                 name: match.name,
@@ -337,6 +337,7 @@ export const InventoryView: React.FC = () => {
                                 category: (match.category || 'other') as any,
                                 costPerUnit: match.costPerUnit || 0,
                                 stock: newBatch.currentQuantity,
+                                theoreticalStock: newBatch.currentQuantity,
                                 minStock: 5,
                                 optimalStock: 10,
                                 batches: [newBatch],
@@ -366,13 +367,14 @@ export const InventoryView: React.FC = () => {
                         };
 
                         const newInventoryItem: InventoryItem = {
-                            id: crypto.randomUUID(),
+                            id: (crypto as any).randomUUID?.() || Math.random().toString(36).substring(2, 11),
                             outletId: activeOutletId,
                             name: item.name.toUpperCase(),
                             unit: item.unit || 'uds',
                             category: 'other',
                             costPerUnit: 0,
                             stock: newBatch.currentQuantity,
+                            theoreticalStock: newBatch.currentQuantity,
                             minStock: 5,
                             optimalStock: 10,
                             batches: [newBatch],
@@ -399,173 +401,200 @@ export const InventoryView: React.FC = () => {
     };
 
     return (
-        <div className="p-6 space-y-6 h-full overflow-y-auto">
+        <div className="p-6 md:p-10 space-y-8 min-h-screen bg-transparent text-slate-100 fade-in">
             {/* Header */}
-            <div className="flex flex-col md:flex-row justify-between items-start gap-4">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
                 <div>
-                    <h2 className="text-3xl font-bold text-white flex items-center gap-3">
-                        <div className="bg-primary/20 p-2.5 rounded-xl border border-primary/20">
-                            <Calculator className="text-primary" size={24} />
-                        </div>
-                        Inventario
-                    </h2>
-                    <p className="text-slate-400 mt-1.5 flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-                        Gestión inteligente de stock con trazabilidad en tiempo real
-                    </p>
+                    <h1 className="text-4xl font-black text-white flex items-center gap-4 tracking-tighter uppercase">
+                        <Package2 className="text-primary animate-pulse w-10 h-10" />
+                        Inventario <span className="text-primary">&</span> Stock
+                    </h1>
+                    <p className="text-slate-500 text-xs font-bold mt-2 tracking-[0.3em] uppercase">Gestión de Existencias Inteligente v2.0</p>
                 </div>
 
                 <div className="flex flex-wrap gap-3">
                     <button
                         onClick={() => setIsAIAdvisorOpen(true)}
-                        className="bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-indigo-500/20 transition-all active:scale-95 shadow-lg shadow-indigo-500/10"
+                        className="bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-5 py-3 rounded-xl font-black text-xs uppercase tracking-widest flex items-center gap-2 hover:bg-indigo-500/20 transition-all active:scale-95 shadow-lg shadow-indigo-500/10"
                     >
-                        <Sparkles size={18} />
+                        <Sparkles size={16} />
                         AI Advisor
                     </button>
                     <button
                         onClick={() => setImportType('inventory')}
-                        className="bg-surface text-slate-300 border border-white/10 px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-white/10 transition-all active:scale-95"
+                        className="bg-white/5 text-slate-300 border border-white/10 px-5 py-3 rounded-xl font-black text-xs uppercase tracking-widest flex items-center gap-2 hover:bg-white/10 transition-all active:scale-95"
                     >
-                        <Upload size={18} />
-                        Importar Albarán
+                        <Upload size={16} />
+                        Importar
                     </button>
                     <button
                         onClick={handleClearData}
                         disabled={isDeleting}
-                        className="bg-red-500/10 text-red-400 border border-red-500/20 px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-red-500/20 transition-all active:scale-95"
+                        className="bg-red-500/10 text-red-400 border border-red-500/20 px-5 py-3 rounded-xl font-black text-xs uppercase tracking-widest flex items-center gap-2 hover:bg-red-500/20 transition-all active:scale-95"
                     >
-                        <Trash2 size={18} />
-                        {isDeleting ? 'Borrando...' : 'Borrar Todo'}
+                        <Trash2 size={16} />
+                        {isDeleting ? '...' : 'Clear'}
                     </button>
                     <button
                         onClick={() => setPrintingItem({ ingredient: undefined as any })}
-                        className="bg-surface text-slate-300 border border-white/10 px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-white/10 transition-all active:scale-95"
+                        className="bg-white/5 text-slate-300 border border-white/10 px-5 py-3 rounded-xl font-black text-xs uppercase tracking-widest flex items-center gap-2 hover:bg-white/10 transition-all active:scale-95"
                     >
-                        <Printer size={18} />
-                        Etiqueta Rápida
+                        <Printer size={16} />
+                        Etiqueta
                     </button>
                     <button
                         onClick={startScanningWorkflow}
-                        className="bg-primary text-white px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-primary/90 transition-all active:scale-95 shadow-lg shadow-primary/20"
+                        className="bg-primary text-white px-6 py-3 rounded-xl font-black text-xs uppercase tracking-widest flex items-center gap-2 hover:bg-primary/90 transition-all active:scale-95 shadow-[0_0_20px_rgba(59,130,246,0.5)] border border-primary/50"
                     >
-                        <Scan size={18} />
+                        <Scan size={16} />
                         Nuevo Lote
                     </button>
                 </div>
             </div>
 
-            {/* Filter Tabs */}
-            <div className="flex gap-4 border-b border-white/5 overflow-x-auto pb-px scrollbar-hide">
-                <button
-                    onClick={() => setActiveFilter('all')}
-                    className={`flex items-center gap-2 px-4 py-4 font-bold text-xs uppercase tracking-widest transition-all relative ${activeFilter === 'all'
-                        ? 'text-primary'
-                        : 'text-slate-500 hover:text-slate-300'
-                        }`}
-                >
-                    <Filter size={14} />
-                    Todo
-                    <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${activeFilter === 'all' ? 'bg-primary/20 text-primary' : 'bg-white/5 text-slate-500'}`}>
-                        {inventory.filter(item => !activeOutletId || item.outletId === activeOutletId).length}
-                    </span>
-                    {activeFilter === 'all' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-t-full" />}
-                </button>
+            {/* Stats Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="premium-glass p-5 flex items-center gap-4 group hover:scale-[1.02] transition-all duration-500">
+                    <div className="p-3 bg-blue-500/10 rounded-2xl text-blue-400 group-hover:bg-blue-500/20 transition-colors">
+                        <Package size={24} />
+                    </div>
+                    <div>
+                        <p className="text-slate-500 text-[9px] font-black uppercase tracking-widest">Total Ítems UI</p>
+                        <p className="text-2xl font-black text-white font-mono">{inventory.filter(item => !activeOutletId || item.outletId === activeOutletId).length}</p>
+                    </div>
+                </div>
 
-                <button
-                    onClick={() => setActiveFilter('expiring')}
-                    className={`flex items-center gap-2 px-4 py-4 font-bold text-xs uppercase tracking-widest transition-all relative ${activeFilter === 'expiring'
-                        ? 'text-amber-400'
-                        : 'text-slate-500 hover:text-slate-300'
-                        }`}
-                >
-                    <Calendar size={14} />
-                    Próximos a Caducar
-                    {expiringCount > 0 && (
-                        <span className="bg-amber-500 text-black px-1.5 py-0.5 rounded-full text-[10px] font-black">
-                            {expiringCount}
-                        </span>
-                    )}
-                    {activeFilter === 'expiring' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-amber-400 rounded-t-full" />}
-                </button>
+                <div className="premium-glass p-5 flex items-center gap-4 group hover:scale-[1.02] transition-all duration-500">
+                    <div className="p-3 bg-rose-500/10 rounded-2xl text-rose-400 group-hover:bg-rose-500/20 transition-colors">
+                        <AlertTriangle size={24} />
+                    </div>
+                    <div>
+                        <p className="text-slate-500 text-[9px] font-black uppercase tracking-widest">Bajo Stock</p>
+                        <p className="text-2xl font-black text-white font-mono">{lowStockCount}</p>
+                    </div>
+                </div>
 
-                <button
-                    onClick={() => setActiveFilter('low-stock')}
-                    className={`flex items-center gap-2 px-4 py-4 font-bold text-xs uppercase tracking-widest transition-all relative ${activeFilter === 'low-stock'
-                        ? 'text-rose-400'
-                        : 'text-slate-500 hover:text-slate-300'
-                        }`}
-                >
-                    <AlertTriangle size={14} />
-                    Bajo Stock
-                    {lowStockCount > 0 && (
-                        <span className="bg-rose-500 text-white px-1.5 py-0.5 rounded-full text-[10px] font-black">
-                            {lowStockCount}
-                        </span>
-                    )}
-                    {activeFilter === 'low-stock' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-rose-400 rounded-t-full" />}
-                </button>
+                <div className="premium-glass p-5 flex items-center gap-4 group hover:scale-[1.02] transition-all duration-500">
+                    <div className="p-3 bg-amber-500/10 rounded-2xl text-amber-400 group-hover:bg-amber-500/20 transition-colors">
+                        <Calendar size={24} />
+                    </div>
+                    <div>
+                        <p className="text-slate-500 text-[9px] font-black uppercase tracking-widest">Caducan Pronto</p>
+                        <p className="text-2xl font-black text-white font-mono">{expiringCount}</p>
+                    </div>
+                </div>
 
-                <div className="w-px h-8 bg-white/5 self-center mx-2" />
-
-                {/* Category Flow */}
-                {[
-                    { id: 'meat', label: 'Carne' },
-                    { id: 'fish', label: 'Pescado' },
-                    { id: 'produce', label: 'Frutas/Verduras' },
-                    { id: 'dairy', label: 'Lácteos' },
-                    { id: 'dry', label: 'Secos' },
-                    { id: 'frozen', label: 'Congelados' },
-                    { id: 'canned', label: 'Latas' },
-                    { id: 'cocktail', label: 'Cóctel' },
-                    { id: 'cleaning', label: 'Limpieza' },
-                    { id: 'preparation', label: 'Elaboraciones' },
-                    { id: 'other', label: 'Otros' }
-                ].map(cat => (
-                    <button
-                        key={cat.id}
-                        onClick={() => setActiveFilter(cat.id as any)}
-                        className={`px-4 py-4 font-bold text-xs uppercase tracking-widest transition-all whitespace-nowrap relative ${activeFilter === cat.id
-                            ? 'text-white'
-                            : 'text-slate-500 hover:text-slate-300'
-                            }`}
-                    >
-                        {cat.label}
-                        {activeFilter === cat.id && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-white/40 rounded-t-full" />}
-                    </button>
-                ))}
+                <div className="premium-glass p-5 flex items-center gap-4 group hover:scale-[1.02] transition-all duration-500">
+                    <div className="p-3 bg-emerald-500/10 rounded-2xl text-emerald-400 group-hover:bg-emerald-500/20 transition-colors">
+                        <DollarSign size={24} />
+                    </div>
+                    <div>
+                        <p className="text-slate-500 text-[9px] font-black uppercase tracking-widest">Valor Total</p>
+                        <p className="text-2xl font-black text-white font-mono">
+                            {inventory
+                                .filter(item => !activeOutletId || item.outletId === activeOutletId)
+                                .reduce((acc, item) => {
+                                    const itemVal = item.stock * item.costPerUnit;
+                                    return acc + (isNaN(itemVal) ? 0 : itemVal);
+                                }, 0).toFixed(0)}€
+                        </p>
+                    </div>
+                </div>
             </div>
 
-            {/* Search Bar */}
-            <div className="bg-surface rounded-xl shadow-lg border border-white/5 p-4 backdrop-blur-md">
-                <div className="relative group">
-                    <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors" size={20} />
+            {/* Filter Tabs & Search Container */}
+            <div className="premium-glass p-2 flex flex-col xl:flex-row gap-4 justify-between items-center rounded-2xl">
+                <div className="flex gap-1 overflow-x-auto max-w-full pb-1 custom-scrollbar">
+                    <button
+                        onClick={() => setActiveFilter('all')}
+                        className={`flex items-center gap-2 px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all whitespace-nowrap ${activeFilter === 'all'
+                            ? 'bg-primary text-white shadow-lg shadow-primary/20'
+                            : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                            }`}
+                    >
+                        <Filter size={14} />
+                        Todo
+                    </button>
+
+                    <div className="w-px h-6 bg-white/10 self-center mx-1" />
+
+                    <button
+                        onClick={() => setActiveFilter('low-stock')}
+                        className={`flex items-center gap-2 px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all whitespace-nowrap ${activeFilter === 'low-stock'
+                            ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/20'
+                            : 'text-rose-400 hover:bg-rose-500/10'
+                            }`}
+                    >
+                        <AlertTriangle size={14} />
+                        Bajo Stock
+                        {lowStockCount > 0 && <span className="bg-white/20 px-1.5 py-0.5 rounded text-[9px] ml-1">{lowStockCount}</span>}
+                    </button>
+
+                    <button
+                        onClick={() => setActiveFilter('expiring')}
+                        className={`flex items-center gap-2 px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all whitespace-nowrap ${activeFilter === 'expiring'
+                            ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/20'
+                            : 'text-amber-400 hover:bg-amber-500/10'
+                            }`}
+                    >
+                        <Calendar size={14} />
+                        Caducidad
+                        {expiringCount > 0 && <span className="bg-white/20 px-1.5 py-0.5 rounded text-[9px] ml-1">{expiringCount}</span>}
+                    </button>
+
+                    <div className="w-px h-6 bg-white/10 self-center mx-1" />
+
+                    {/* Simple Category Dropdown or Horizontal Scroll */}
+                    <div className="flex gap-1">
+                        {[
+                            { id: 'meat', label: 'Carne' },
+                            { id: 'fish', label: 'Pescado' },
+                            { id: 'produce', label: 'Agro' },
+                            { id: 'dry', label: 'Secos' },
+                        ].map(cat => (
+                            <button
+                                key={cat.id}
+                                onClick={() => setActiveFilter(cat.id as any)}
+                                className={`px-4 py-3 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all border whitespace-nowrap ${activeFilter === cat.id
+                                    ? 'bg-white/10 border-white/20 text-white'
+                                    : 'border-transparent text-slate-500 hover:text-slate-300'
+                                    }`}
+                            >
+                                {cat.label}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Search */}
+                <div className="w-full xl:w-96 relative group">
+                    <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors" size={16} />
                     <input
                         type="text"
-                        placeholder="Buscar ingredientes por nombre, lote o categoría..."
-                        className="w-full pl-12 pr-4 py-3.5 bg-background/50 border border-white/5 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-slate-200 placeholder-slate-600 shadow-inner"
+                        placeholder="BUSCAR INGREDIENTE O LOTE..."
+                        className="w-full pl-11 pr-4 py-3 bg-black/20 border border-white/5 rounded-xl focus:outline-none focus:ring-1 focus:ring-primary/50 focus:border-primary/50 transition-all text-slate-200 placeholder-slate-600 font-medium text-sm"
                         value={searchTerm}
                         onChange={e => setSearchTerm(e.target.value)}
                     />
                 </div>
             </div>
 
-            {/* Inventory Table */}
-            <div className="bg-surface rounded-xl shadow-2xl border border-white/5 overflow-hidden">
-                <div className="overflow-x-auto">
-                    <table className="w-full border-collapse">
-                        <thead className="bg-white/[0.03] border-b border-white/5">
+            {/* Inventory Table Container */}
+            <div className="premium-glass p-0 overflow-hidden min-h-[500px] flex flex-col">
+                <div className="overflow-x-auto flex-1 custom-scrollbar">
+                    <table className="w-full">
+                        <thead className="bg-white/[0.02] border-b border-white/5 sticky top-0 z-10 backdrop-blur-md">
                             <tr>
-                                <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-500 uppercase tracking-widest w-10"></th>
-                                <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-500 uppercase tracking-widest">Ingrediente</th>
-                                <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-500 uppercase tracking-widest">Stock Total</th>
-                                <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-500 uppercase tracking-widest">Valorización</th>
-                                <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-500 uppercase tracking-widest">Estado de Alerta</th>
-                                <th className="px-6 py-4 text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest">Operaciones</th>
+                                <th className="px-6 py-5 text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] w-12"></th>
+                                <th className="px-6 py-5 text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Producto</th>
+                                <th className="px-6 py-5 text-center text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Stock Actual</th>
+                                <th className="px-6 py-5 text-center text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Valor</th>
+                                <th className="px-6 py-5 text-center text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Estado</th>
+                                <th className="px-6 py-5 text-right text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Acciones</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-white/5">
-                            {filteredIngredients.map((ing) => {
+                            {filteredIngredients.map((ing, idx) => {
                                 const totalStock = ing.stock || 0;
                                 const totalValue = ing.batches?.reduce((acc, b) => acc + (b.currentQuantity * b.costPerUnit), 0) || (totalStock * ing.costPerUnit);
                                 const minStock = ing.minStock || 0;
@@ -575,79 +604,98 @@ export const InventoryView: React.FC = () => {
 
                                 return (
                                     <React.Fragment key={ing.id}>
-                                        <tr className={`hover:bg-white/[0.02] transition-all group ${isExpanded ? 'bg-primary/5' : ''}`}>
+                                        <tr
+                                            className={`transition-all duration-200 group relative ${isExpanded ? 'bg-white/[0.03]' : 'hover:bg-white/[0.02]'}`}
+                                        // style={{ animationDelay: `${idx * 50}ms` }} // Optional stagger
+                                        >
                                             <td className="px-6 py-4">
                                                 <button
                                                     onClick={() => toggleExpand(ing.id)}
-                                                    className={`p-1.5 rounded-lg transition-all ${isExpanded ? 'bg-primary/20 text-primary rotate-90' : 'bg-white/5 text-slate-600 hover:text-slate-400 group-hover:bg-white/10'}`}
+                                                    className={`p-2 rounded-lg transition-all ${isExpanded
+                                                        ? 'bg-primary/20 text-primary rotate-90'
+                                                        : 'text-slate-600 hover:text-slate-300 hover:bg-white/5'}`}
                                                 >
-                                                    <ChevronRight size={18} />
+                                                    <ChevronRight size={16} />
                                                 </button>
                                             </td>
                                             <td className="px-6 py-4">
-                                                <div className="font-bold text-slate-200 group-hover:text-primary transition-colors">{ing.name}</div>
-                                                <div className="text-[10px] text-slate-500 font-bold uppercase tracking-wide mt-1">
-                                                    {ing.category === 'preparation' ? 'Elaboración' : (ing.category || 'Sin categoría')} • {ing.unit}
+                                                <div className="flex flex-col">
+                                                    <span className="font-bold text-slate-200 text-sm group-hover:text-primary transition-colors">{ing.name}</span>
+                                                    <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest flex items-center gap-1.5 mt-1">
+                                                        <span className="w-1.5 h-1.5 rounded-full bg-slate-600"></span>
+                                                        {ing.category === 'preparation' ? 'Elaboración' : (ing.category || 'General')}
+                                                    </span>
                                                 </div>
                                             </td>
-                                            <td className="px-6 py-4">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="font-mono font-bold text-slate-200 text-lg">{totalStock.toFixed(totalStock % 1 === 0 ? 0 : 2)}</span>
-                                                    <span className="text-slate-500 text-xs uppercase font-medium">{ing.unit}</span>
+                                            <td className="px-6 py-4 text-center">
+                                                <div className="inline-flex flex-col items-center">
+                                                    <span className={`font-mono font-black text-lg ${isLowStock ? 'text-rose-400' : 'text-slate-200'}`}>
+                                                        {totalStock.toFixed(2)}
+                                                    </span>
+                                                    <span className="text-[9px] text-slate-500 font-bold uppercase">{ing.unit}</span>
                                                 </div>
                                             </td>
-                                            <td className="px-6 py-4">
-                                                <div className="text-slate-200 font-mono font-bold">€{totalValue.toFixed(2)}</div>
+                                            <td className="px-6 py-4 text-center">
+                                                <span className="font-mono text-slate-400 font-medium">
+                                                    {totalValue.toFixed(2)}€
+                                                </span>
                                             </td>
                                             <td className="px-6 py-4">
-                                                <div className="flex flex-col gap-1.5">
+                                                <div className="flex items-center justify-center gap-2">
                                                     {isLowStock && (
-                                                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-rose-500/10 text-rose-400 border border-rose-500/20 w-fit">
-                                                            <AlertTriangle size={12} strokeWidth={3} /> Crítico: Bajo Stock
-                                                        </span>
+                                                        <div className="px-3 py-1 bg-rose-500/10 border border-rose-500/20 rounded-full flex items-center gap-1.5">
+                                                            <AlertTriangle size={12} className="text-rose-500" />
+                                                            <span className="text-[9px] font-black text-rose-400 uppercase tracking-wide">Bajo</span>
+                                                        </div>
                                                     )}
                                                     {nearExpiryBatches.length > 0 && (
-                                                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-amber-500/10 text-amber-400 border border-amber-500/20 w-fit">
-                                                            <Calendar size={12} strokeWidth={3} /> {nearExpiryBatches.length} Caducando
-                                                        </span>
+                                                        <div className="px-3 py-1 bg-amber-500/10 border border-amber-500/20 rounded-full flex items-center gap-1.5">
+                                                            <Calendar size={12} className="text-amber-500" />
+                                                            <span className="text-[9px] font-black text-amber-400 uppercase tracking-wide">Caducidad</span>
+                                                        </div>
                                                     )}
                                                     {!isLowStock && nearExpiryBatches.length === 0 && (
-                                                        <span className="inline-flex items-center px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 w-fit">
-                                                            OPTIMAL
-                                                        </span>
+                                                        <div className="px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full flex items-center gap-1.5 opacity-50">
+                                                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
+                                                            <span className="text-[9px] font-black text-emerald-400 uppercase tracking-wide">OK</span>
+                                                        </div>
                                                     )}
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 text-right">
-                                                <button
-                                                    onClick={() => {
-                                                        setProductLookup({
-                                                            found: true,
-                                                            barcode: '', // Clear barcode for manual or use item's if available
-                                                            name: ing.name,
-                                                        });
-                                                        setScannedBarcode(ing.id); // Use item ID as barcode reference if needed
-                                                        setBatchForm({
-                                                            quantity: '',
-                                                            expiryDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
-                                                            costPerUnit: ing.costPerUnit.toString()
-                                                        });
-                                                        setScanStep('scanning-expiry');
-                                                    }}
-                                                    className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-lg font-bold text-xs hover:bg-primary hover:text-white transition-all active:scale-95"
-                                                >
-                                                    <Plus size={14} strokeWidth={3} /> Registrar Lote
-                                                </button>
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        setPrintingItem({ ingredient: ing as any });
-                                                    }}
-                                                    className="inline-flex items-center gap-2 bg-white/5 text-slate-400 px-3 py-2 rounded-lg font-bold text-xs hover:bg-white/10 hover:text-white transition-all active:scale-95 ml-2"
-                                                    title="Imprimir Etiqueta Genérica"
-                                                >
-                                                    <Printer size={14} />
-                                                </button>
+                                                <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setProductLookup({
+                                                                found: true,
+                                                                barcode: '',
+                                                                name: ing.name,
+                                                            });
+                                                            setScannedBarcode(ing.id);
+                                                            setBatchForm({
+                                                                quantity: '',
+                                                                expiryDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+                                                                costPerUnit: ing.costPerUnit.toString()
+                                                            });
+                                                            setScanStep('scanning-expiry');
+                                                        }}
+                                                        className="p-2 hover:bg-primary/20 rounded-lg text-slate-400 hover:text-primary transition-colors"
+                                                        title="Registrar Lote"
+                                                    >
+                                                        <Plus size={16} />
+                                                    </button>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setPrintingItem({ ingredient: ing });
+                                                        }}
+                                                        className="p-2 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-colors"
+                                                        title="Imprimir Etiqueta"
+                                                    >
+                                                        <Printer size={16} />
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                         {/* Expanded Batch Details */}

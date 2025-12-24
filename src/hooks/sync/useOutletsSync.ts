@@ -6,12 +6,11 @@ import { useStore } from '../../store/useStore';
 import type { Outlet } from '../../types';
 
 export const useOutletsSync = () => {
-    const { setOutlets, activeOutletId, setActiveOutletId } = useStore();
+    const { setOutlets, setActiveOutletId } = useStore();
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // Subscribe to all outlets (or filter by user permission in a real app)
-        // For now, we fetch all to show the selector list
+        // Subscribe to all outlets
         const q = query(collections.outlets);
 
         const unsubscribe = onSnapshotMockable(q, 'outlets', (snapshot) => {
@@ -20,14 +19,16 @@ export const useOutletsSync = () => {
                 ...doc.data()
             })) as Outlet[];
 
-            console.log("Synced Outlets:", outletsData.length);
+            console.log(`[Sync] Outlets synced (${outletsData.length})`);
             setOutlets(outletsData);
+
+            // Access current state via store to avoid dependency loop
+            const currentActiveId = useStore.getState().activeOutletId;
 
             // Auto-select logic if none selected or selection invalid
             if (outletsData.length > 0) {
-                const isValid = outletsData.find(o => o.id === activeOutletId);
-                if (!activeOutletId || !isValid) {
-                    // Prefer 'main_kitchen' or just the first one
+                const isValid = outletsData.find(o => o.id === currentActiveId);
+                if (!currentActiveId || !isValid) {
                     const defaultOutlet = outletsData.find(o => o.type === 'main_kitchen') || outletsData[0];
                     console.log("Auto-selecting outlet:", defaultOutlet.name);
                     setActiveOutletId(defaultOutlet.id);
@@ -41,7 +42,7 @@ export const useOutletsSync = () => {
         });
 
         return () => unsubscribe();
-    }, [setOutlets, activeOutletId, setActiveOutletId]);
+    }, [setOutlets, setActiveOutletId]); // Removed activeOutletId to prevent infinite re-subscription loop
 
     return { loading };
 };

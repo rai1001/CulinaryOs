@@ -58,14 +58,14 @@ export const ProveedorForm: React.FC<ProveedorFormProps> = ({ initialData, onSub
     };
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
+                <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Nombre Empresa</label>
                 <input
                     type="text"
                     required
                     data-testid="supplier-name-input"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    className="w-full px-4 py-3 bg-black/20 border border-white/5 rounded-xl focus:outline-none focus:ring-1 focus:ring-primary/50 text-white placeholder-slate-600 transition-all font-medium"
                     value={formData.name || ''}
                     onChange={e => setFormData({ ...formData, name: e.target.value })}
                 />
@@ -73,19 +73,19 @@ export const ProveedorForm: React.FC<ProveedorFormProps> = ({ initialData, onSub
 
             <div className="grid grid-cols-2 gap-4">
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Contacto</label>
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Contacto</label>
                     <input
                         type="text"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        className="w-full px-4 py-3 bg-black/20 border border-white/5 rounded-xl focus:outline-none focus:ring-1 focus:ring-primary/50 text-white placeholder-slate-600 transition-all font-medium"
                         value={formData.contactName || ''}
                         onChange={e => setFormData({ ...formData, contactName: e.target.value })}
                     />
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Teléfono</label>
                     <input
                         type="tel"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        className="w-full px-4 py-3 bg-black/20 border border-white/5 rounded-xl focus:outline-none focus:ring-1 focus:ring-primary/50 text-white placeholder-slate-600 transition-all font-medium"
                         value={formData.phone || ''}
                         onChange={e => setFormData({ ...formData, phone: e.target.value })}
                     />
@@ -93,11 +93,11 @@ export const ProveedorForm: React.FC<ProveedorFormProps> = ({ initialData, onSub
             </div>
 
             <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Email</label>
                 <input
                     type="email"
                     data-testid="supplier-email-input"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    className="w-full px-4 py-3 bg-black/20 border border-white/5 rounded-xl focus:outline-none focus:ring-1 focus:ring-primary/50 text-white placeholder-slate-600 transition-all font-medium"
                     value={formData.email || ''}
                     onChange={e => setFormData({ ...formData, email: e.target.value })}
                 />
@@ -105,19 +105,19 @@ export const ProveedorForm: React.FC<ProveedorFormProps> = ({ initialData, onSub
 
             <div className="grid grid-cols-2 gap-4">
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">NIF/CIF</label>
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">NIF/CIF</label>
                     <input
                         type="text"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        className="w-full px-4 py-3 bg-black/20 border border-white/5 rounded-xl focus:outline-none focus:ring-1 focus:ring-primary/50 text-white placeholder-slate-600 transition-all font-medium"
                         value={formData.taxId || ''}
                         onChange={e => setFormData({ ...formData, taxId: e.target.value })}
                     />
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Dirección</label>
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Dirección</label>
                     <input
                         type="text"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        className="w-full px-4 py-3 bg-black/20 border border-white/5 rounded-xl focus:outline-none focus:ring-1 focus:ring-primary/50 text-white placeholder-slate-600 transition-all font-medium"
                         value={formData.address || ''}
                         onChange={e => setFormData({ ...formData, address: e.target.value })}
                     />
@@ -126,22 +126,22 @@ export const ProveedorForm: React.FC<ProveedorFormProps> = ({ initialData, onSub
 
             <div className="grid grid-cols-2 gap-4">
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Días de Entrega (Lead Time)</label>
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Lead Time (Días)</label>
                     <input
                         type="number"
                         min="0"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        className="w-full px-4 py-3 bg-black/20 border border-white/5 rounded-xl focus:outline-none focus:ring-1 focus:ring-primary/50 text-white placeholder-slate-600 transition-all font-mono font-medium"
                         value={formData.leadTime || 0}
                         onChange={e => setFormData({ ...formData, leadTime: parseInt(e.target.value) })}
                     />
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Pedido Mínimo (€)</label>
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Pedido Mínimo (€)</label>
                     <input
                         type="number"
                         min="0"
                         step="0.01"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        className="w-full px-4 py-3 bg-black/20 border border-white/5 rounded-xl focus:outline-none focus:ring-1 focus:ring-primary/50 text-white placeholder-slate-600 transition-all font-mono font-medium"
                         value={formData.minimumOrderValue || 0}
                         onChange={e => setFormData({ ...formData, minimumOrderValue: parseFloat(e.target.value) })}
                     />
@@ -149,16 +149,16 @@ export const ProveedorForm: React.FC<ProveedorFormProps> = ({ initialData, onSub
             </div>
 
             <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Días de Pedido</label>
+                <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Días de Pedido</label>
                 <div className="flex flex-wrap gap-2">
                     {daysOfWeek.map((day, index) => (
                         <button
                             type="button"
                             key={day}
                             onClick={() => toggleDay(index)}
-                            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${formData.orderDays?.includes(index)
-                                ? 'bg-indigo-600 text-white'
-                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                            className={`px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all border ${formData.orderDays?.includes(index)
+                                ? 'bg-primary text-white border-primary shadow-lg shadow-primary/20'
+                                : 'bg-black/20 text-slate-500 border-white/5 hover:bg-white/10'
                                 } `}
                         >
                             {day}
@@ -167,11 +167,11 @@ export const ProveedorForm: React.FC<ProveedorFormProps> = ({ initialData, onSub
                 </div>
             </div>
 
-            <div className="flex justify-end gap-3 mt-6 pt-4 border-t">
+            <div className="flex justify-end gap-3 mt-8 pt-6 border-t border-white/5">
                 <button
                     type="button"
                     onClick={onCancel}
-                    className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+                    className="px-6 py-3 rounded-xl text-xs font-bold text-slate-400 uppercase tracking-widest hover:text-white transition-colors"
                 >
                     Cancelar
                 </button>
@@ -179,9 +179,9 @@ export const ProveedorForm: React.FC<ProveedorFormProps> = ({ initialData, onSub
                     type="submit"
                     data-testid="supplier-submit-btn"
                     disabled={isSubmitting}
-                    className={`px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    className={`px-8 py-3 bg-primary text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
-                    {isSubmitting ? 'Guardando...' : 'Guardar'}
+                    {isSubmitting ? '...' : 'Guardar Proveedor'}
                 </button>
             </div>
         </form>
