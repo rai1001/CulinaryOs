@@ -72,6 +72,9 @@ export interface Ingredient {
 
     // Inventory Tracking
     isTrackedInInventory?: boolean;
+
+    // Conversion Factors
+    conversionFactors?: Record<string, number>; // e.g. { "caja": 15, "bolsa": 5 } -> multiplier to base unit
 }
 
 export interface InventoryItem {
