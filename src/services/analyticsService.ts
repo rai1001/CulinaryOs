@@ -67,9 +67,14 @@ export function calculateGlobalMetrics(fichas: FichaTecnica[]): GlobalMetrics {
     const avgCost = fichas.reduce((acc, f) => acc + f.costos.porPorcion, 0) / total;
     const avgMargin = fichas.reduce((acc, f) => acc + (f.pricing.margenBruto || 0), 0) / total;
 
-    const masRentable = [...fichas].sort((a, b) =>
-        (b.pricing.margenBruto || 0) - (a.pricing.margenBruto || 0)
-    )[0];
+    let masRentable: FichaTecnica | null = null;
+    if (fichas.length > 0) {
+        // Optimization: Use reduce instead of sort to find the max value.
+        // Impact: Reduces complexity from O(N log N) to O(N).
+        masRentable = fichas.reduce((max, current) =>
+            (current.pricing.margenBruto || 0) > (max.pricing.margenBruto || 0) ? current : max
+        );
+    }
 
     return {
         totalFichas: total,
