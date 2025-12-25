@@ -91,14 +91,15 @@ export const processFileForAnalysis = async (file: File, targetCollection?: stri
 /**
  * Calls Structured File Parser for Excel/CSV/JSON.
  */
-export const processStructuredFile = async (file: File): Promise<IngestionItem[]> => {
+export const processStructuredFile = async (file: File, hintType?: string): Promise<IngestionItem[]> => {
     const parseFile = httpsCallable<any, { items: IngestionItem[] }>(functions, 'parseStructuredFile');
 
     const base64Data = await fileToBase64(file);
 
     const response = await parseFile({
         base64Data,
-        fileName: file.name
+        fileName: file.name,
+        hintType
     });
 
     return response.data.items;
@@ -107,12 +108,13 @@ export const processStructuredFile = async (file: File): Promise<IngestionItem[]
 /**
  * Finalizes the import by committing validated items.
  */
-export const confirmAndCommit = async (items: IngestionItem[], outletId: string): Promise<{ success: boolean, count: number }> => {
+export const confirmAndCommit = async (items: IngestionItem[], outletId: string, defaultType?: string): Promise<{ success: boolean, count: number }> => {
     const commitImport = httpsCallable<any, { success: boolean, count: number }>(functions, 'commitImport');
 
     const response = await commitImport({
         items,
-        outletId
+        outletId,
+        defaultType
     });
 
     return response.data;

@@ -1,7 +1,7 @@
 import type { StateCreator } from 'zustand';
 import type { AppState, HospitalitySlice } from '../types';
 import { setDocument } from '../../services/firestoreService';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, writeBatch } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import type { HospitalityService, OccupancyData, MealType } from '../../types';
 
@@ -43,21 +43,23 @@ export const createHospitalitySlice: StateCreator<
 
     importOccupancy: async (data: OccupancyData[]) => {
         const state = get();
-        const updates: Promise<void>[] = [];
+        const batch = writeBatch(db);
         const newServices = [...state.hospitalityServices];
 
         for (const item of data) {
             const mealType: MealType = item.mealType || 'breakfast';
-            const id = `${item.date}_${mealType}`;
+            // Use date string for local ID to match store logic, but Date object for service calls
+            const dateStr = item.date.toISOString().slice(0, 10);
+            const id = `${dateStr}_${mealType}`;
             const existing = newServices.find(s => s.id === id);
 
             const updatedService: HospitalityService = existing
-                ? { ...existing, forecastPax: item.pax }
+                ? { ...existing, forecastPax: item.pax || (item as any).estimatedPax || 0 }
                 : {
                     id,
-                    date: item.date,
+                    date: dateStr,
                     mealType,
-                    forecastPax: item.pax,
+                    forecastPax: item.pax || (item as any).estimatedPax || 0,
                     realPax: 0,
                     consumption: {},
                     outletId: state.activeOutletId || undefined
@@ -68,13 +70,24 @@ export const createHospitalitySlice: StateCreator<
             if (index >= 0) newServices[index] = updatedService;
             else newServices.push(updatedService);
 
-            updates.push(setDocument('hospitalityServices', id, updatedService));
+            // Persist to hospitalityServices
+            const docRef = doc(db, 'hospitalityServices', id);
+            batch.set(docRef, updatedService, { merge: true });
+
+            // Persist to occupancy (for Dashboard)
+            const occupancyRef = doc(db, 'occupancy', id);
+            batch.set(occupancyRef, {
+                date: item.date,
+                estimatedPax: item.pax || (item as any).estimatedPax || 0,
+                mealType,
+                updatedAt: new Date()
+            }, { merge: true });
         }
 
         set({ hospitalityServices: newServices });
 
         try {
-            await Promise.all(updates);
+            await batch.commit();
         } catch (error) {
             console.error("Failed to import occupancy", error);
         }

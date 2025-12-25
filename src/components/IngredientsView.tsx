@@ -108,6 +108,7 @@ export const IngredientsView: React.FC = () => {
                 <div className="flex flex-wrap gap-3">
                     <UniversalImporter
                         buttonLabel="Importar / Escanear"
+                        defaultType="ingredient"
                         onCompleted={handleImportComplete}
                     />
                     <button
@@ -210,14 +211,14 @@ export const IngredientsView: React.FC = () => {
             {
                 showAddModal && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
-                        <div className="relative w-full max-w-lg">
+                        <div className="relative w-full max-w-lg h-[85vh] flex flex-col premium-glass overflow-hidden">
                             <button
                                 onClick={closeModal}
-                                className="absolute top-4 right-4 text-slate-400 hover:text-white z-10 p-2 hover:bg-white/10 rounded-full transition-colors"
+                                className="absolute top-4 right-4 text-slate-400 hover:text-white z-50 p-2 hover:bg-white/10 rounded-full transition-colors"
                             >
                                 <X className="w-5 h-5" />
                             </button>
-                            <div onClick={e => e.stopPropagation()}>
+                            <div className="flex-1 min-h-0" onClick={e => e.stopPropagation()}>
                                 <IngredientForm
                                     onClose={closeModal}
                                     initialData={editingIngredient}

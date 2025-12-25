@@ -98,7 +98,7 @@ export const parseStructuredFile = onCall(async (request) => {
         throw new HttpsError("unauthenticated", "User must be authenticated.");
     }
 
-    const { base64Data } = request.data;
+    const { base64Data, hintType } = request.data;
     if (!base64Data) {
         throw new HttpsError("invalid-argument", "Missing base64Data.");
     }
@@ -113,13 +113,22 @@ export const parseStructuredFile = onCall(async (request) => {
             const json = XLSX.utils.sheet_to_json(sheet);
 
             // Heuristic detection of sheet type
-            let type = "unknown";
+            let type = hintType || "unknown";
             const sn = sheetName.toUpperCase();
-            if (sn.includes("PERSONAL") || sn.includes("STAFF")) type = "staff";
-            else if (sn.includes("PROVEEDOR") || sn.includes("SUPPLIER")) type = "supplier";
-            else if (sn.includes("OCUPAC") || sn.includes("OCCUPAN")) type = "occupancy";
-            else if (sn.includes("MASTER") || sn.includes("INGRED")) type = "ingredient";
-            else if (json.length > 0) type = "recipe"; // Generic fallback
+            const firstRow = json.length > 0 ? JSON.stringify(json[0]).toUpperCase() : "";
+
+            if (sn.includes("PERSONAL") || sn.includes("STAFF")) {
+                type = "staff";
+            } else if (sn.includes("PROVEEDOR") || sn.includes("SUPPLIER")) {
+                type = "supplier";
+            } else if (sn.includes("OCUPAC") || sn.includes("OCCUPAN") || firstRow.includes("PAX") || firstRow.includes("DESAYUNO")) {
+                type = "occupancy";
+            } else if (sn.includes("MASTER") || sn.includes("INGRED") || firstRow.includes("COST") || firstRow.includes("PRECIO")) {
+                type = "ingredient";
+            } else if (json.length > 0 && type === "unknown") {
+                // Generic fallback if no hint and no heuristic match
+                type = "recipe";
+            }
 
             json.forEach(row => {
                 results.push({
@@ -148,7 +157,7 @@ export const commitImport = onCall(async (request) => {
         throw new HttpsError("unauthenticated", "User must be authenticated.");
     }
 
-    const { items, outletId } = request.data;
+    const { items, outletId, defaultType } = request.data;
     if (!Array.isArray(items)) {
         throw new HttpsError("invalid-argument", "Items must be an array.");
     }
@@ -165,15 +174,20 @@ export const commitImport = onCall(async (request) => {
 
             chunk.forEach(item => {
                 const { type, data } = item;
-                let collection = "";
+                const itemType = type === 'unknown' ? defaultType : type;
 
-                switch (type) {
+                let collection = "";
+                switch (itemType) {
                     case "ingredient": collection = "ingredients"; break;
                     case "recipe": collection = "recipes"; break;
                     case "staff": collection = "staff"; break;
                     case "supplier": collection = "suppliers"; break;
                     case "occupancy": collection = "occupancy"; break;
-                    default: return;
+                    default:
+                        // If it's still unknown, fallback to ingredients if it looks like one
+                        if (data.name && (data.price || data.unit)) collection = "ingredients";
+                        else return;
+                        break;
                 }
 
                 const docId = data.id || uuidv4();

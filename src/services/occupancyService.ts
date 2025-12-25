@@ -100,22 +100,13 @@ export function parseOccupancyImport(rawData: any[]): OccupancyData[] {
     return results;
 }
 
-export async function saveOccupancyData(data: OccupancyData[]): Promise<void> {
-    const batch = writeBatch(db);
+export async function saveOccupancyData(data: OccupancyData[], externalBatch?: any): Promise<void> {
+    const batch = externalBatch || writeBatch(db);
 
     console.log(`DEBUG: Starting save of ${data.length} records`);
-    // Helpful to see the data structure being sent
-    if (data.length > 0) {
-        console.log("DEBUG: First record sample:", JSON.stringify({
-            ...data[0],
-            date: data[0].date.toISOString()
-        }, null, 2));
-    }
-
     data.forEach(item => {
         const { date, mealType, ...rest } = item;
         const dateStr = date.toISOString().slice(0, 10);
-        // Deterministic ID to avoid duplicates and support updates/cumulative logic
         const docId = `${dateStr}_${mealType}`;
         const docRef = doc(db, COLLECTION_NAME, docId);
 
@@ -127,11 +118,13 @@ export async function saveOccupancyData(data: OccupancyData[]): Promise<void> {
             mealType,
             date: firestoreTimestamp,
             updatedAt: Timestamp.now()
-        }, { merge: true }); // Merge to preserve any fields not in the import or allow cumulative if handled outside
+        }, { merge: true });
     });
 
-    await batch.commit();
-    console.log("DEBUG: Batch commit successful");
+    if (!externalBatch) {
+        await batch.commit();
+        console.log("DEBUG: Batch commit successful");
+    }
 }
 
 export async function getOccupancyForecast(

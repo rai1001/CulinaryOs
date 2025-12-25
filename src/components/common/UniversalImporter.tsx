@@ -23,13 +23,15 @@ interface UniversalImporterProps {
     className?: string;
     template?: Record<string, string>;
     onCompleted?: (data: any) => void;
+    defaultType?: 'ingredient' | 'recipe' | 'staff' | 'supplier' | 'occupancy';
 }
 
 export const UniversalImporter: React.FC<UniversalImporterProps> = ({
     buttonLabel = "Universal Importer",
     className = "",
     template,
-    onCompleted
+    onCompleted,
+    defaultType
 }) => {
     const { currentUser, activeOutletId } = useStore();
     const { addToast } = useToast();
@@ -42,24 +44,40 @@ export const UniversalImporter: React.FC<UniversalImporterProps> = ({
     const [status, setStatus] = useState<{ type: 'success' | 'error', message: string } | null>(null);
     const [isSmartMode, setIsSmartMode] = useState(false);
 
+    const resetState = () => {
+        setStep('upload');
+        setExtractedItems([]);
+        setImportResult(null);
+        setStatus(null);
+        setLoading(false);
+    };
+
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file || !currentUser) return;
 
+        resetState();
         setLoading(true);
         setStep('processing');
-        setStatus(null);
 
         try {
             let items: IngestionItem[] = [];
             if (isSmartMode) {
                 items = await processFileForAnalysis(file, template ? JSON.stringify(template) : undefined);
             } else {
-                items = await processStructuredFile(file);
+                items = await processStructuredFile(file, defaultType);
             }
 
             if (items.length === 0) {
                 throw new Error("No se encontraron datos válidos en el archivo.");
+            }
+
+            // Client-side fix: if we have a defaultType, ensure generic results respect it
+            if (defaultType) {
+                items = items.map(item => ({
+                    ...item,
+                    type: (item.type === 'unknown' || item.type === 'recipe') ? defaultType : item.type
+                }));
             }
 
             setExtractedItems(items);
@@ -78,7 +96,7 @@ export const UniversalImporter: React.FC<UniversalImporterProps> = ({
         setLoading(true);
         setStep('processing');
         try {
-            const result = await confirmAndCommit(finalItems, activeOutletId || "GLOBAL");
+            const result = await confirmAndCommit(finalItems, activeOutletId || "GLOBAL", defaultType);
             setImportResult({ count: result.count });
             setStep('success');
             if (onCompleted) onCompleted(result);
@@ -110,7 +128,7 @@ export const UniversalImporter: React.FC<UniversalImporterProps> = ({
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
                     <div className="relative w-full max-w-lg">
                         {/* Close Button Trigger Area (clicking backdrop) */}
-                        <div className="absolute inset-0 -z-10" onClick={() => !loading && step !== 'processing' && setIsOpen(false)} />
+                        <div className="absolute inset-0 -z-10" onClick={() => !loading && step !== 'processing' && (resetState(), setIsOpen(false))} />
 
                         <div className="p-6 glass-card w-full overflow-hidden relative group border border-white/10 shadow-2xl">
                             <div className="flex items-center justify-between mb-4">
@@ -134,7 +152,10 @@ export const UniversalImporter: React.FC<UniversalImporterProps> = ({
                                         <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform duration-200 ${isSmartMode ? 'translate-x-5' : ''}`} />
                                     </button>
                                     <button
-                                        onClick={() => setIsOpen(false)}
+                                        onClick={() => {
+                                            resetState();
+                                            setIsOpen(false);
+                                        }}
                                         className="ml-4 p-1 hover:bg-white/10 rounded-full text-slate-400 hover:text-white transition-colors"
                                     >
                                         <AlertCircle className="w-5 h-5 rotate-45" />
@@ -216,7 +237,10 @@ export const UniversalImporter: React.FC<UniversalImporterProps> = ({
                                     </div>
 
                                     <button
-                                        onClick={() => setIsOpen(false)}
+                                        onClick={() => {
+                                            resetState();
+                                            setIsOpen(false);
+                                        }}
                                         className="w-full bg-primary text-white py-3 rounded-xl font-black text-xs uppercase tracking-widest hover:brightness-110 active:scale-[0.98] transition-all shadow-lg"
                                     >
                                         Cerrar

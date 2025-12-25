@@ -439,3 +439,39 @@ export async function analyzeWaste(wasteRecords: any[], ingredients: any[]): Pro
         return { success: false, error: error.message };
     }
 }
+/**
+ * NEW: Specialized Scanner for Sports Team Menus
+ * Targets the column-based layout (Guarnición, 1, 2, Postre) and handwritten notes.
+ */
+export async function scanSportsTeamMenu(base64Data: string): Promise<AIAnalysisResult> {
+    const prompt = `
+        Analiza esta foto de un menú para un Equipo Deportivo.
+        Este formato suele tener columnas como "GUARNICIÓN", "PRIMER PLATO", "SEGUNDO PLATO", "POSTRES".
+        
+        EXTRAE EN JSON SIGUIENDO ESTA ESTRUCTURA:
+        {
+            "mealType": "CENA | COMIDA | DESAYUNO | MERIENDA",
+            "courses": [
+                {
+                    "category": "Guarnición | Primero | Segundo | Postre",
+                    "items": [
+                        { 
+                            "name": "Nombre del plato/alimento", 
+                            "notes": "Notas específicas (ej: sin gluten, sin lactosa)", 
+                            "quantity": "Cantidad si se especifica (ej: 15 unidades)",
+                            "isHandwritten": true/false 
+                        }
+                    ]
+                }
+            ],
+            "globalNotes": "Observaciones generales de la hoja",
+            "handwrittenTranscriptions": "Transcripción de cualquier nota a mano encontrada (ej: tachones, flechas, añadidos con boli)"
+        }
+        
+        IMPORTANTE: 
+        1. Presta especial atención a lo escrito a mano (bolígrafo azul/negro sobre el papel).
+        2. Detecta todas las restricciones dietéticas mencionadas para cada plato.
+        3. Si hay marcas (checks o cruces) al lado de un plato, regístralo en las notas del plato.
+    `;
+    return analyzeImage(base64Data, prompt);
+}

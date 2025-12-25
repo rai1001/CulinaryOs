@@ -11,65 +11,67 @@ export interface LabelData {
     quantity: string;
     user: string; // Chef/User name
     allergens?: string[];
+    width?: number; // mm
+    height?: number; // mm
 }
 
 export const generateLabelPDF = async (data: LabelData): Promise<Blob> => {
-    // 1. Setup Document (50x30mm Standard Thermal Label)
+    // 1. Setup Document (Dynamic dimensions)
+    const w = data.width || 50;
+    const h = data.height || 30;
+
     const doc = new jsPDF({
-        orientation: 'landscape',
+        orientation: w > h ? 'landscape' : 'portrait',
         unit: 'mm',
-        format: [50, 30]
+        format: [w, h]
     });
 
     // Typography
     doc.setFont("helvetica", "bold");
 
-    // --- Header (Type) --- 
-    // Colors mapped to types (though thermal is usually B&W)
-    // let typeColor = [0, 0, 0]; // Default Black
-    /*
-    if (data.type === 'congelado') typeColor = [0, 136, 254]; // Blue
-    if (data.type === 'fresco') typeColor = [0, 196, 159]; // Green
-    if (data.type === 'pasteurizado') typeColor = [255, 187, 40]; // Amber
-    if (data.type === 'elaborado') typeColor = [136, 132, 216]; // Purple
-    if (data.type === 'abatido') typeColor = [6, 182, 212]; // Cyan
-    */
-    // For thermal printers, use distinct styles or black. Let's assume B&W for robustness.
-
-    // Header Box
+    // Divider Line (Header)
+    const headerHeight = Math.max(4, h * 0.15);
     doc.setDrawColor(0);
     doc.setLineWidth(0.3);
-    doc.line(0, 5, 50, 5); // Divider
+    doc.line(0, headerHeight, w, headerHeight);
 
-    doc.setFontSize(8);
-    doc.text(data.type.toUpperCase(), 25, 3.5, { align: 'center' });
+    // Header Text (Type)
+    doc.setFontSize(Math.min(8, headerHeight * 1.5));
+    doc.text(data.type.toUpperCase(), w / 2, headerHeight * 0.75, { align: 'center' });
 
     // --- Product Name ---
-    doc.setFontSize(10);
-    const titleLines = doc.splitTextToSize(data.title.toUpperCase(), 48);
-    // Limit to 2 lines
-    const safeTitle = titleLines.length > 2 ? [titleLines[0], titleLines[1].replace(/.$/, '...')] : titleLines;
-    doc.text(safeTitle, 25, 9, { align: 'center', baseline: 'top' });
+    doc.setFontSize(Math.min(10, w / 4));
+    const titleLines = doc.splitTextToSize(data.title.toUpperCase(), w - 4);
+    // Limit lines based on height
+    const maxTitleLines = h > 40 ? 3 : 2;
+    const safeTitle = titleLines.length > maxTitleLines ? [...titleLines.slice(0, maxTitleLines - 1), titleLines[maxTitleLines - 1].replace(/.$/, '...')] : titleLines;
+    doc.text(safeTitle, w / 2, headerHeight + 3, { align: 'center', baseline: 'top' });
 
     // --- Grid Dates ---
-    doc.setFontSize(6);
+    const fontSize = Math.min(8, h / 5); // Increased from h/8
+    doc.setFontSize(fontSize);
+    const dateYStart = h * 0.55;
+    const lineSpacing = fontSize * 0.9;
 
     // Prep Date
-    doc.text("ELAB:", 2, 19);
-    doc.text(format(new Date(data.productionDate), 'dd/MM/yy'), 12, 19);
-
-    // Exp Date (Highlight)
-    doc.text("EXP:", 2, 22.5);
+    doc.text("ELAB:", 2, dateYStart);
     doc.setFont("helvetica", "bold");
-    doc.text(format(new Date(data.expiryDate), 'dd/MM/yy'), 12, 22.5);
+    doc.text(format(new Date(data.productionDate), 'dd/MM/yy'), 2 + (fontSize * 1.8), dateYStart);
+
+    // Exp Date (Highlight - even larger if possible)
+    const expFontSize = fontSize * 1.2;
+    doc.setFontSize(expFontSize);
+    doc.text("EXP:", 2, dateYStart + lineSpacing + 1);
+    doc.setFont("helvetica", "bold");
+    doc.text(format(new Date(data.expiryDate), 'dd/MM/yy'), 2 + (fontSize * 1.8), dateYStart + lineSpacing + 1);
 
     // --- Meta Info ---
-    doc.setFontSize(5);
-    doc.text(`LOTE: ${data.batchNumber.slice(-6)}`, 2, 26);
-    doc.text(`CANT: ${data.quantity}`, 2, 28.5);
+    doc.setFontSize(Math.min(5, fontSize * 0.8));
+    doc.text(`LOTE: ${data.batchNumber.slice(-6)}`, 2, h - 4);
+    doc.text(`CANT: ${data.quantity}`, 2, h - 2);
 
     // --- QR Code ---
-    // Generate QR Data URL
+    const qrSize = Math.min(12, w * 0.3, h * 0.4);
     const qrData = JSON.stringify({
         id: data.batchNumber,
         n: data.title,
@@ -80,21 +82,19 @@ export const generateLabelPDF = async (data: LabelData): Promise<Blob> => {
         const qrUrl = await QRCode.toDataURL(qrData, {
             errorCorrectionLevel: 'L',
             margin: 0,
-            width: 50
+            width: 100
         });
 
-        // Add QR to PDF (Right side)
-        // x=32, y=17, w=16, h=16
-        doc.addImage(qrUrl, 'PNG', 32, 16, 12, 12);
+        // Add QR to PDF (Right side, centered vertically in the bottom half)
+        doc.addImage(qrUrl, 'PNG', w - qrSize - 2, h - qrSize - 2, qrSize, qrSize);
 
     } catch (err) {
         console.error("QR Gen Error", err);
-        doc.text("[QR ERROR]", 35, 20);
     }
 
     // --- Footer ---
-    doc.setFontSize(4);
-    doc.text(`CHEF: ${data.user.slice(0, 10).toUpperCase()}`, 25, 29, { align: 'center' });
+    doc.setFontSize(Math.min(4, fontSize * 0.6));
+    doc.text(`CHEF: ${data.user.slice(0, 10).toUpperCase()}`, w / 2, h - 1, { align: 'center' });
 
     return doc.output('blob');
 };

@@ -28,6 +28,7 @@ export const EventForm: React.FC<EventFormProps> = ({ initialDate, initialData, 
         date: initialData?.date || initialDate || prefillData?.date || normalizeDate(new Date()),
         pax: initialData?.pax || prefillData?.pax || 0,
         type: (initialData?.type || prefillData?.type || 'Comida') as EventType,
+        room: initialData?.room || (prefillData as any)?.room || '',
         menuId: initialData?.menuId || prefillData?.menuId || ''
     });
 
@@ -46,6 +47,7 @@ export const EventForm: React.FC<EventFormProps> = ({ initialDate, initialData, 
                 date: formData.date,
                 pax: formData.pax,
                 type: formData.type,
+                room: formData.room || null,
                 menuId: formData.menuId || null,
                 outletId: activeOutletId
             };
@@ -135,6 +137,16 @@ export const EventForm: React.FC<EventFormProps> = ({ initialDate, initialData, 
                         <option key={type} value={type}>{type}</option>
                     ))}
                 </select>
+            </div>
+
+            <div className="space-y-1">
+                <label className="text-sm text-slate-400">Salón / Espacio (Opcional)</label>
+                <input
+                    className="w-full bg-black/20 border border-white/10 rounded px-3 py-2 text-white focus:border-primary"
+                    placeholder="Ej: Salón Gran Gala"
+                    value={formData.room}
+                    onChange={e => setFormData({ ...formData, room: e.target.value })}
+                />
             </div>
 
             <div className="space-y-1">

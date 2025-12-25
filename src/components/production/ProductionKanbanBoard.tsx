@@ -251,9 +251,9 @@ export const ProductionKanbanBoard: React.FC<ProductionKanbanBoardProps> = ({ ta
             <div className="flex items-center justify-between pb-4 border-b border-white/5">
                 <div>
                     <h2 className="text-3xl font-black text-white uppercase tracking-tighter">Production Kanban</h2>
-                    <p className="text-slate-500 text-[10px] font-bold uppercase tracking-[0.3em] mt-1 flex items-center gap-2">
+                    <div className="text-slate-500 text-[10px] font-bold uppercase tracking-[0.3em] mt-1 flex items-center gap-2">
                         <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /> Real-time Ops Flow
-                    </p>
+                    </div>
                 </div>
                 <div className="flex gap-4">
                     <div className="px-4 py-2 bg-white/[0.02] border border-white/5 rounded-xl flex items-center gap-3">

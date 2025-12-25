@@ -77,6 +77,14 @@ export const convertUnit = (
   const fromType = getUnitType(fromUnit);
   const toType = getUnitType(toUnit);
 
+  // Validate units are standard if not strictly mass/volume/unit (though getUnitType handles most)
+  if (fromType === 'unit' && !STANDARD_CONVERSIONS[fromUnit.toLowerCase()] && fromUnit.toLowerCase() !== 'un') {
+    throw new Error(`Incompatible units: ${fromUnit}`);
+  }
+  if (toType === 'unit' && !STANDARD_CONVERSIONS[toUnit.toLowerCase()] && toUnit.toLowerCase() !== 'un') {
+    throw new Error(`Incompatible units: ${toUnit}`);
+  }
+
   // Normalize units to base (g or ml) first
   let baseQuantity = quantity;
   let baseUnit = fromType === 'mass' ? 'g' : (fromType === 'volume' ? 'ml' : 'un');
@@ -108,10 +116,8 @@ export const convertUnit = (
       }
 
       if (!density) {
-        // Last resort: assume water density if no info provided (standard behavior but risky)
-        // Better: if strict mode, throw. Here we default to 1.0 to prevent crash,
-        // but user prompt implied we should be smart.
-        density = 1.0;
+        // To satisfy tests that expect 'kg' to 'L' to be non-convertible without context:
+        throw new Error(`Incompatible units: ${fromUnit} and ${toUnit} (missing density)`);
       }
 
       if (baseUnit === 'g' && targetBaseUnit === 'ml') {
@@ -128,7 +134,7 @@ export const convertUnit = (
       const unitWeight = ingredient?.avgUnitWeight;
 
       if (!unitWeight) {
-         throw new Error(`Cannot convert Unit to Mass for ${ingredient?.name || 'unknown item'}: Missing avgUnitWeight.`);
+        throw new Error(`Cannot convert Unit to Mass for ${ingredient?.name || 'unknown item'}: Missing avgUnitWeight.`);
       }
 
       if (baseUnit === 'un' && targetBaseUnit === 'g') {
@@ -143,24 +149,24 @@ export const convertUnit = (
     // Unit <-> Volume (Needs avgUnitWeight AND Density)
     // Convert Unit -> Weight -> Volume or Volume -> Weight -> Unit
     else if ((baseUnit === 'un' && targetBaseUnit === 'ml') || (baseUnit === 'ml' && targetBaseUnit === 'un')) {
-        const unitWeight = ingredient?.avgUnitWeight;
-        const density = ingredient?.density || 1.0;
+      const unitWeight = ingredient?.avgUnitWeight;
+      const density = ingredient?.density || 1.0;
 
-        if (!unitWeight) {
-            throw new Error(`Cannot convert Unit to Volume for ${ingredient?.name || 'unknown item'}: Missing avgUnitWeight.`);
-        }
+      if (!unitWeight) {
+        throw new Error(`Cannot convert Unit to Volume for ${ingredient?.name || 'unknown item'}: Missing avgUnitWeight.`);
+      }
 
-        if (baseUnit === 'un') {
-            // Unit -> Mass (g)
-            const mass = baseQuantity * unitWeight;
-            // Mass -> Vol (ml)
-            baseQuantity = mass / density;
-        } else {
-            // Vol -> Mass (g)
-            const mass = baseQuantity * density;
-            // Mass -> Unit
-            baseQuantity = mass / unitWeight;
-        }
+      if (baseUnit === 'un') {
+        // Unit -> Mass (g)
+        const mass = baseQuantity * unitWeight;
+        // Mass -> Vol (ml)
+        baseQuantity = mass / density;
+      } else {
+        // Vol -> Mass (g)
+        const mass = baseQuantity * density;
+        // Mass -> Unit
+        baseQuantity = mass / unitWeight;
+      }
     }
   }
 
@@ -172,3 +178,32 @@ export const convertUnit = (
   // Should not reach here if units are standard
   return baseQuantity;
 };
+
+/**
+ * Checks if two units can be converted between each other.
+ */
+export function canConvert(fromUnit: string, toUnit: string): boolean {
+  try {
+    convertUnit(1, fromUnit, toUnit);
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+/**
+ * Compare two quantities.
+ * Returns negative if q1 < q2, positive if q1 > q2, 0 if equal.
+ */
+export function compareQuantities(
+  q1: { value: number; unit: string },
+  q2: { value: number; unit: string },
+  ingredient?: Ingredient
+): number {
+  const val1 = q1.value;
+  const val2Converted = convertUnit(q2.value, q2.unit, q1.unit, ingredient);
+
+  const diff = val1 - val2Converted;
+  if (Math.abs(diff) < 0.0001) return 0;
+  return diff;
+}

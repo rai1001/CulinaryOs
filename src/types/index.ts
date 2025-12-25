@@ -76,6 +76,7 @@ export interface Event {
     date: string; // ISO Date
     pax: number;
     type: EventType;
+    room?: string; // New field for room grouping
     menuId?: string;
     menu?: Menu;
     notes?: string;

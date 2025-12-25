@@ -1,26 +1,26 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { useStore } from '../store/useStore';
 import { useOutletScoping } from '../hooks/useOutletScoping';
 import { Calendar, Users, Coffee, Upload, Trash2, Search, CheckCircle, Store, Sun, Moon, Clock } from 'lucide-react';
-import { read, utils } from 'xlsx';
 import { useToast } from './ui';
 
+import * as XLSX from 'xlsx';
 import { normalizeDate } from '../utils/date';
 import type { HospitalityService, MealType } from '../types';
 
 export const HospitalityLogisticsView: React.FC = () => {
     const {
-        hospitalityServices, updateHospitalityService, importOccupancy,
+        hospitalityServices, updateHospitalityService,
         ingredients, fetchHospitalityServices, commitHospitalityConsumption
     } = useStore();
     const { isValidOutlet } = useOutletScoping();
     const { addToast } = useToast();
 
     // State
-    const [selectedDate, setSelectedDate] = useState<string>(normalizeDate(new Date()));
-    const [selectedMeal, setSelectedMeal] = useState<MealType>('breakfast');
-    const [searchQuery, setSearchQuery] = useState('');
-    const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+    const [selectedDate, setSelectedDate] = React.useState<string>(normalizeDate(new Date()));
+    const [selectedMeal, setSelectedMeal] = React.useState<MealType>('breakfast');
+    const [searchQuery, setSearchQuery] = React.useState('');
+    const [isImportModalOpen, setIsImportModalOpen] = React.useState(false);
 
     // Derived State
     const currentServiceId = `${selectedDate}_${selectedMeal}`;
@@ -80,42 +80,101 @@ export const HospitalityLogisticsView: React.FC = () => {
 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
-        if (!file) return;
+        if (!file || !isValidOutlet) return;
 
-        try {
-            const data = await file.arrayBuffer();
-            const workbook = read(data);
-            const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-            const jsonData = utils.sheet_to_json<any[]>(worksheet);
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+            try {
+                const data = new Uint8Array(event.target?.result as ArrayBuffer);
+                // Use cellDates: true for robust date handling, range: 1 to skip title
+                const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+                const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                const json = XLSX.utils.sheet_to_json<any>(sheet, { range: 1, defval: undefined });
 
-            const occupancyData = jsonData.map((row: any) => {
-                let dateStr = row['Fecha'] || row['Date'] || row['fecha'];
-                if (typeof dateStr === 'number') {
-                    const dateObj = new Date(Math.round((dateStr - 25569) * 86400 * 1000));
-                    dateStr = dateObj.toISOString().split('T')[0];
+                let count = 0;
+                let rowsFound = 0;
+
+                for (const row of json) {
+                    rowsFound++;
+                    const rowKeys = Object.keys(row);
+
+                    // 1. Resolve Date flexibly
+                    const dateKey = rowKeys.find(k => ['fecha', 'date'].includes(k.trim().toLowerCase()));
+                    const dateRaw = dateKey ? row[dateKey] : undefined;
+                    if (!dateRaw || String(dateRaw).toLowerCase().includes('total')) continue;
+
+                    const date = normalizeDate(dateRaw);
+                    if (!date) continue;
+
+                    // 2. Resolve Multi-column meals
+                    const meals = [
+                        { keys: ['desayuno', 'desayunos', 'breakfast'], type: 'breakfast' as MealType },
+                        { keys: ['comida', 'comidas', 'lunch', 'almuerzo'], type: 'lunch' as MealType },
+                        { keys: ['cena', 'cenas', 'dinner'], type: 'dinner' as MealType }
+                    ];
+
+                    let importedInRow = false;
+                    for (const meal of meals) {
+                        const mealKey = rowKeys.find(k => meal.keys.some(mk => k.trim().toLowerCase().includes(mk)));
+                        const mealPax = mealKey ? row[mealKey] : undefined;
+
+                        if (mealPax !== undefined) {
+                            const pax = Number(mealPax || 0);
+                            if (pax > 0) {
+                                await updateHospitalityService({
+                                    id: `${date}_${meal.type}`,
+                                    date,
+                                    mealType: meal.type,
+                                    forecastPax: pax,
+                                    realPax: pax,
+                                    consumption: {}
+                                });
+                                count++;
+                                importedInRow = true;
+                            }
+                        }
+                    }
+
+                    // 3. Fallback (PAX + Tipo)
+                    if (!importedInRow) {
+                        const paxKey = rowKeys.find(k => ['pax'].includes(k.trim().toLowerCase()));
+                        const typeKey = rowKeys.find(k => ['tipo', 'type'].includes(k.trim().toLowerCase()));
+                        const paxValue = paxKey ? row[paxKey] : undefined;
+                        const typeValue = typeKey ? String(row[typeKey] || 'desayuno').toLowerCase() : 'desayuno';
+
+                        if (paxValue !== undefined && Number(paxValue) > 0) {
+                            let mealType: MealType = 'breakfast';
+                            if (typeValue.includes('comida') || typeValue.includes('almuerzo') || typeValue.includes('lunch')) mealType = 'lunch';
+                            if (typeValue.includes('cena') || typeValue.includes('dinner')) mealType = 'dinner';
+
+                            await updateHospitalityService({
+                                id: `${date}_${mealType}`,
+                                date,
+                                mealType,
+                                forecastPax: Number(paxValue),
+                                realPax: Number(paxValue),
+                                consumption: {}
+                            });
+                            count++;
+                        }
+                    }
                 }
-                const mTypeRaw = row['Tipo'] || row['Meal'] || row['tipo'] || 'breakfast';
-                const mealType: MealType = (String(mTypeRaw).toLowerCase().includes('cena') || String(mTypeRaw).toLowerCase().includes('dinner')) ? 'dinner' :
-                    (String(mTypeRaw).toLowerCase().includes('comida') || String(mTypeRaw).toLowerCase().includes('lunch')) ? 'lunch' : 'breakfast';
 
-                return {
-                    date: String(dateStr),
-                    pax: Number(row['PAX'] || row['Pax'] || row['pax'] || 0),
-                    mealType
-                };
-            }).filter(item => item.date && !isNaN(Date.parse(item.date)));
-
-            if (occupancyData.length > 0) {
-                await importOccupancy(occupancyData);
-                addToast(`Importados ${occupancyData.length} registros`, 'success');
+                fetchHospitalityServices();
+                if (count > 0) {
+                    addToast(`Importados ${count} servicios de ocupación`, 'success');
+                } else {
+                    addToast(`No se encontraron datos válidos en las ${rowsFound} filas leídas.`, 'error');
+                }
                 setIsImportModalOpen(false);
-            } else {
-                addToast('No se encontraron datos válidos', 'error');
+            } catch (err) {
+                console.error("Import error:", err);
+                addToast("Error al procesar el archivo Excel", "error");
+            } finally {
+                e.target.value = '';
             }
-        } catch (error) {
-            console.error(error);
-            addToast('Error al leer el archivo', 'error');
-        }
+        };
+        reader.readAsArrayBuffer(file);
     };
 
     // Filter ingredients for search
@@ -257,7 +316,7 @@ export const HospitalityLogisticsView: React.FC = () => {
                                 {!currentService.isCommitted && consumedIngredients.length > 0 && (
                                     <button
                                         onClick={async () => {
-                                            if (confirm('¿Confirmas el descuento de stock para estos consumos? Esta acción no se puede deshacer.')) {
+                                            if (confirm('\u00BFConfirmas el descuento de stock para estos consumos? Esta acci\u00F3n no se puede deshacer.')) {
                                                 await commitHospitalityConsumption(currentService.id);
                                                 addToast('Stock descontado correctamente', 'success');
                                             }
@@ -289,7 +348,7 @@ export const HospitalityLogisticsView: React.FC = () => {
                                                     className="w-full text-left px-4 py-2 hover:bg-white/5 text-slate-300 text-sm flex justify-between group"
                                                 >
                                                     <span>{ing.name}</span>
-                                                    <span className="text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity">Añadir</span>
+                                                    <span className="text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity">A\u00F1adir</span>
                                                 </button>
                                             ))}
                                         </div>
@@ -351,29 +410,33 @@ export const HospitalityLogisticsView: React.FC = () => {
 
             {/* Import Modal */}
             {isImportModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-                    <div className="bg-surface border border-white/10 rounded-xl p-6 w-full max-w-md shadow-2xl">
-                        <h3 className="text-xl font-bold text-white mb-4">Importar Ocupación</h3>
-                        <p className="text-slate-400 text-sm mb-6">
-                            Sube un archivo Excel (.xlsx) con las columnas: <br />
-                            <code className="bg-black/30 px-1 rounded">Fecha, PAX, Tipo (opcional)</code>
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setIsImportModalOpen(false)}>
+                    <div className="bg-surface border border-white/10 rounded-xl p-6 w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
+                        <h3 className="text-xl font-bold text-white mb-4">Importar Ocupaci\u00F3n</h3>
+                        <p className="text-slate-400 text-sm mb-6 leading-relaxed">
+                            Sube un archivo Excel con las columnas: <br />
+                            <code className="bg-black/30 px-1.5 py-0.5 rounded text-indigo-400">Fecha, Desayunos, Comidas, Cenas</code> <br />
+                            <span className="text-[10px] mt-2 block italic text-slate-500">* Soporta tambi\u00E9n el formato antiguo de Fecha/PAX/Tipo.</span>
                         </p>
 
-                        <div className="border-2 border-dashed border-white/20 rounded-xl p-8 text-center hover:border-indigo-500 transition-colors cursor-pointer relative">
-                            <input
-                                type="file"
-                                accept=".xlsx"
-                                onChange={handleFileUpload}
-                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                            />
-                            <Upload className="mx-auto text-slate-400 mb-4" size={32} />
-                            <p className="text-slate-300 font-medium">Haz click o arrastra un archivo</p>
+                        <div className="flex flex-col items-center gap-4">
+                            <label className="w-full flex flex-col items-center justify-center p-10 border-2 border-dashed border-white/10 rounded-xl hover:bg-white/5 cursor-pointer transition-colors group">
+                                <Upload className="w-10 h-10 text-slate-500 mb-4 group-hover:text-primary group-hover:scale-110 transition-all" />
+                                <span className="text-white font-bold">Seleccionar Archivo</span>
+                                <span className="text-slate-500 text-xs mt-1">Excel (.xlsx, .xls)</span>
+                                <input
+                                    type="file"
+                                    accept=".xlsx, .xls"
+                                    className="hidden"
+                                    onChange={handleFileUpload}
+                                />
+                            </label>
                         </div>
 
                         <div className="mt-6 flex justify-end">
                             <button
                                 onClick={() => setIsImportModalOpen(false)}
-                                className="px-4 py-2 text-slate-400 hover:text-white transition-colors"
+                                className="px-4 py-2 text-slate-400 hover:text-white transition-colors text-sm font-bold uppercase tracking-widest"
                             >
                                 Cancelar
                             </button>

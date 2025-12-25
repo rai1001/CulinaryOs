@@ -37,9 +37,10 @@ export const EventsView: React.FC = () => {
     const refreshEvents = () => {
         if (activeOutletId) {
             const year = currentDate.getFullYear();
-            const month = currentDate.getMonth();
-            const startStr = `${year} -${String(month + 1).padStart(2, '0')}-01`;
-            const endStr = `${year} -${String(month + 1).padStart(2, '0')} -${new Date(year, month + 1, 0).getDate()} `;
+            const monthVal = currentDate.getMonth();
+            const startStr = `${year}-${String(monthVal + 1).padStart(2, '0')}-01`;
+            const lastDay = new Date(year, monthVal + 1, 0).getDate();
+            const endStr = `${year}-${String(monthVal + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
             fetchEventsRange(startStr, endStr);
         }
     };
@@ -239,20 +240,39 @@ export const EventsView: React.FC = () => {
                                 </span>
 
                                 <div className="flex-1 flex flex-col gap-1 overflow-y-auto custom-scrollbar">
-                                    {dayEvents.map(event => (
-                                        <div
-                                            key={event.id}
-                                            className={`text - xs p - 1.5 rounded border ${eventColors[event.type] || 'bg-slate-700 text-slate-300'} cursor - pointer hover: opacity - 80 transition - opacity`}
-                                        >
-                                            <div className="font-semibold truncate">{event.name}</div>
-                                            <div className="flex items-center justify-between mt-0.5 opacity-80">
-                                                <span className="flex items-center gap-0.5">
-                                                    <Users className="w-3 h-3" /> {event.pax}
-                                                </span>
-                                                <span className="uppercase text-[10px]">{event.type}</span>
+                                    {(() => {
+                                        // Group events by name
+                                        const grouped: Record<string, { event: Event, rooms: string[], totalPax: number, ids: string[] }> = {};
+                                        dayEvents.forEach(e => {
+                                            const key = e.name;
+                                            if (!grouped[key]) {
+                                                grouped[key] = { event: e, rooms: [], totalPax: 0, ids: [] };
+                                            }
+                                            if (e.room) grouped[key].rooms.push(e.room);
+                                            grouped[key].totalPax += e.pax;
+                                            grouped[key].ids.push(e.id);
+                                        });
+
+                                        return Object.values(grouped).map(({ event, rooms, totalPax }) => (
+                                            <div
+                                                key={event.id}
+                                                className={`text-xs p-1.5 rounded border ${eventColors[event.type] || 'bg-slate-700 text-slate-300'} cursor-pointer hover:opacity-80 transition-opacity`}
+                                            >
+                                                <div className="font-semibold truncate">
+                                                    {event.name}
+                                                    {rooms.length > 1 && <span className="ml-1 text-[10px] opacity-70">({rooms.length} salones)</span>}
+                                                </div>
+                                                <div className="flex items-center justify-between mt-0.5 opacity-80">
+                                                    <span className="flex items-center gap-0.5" title={rooms.length > 1 ? `Total PAX entre ${rooms.length} salones` : ''}>
+                                                        <Users className="w-3 h-3" /> {totalPax}
+                                                    </span>
+                                                    <span className="uppercase text-[10px] truncate max-w-[40%] text-right">
+                                                        {rooms.length === 1 ? rooms[0] : event.type}
+                                                    </span>
+                                                </div>
                                             </div>
-                                        </div>
-                                    ))}
+                                        ));
+                                    })()}
                                 </div>
                             </div>
                         );

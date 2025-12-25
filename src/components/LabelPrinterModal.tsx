@@ -17,6 +17,7 @@ type LabelType = 'congelado' | 'fresco' | 'pasteurizado' | 'elaborado' | 'abatid
 export const LabelPrinterModal: React.FC<LabelPrinterModalProps> = ({ ingredient, batch, onClose }) => {
     const { currentUser } = useStore();
     const [selectedTypes, setSelectedTypes] = useState<LabelType[]>(['congelado']);
+    const [selectedSize, setSelectedSize] = useState<{ id: string; w: number; h: number }>({ id: '50x30', w: 50, h: 30 });
     const [expiryDate, setExpiryDate] = useState(
         batch?.expiresAt ? new Date(batch.expiresAt).toISOString().split('T')[0] :
             new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
@@ -25,6 +26,12 @@ export const LabelPrinterModal: React.FC<LabelPrinterModalProps> = ({ ingredient
     const [quantity, setQuantity] = useState(batch?.currentQuantity?.toString() || '1');
     const [_isPrinting, setIsPrinting] = useState(false);
     const printRef = useRef<HTMLDivElement>(null);
+
+    const PRESET_SIZES = [
+        { id: '50x30', label: 'Estándar', w: 50, h: 30 },
+        { id: '75x50', label: 'Mediana', w: 75, h: 50 },
+        { id: '100x50', label: 'Grande', w: 100, h: 50 },
+    ];
 
     const calculateExpiryDays = (types: LabelType[]): number => {
         if (types.includes('congelado')) return 90; // 3 months
@@ -85,7 +92,9 @@ export const LabelPrinterModal: React.FC<LabelPrinterModalProps> = ({ ingredient
                 batchNumber: batch?.batchNumber || 'MANUAL-' + Date.now().toString().slice(-6),
                 quantity: quantity + (ingredient?.unit ? ` ${ingredient.unit}` : ''),
                 user: currentUser?.name || currentUser?.email || 'Chef',
-                allergens: (ingredient as Partial<Ingredient>)?.allergens || []
+                allergens: (ingredient as Partial<Ingredient>)?.allergens || [],
+                width: selectedSize.w,
+                height: selectedSize.h
             });
             printBlob(blob);
             // onClose(); // Optional: close after print
@@ -156,6 +165,22 @@ export const LabelPrinterModal: React.FC<LabelPrinterModalProps> = ({ ingredient
                     </div>
 
                     <div className="space-y-4">
+                        <label className="text-sm font-medium text-slate-400 uppercase tracking-wider">Tamaño de Etiqueta</label>
+                        <div className="flex gap-2">
+                            {PRESET_SIZES.map(size => (
+                                <button
+                                    key={size.id}
+                                    onClick={() => setSelectedSize(size)}
+                                    className={`flex-1 py-2 px-3 rounded-lg border text-xs font-bold transition-all ${selectedSize.id === size.id ? 'border-primary bg-primary/20 text-primary' : 'border-white/10 bg-white/5 text-slate-500 hover:bg-white/10'}`}
+                                >
+                                    {size.id}mm
+                                    <span className="block text-[10px] font-normal opacity-60 font-sans">{size.label}</span>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="space-y-4">
                         {!ingredient && (
                             <div>
                                 <label className="block text-sm font-medium text-slate-400 mb-2">Nombre del Producto</label>
@@ -208,15 +233,15 @@ export const LabelPrinterModal: React.FC<LabelPrinterModalProps> = ({ ingredient
                 {/* Preview Section - Right/Bottom */}
                 <div className="flex-1 bg-black/50 p-8 flex items-center justify-center relative overflow-hidden">
                     <div className="relative z-10">
-                        <p className="text-center text-slate-400 mb-4 text-sm font-bold uppercase tracking-wider">Vista Previa (75x50mm)</p>
+                        <p className="text-center text-slate-400 mb-4 text-sm font-bold uppercase tracking-wider">Vista Previa ({selectedSize.id}mm)</p>
 
                         {/* PREVIEW CONTAINER - Scaled to look realistic on screen but matching print ratios */}
                         <div
                             ref={printRef}
-                            className="bg-white text-black p-2 shadow-xl flex flex-col relative"
+                            className="bg-white text-black p-2 shadow-xl flex flex-col relative transition-all duration-300"
                             style={{
-                                width: '375px', // 5x scale of 75mm
-                                height: '250px', // 5x scale of 50mm
+                                width: `${selectedSize.w * 5}px`,
+                                height: `${selectedSize.h * 5}px`,
                                 boxSizing: 'border-box'
                             }}
                         >
@@ -231,14 +256,14 @@ export const LabelPrinterModal: React.FC<LabelPrinterModalProps> = ({ ingredient
                             </div>
 
                             {/* Grid Dates */}
-                            <div className="grid grid-cols-2 gap-2 mb-2 text-xs">
-                                <div className="border border-gray-300 rounded px-1 flex justify-between">
-                                    <span className="font-bold text-gray-500">ELAB</span>
-                                    <span className="font-bold">{new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: '2-digit' })}</span>
+                            <div className="grid grid-cols-1 gap-2 mb-2">
+                                <div className="border border-gray-300 rounded-lg px-2 py-1 flex justify-between items-center bg-gray-50">
+                                    <span className="font-bold text-[14px] text-gray-500 uppercase tracking-tighter">ELAB</span>
+                                    <span className="font-black text-[22px] leading-none">{new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: '2-digit' })}</span>
                                 </div>
-                                <div className="border border-gray-300 rounded px-1 flex justify-between">
-                                    <span className="font-bold text-gray-500">EXP</span>
-                                    <span className="font-bold">{new Date(expiryDate).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: '2-digit' })}</span>
+                                <div className="border border-gray-900 rounded-lg px-2 py-1 flex justify-between items-center bg-gray-100">
+                                    <span className="font-bold text-[14px] text-gray-900 uppercase tracking-tighter">EXP</span>
+                                    <span className="font-black text-[28px] leading-none">{new Date(expiryDate).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: '2-digit' })}</span>
                                 </div>
                             </div>
 
