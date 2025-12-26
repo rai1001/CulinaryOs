@@ -3,7 +3,7 @@
  * @description Main dashboard for the Fichas Técnicas module.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { ChefHat, Plus, Search, FileText, Copy, Trash2, Edit3, Grid, List as ListIcon } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { listarFichas, eliminarFichaTecnica, duplicarFicha } from '../services/fichasTecnicasService';
@@ -37,10 +37,14 @@ export const FichasTecnicasView: React.FC = () => {
         loadFichas();
     }, [activeOutletId]);
 
-    const filteredFichas = fichas.filter(f =>
-        f.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        f.categoria.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    // Optimization: Memoize filtered results and hoist toLowerCase to avoid O(N*2) operations per render
+    const filteredFichas = useMemo(() => {
+        const lowerSearchTerm = searchTerm.toLowerCase();
+        return fichas.filter(f =>
+            f.nombre.toLowerCase().includes(lowerSearchTerm) ||
+            f.categoria.toLowerCase().includes(lowerSearchTerm)
+        );
+    }, [fichas, searchTerm]);
 
     const handleDelete = async (id: string) => {
         if (confirm('¿Estás seguro de que quieres eliminar esta ficha técnica?')) {
