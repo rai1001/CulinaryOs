@@ -49,7 +49,9 @@ export const createHospitalitySlice: StateCreator<
         for (const item of data) {
             const mealType: MealType = item.mealType || 'breakfast';
             // Use date string for local ID to match store logic, but Date object for service calls
-            const dateStr = item.date.toISOString().slice(0, 10);
+            // item.date comes as string from frontend in some cases, verify type
+            const dateObj = typeof item.date === 'string' ? new Date(item.date) : item.date;
+            const dateStr = dateObj.toISOString().slice(0, 10);
             const id = `${dateStr}_${mealType}`;
             const existing = newServices.find(s => s.id === id);
 

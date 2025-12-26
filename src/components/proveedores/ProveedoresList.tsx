@@ -25,6 +25,7 @@ export const ProveedoresList: React.FC<ProveedoresListProps> = ({ suppliers, onE
                                     onClick={() => onEdit(supplier)}
                                     className="p-2 hover:bg-blue-500/20 text-slate-400 hover:text-blue-400 rounded-lg transition-colors border border-transparent hover:border-blue-500/30"
                                     title="Editar"
+                                    aria-label="Editar proveedor"
                                 >
                                     <Edit2 size={16} />
                                 </button>
@@ -32,6 +33,7 @@ export const ProveedoresList: React.FC<ProveedoresListProps> = ({ suppliers, onE
                                     onClick={() => onDelete(supplier.id, supplier.name)}
                                     className="p-2 hover:bg-red-500/20 text-slate-400 hover:text-red-400 rounded-lg transition-colors border border-transparent hover:border-red-500/30"
                                     title="Eliminar"
+                                    aria-label="Eliminar proveedor"
                                 >
                                     <Trash2 size={16} />
                                 </button>
