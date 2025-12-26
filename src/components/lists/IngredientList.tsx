@@ -151,6 +151,7 @@ export const IngredientList: React.FC<IngredientListProps> = React.memo(({ ingre
                                         onClick={() => onEdit(ing)}
                                         className="p-2 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-colors"
                                         title="Editar"
+                                        aria-label="Editar ingrediente"
                                     >
                                         <Edit2 size={18} />
                                     </button>
@@ -158,6 +159,7 @@ export const IngredientList: React.FC<IngredientListProps> = React.memo(({ ingre
                                         onClick={() => printLabel(formatLabelData(ing, 'INGREDIENT'))}
                                         className="p-2 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-colors"
                                         title="Imprimir Etiqueta"
+                                        aria-label="Imprimir etiqueta"
                                     >
                                         <Printer size={18} />
                                     </button>
@@ -165,6 +167,7 @@ export const IngredientList: React.FC<IngredientListProps> = React.memo(({ ingre
                                         onClick={() => onDelete(ing.id)}
                                         className="p-2 hover:bg-red-500/20 rounded-lg text-slate-400 hover:text-red-400 transition-colors"
                                         title="Eliminar"
+                                        aria-label="Eliminar ingrediente"
                                     >
                                         <Trash2 size={18} />
                                     </button>

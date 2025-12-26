@@ -140,6 +140,7 @@ export const RecipeList: React.FC<RecipeListProps> = React.memo(({ recipes, onEd
                                                 onClick={() => onEdit(recipe)}
                                                 className="p-2 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-colors"
                                                 title="Editar"
+                                                aria-label="Editar receta"
                                             >
                                                 <Edit2 size={18} />
                                             </button>
@@ -147,6 +148,7 @@ export const RecipeList: React.FC<RecipeListProps> = React.memo(({ recipes, onEd
                                                 onClick={() => printLabel(formatLabelData({ ...recipe, allergens: stats.allergens }, 'PREP'))}
                                                 className="p-2 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-colors"
                                                 title="Imprimir Etiqueta"
+                                                aria-label="Imprimir etiqueta"
                                             >
                                                 <Printer size={18} />
                                             </button>
@@ -154,6 +156,7 @@ export const RecipeList: React.FC<RecipeListProps> = React.memo(({ recipes, onEd
                                                 onClick={() => onConvertToFicha(recipe.id)}
                                                 className="p-2 hover:bg-green-500/20 rounded-lg text-slate-400 hover:text-green-400 transition-colors"
                                                 title="Análisis Pro (Ficha Técnica)"
+                                                aria-label="Generar análisis pro"
                                             >
                                                 <TrendingUp size={18} />
                                             </button>
@@ -161,6 +164,7 @@ export const RecipeList: React.FC<RecipeListProps> = React.memo(({ recipes, onEd
                                                 onClick={() => onDelete(recipe.id)}
                                                 className="p-2 hover:bg-red-500/20 rounded-lg text-slate-400 hover:text-red-400 transition-colors"
                                                 title="Eliminar"
+                                                aria-label="Eliminar receta"
                                             >
                                                 <Trash2 size={18} />
                                             </button>
