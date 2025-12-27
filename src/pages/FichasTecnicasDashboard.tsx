@@ -110,10 +110,12 @@ export const FichasTecnicasDashboard: React.FC = () => {
 
     // Filter Logic
     const filteredFichas = useMemo(() => {
+        // Optimization: Hoist search term calculation outside the filter loop
+        const term = filters.searchTerm?.toLowerCase() || '';
+
         return fichas.filter(ficha => {
             // Search
-            if (filters.searchTerm) {
-                const term = filters.searchTerm.toLowerCase();
+            if (term) {
                 if (!ficha.nombre.toLowerCase().includes(term) && !ficha.descripcion?.toLowerCase().includes(term)) {
                     return false;
                 }
