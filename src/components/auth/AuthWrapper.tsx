@@ -181,11 +181,16 @@ export const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
         } catch (err: any) {
             console.error("Email auth error:", err);
             let message = "Error en la autenticación.";
-            if (err.code === 'auth/user-not-found') message = "Usuario no encontrado.";
-            if (err.code === 'auth/wrong-password') message = "Contraseña incorrecta.";
-            if (err.code === 'auth/email-already-in-use') message = "El email ya está en uso.";
-            if (err.code === 'auth/weak-password') message = "La contraseña es muy débil.";
-            if (err.code === 'auth/invalid-email') message = "Email no válido.";
+            // Security: Avoid user enumeration by returning the same message for both cases
+            if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
+                message = "Email o contraseña incorrectos.";
+            } else if (err.code === 'auth/email-already-in-use') {
+                message = "El email ya está en uso.";
+            } else if (err.code === 'auth/weak-password') {
+                message = "La contraseña es muy débil.";
+            } else if (err.code === 'auth/invalid-email') {
+                message = "Email no válido.";
+            }
             setError(message);
         } finally {
             setAuthLoading(false);
